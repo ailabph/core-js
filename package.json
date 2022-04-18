@@ -1,0 +1,27 @@
+{
+  "name": "@ailabph/ailab-core",
+  "version": "1.0.0",
+  "description": "ailab core js",
+  "main": "ailab-core.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "underscore": "^1.13.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ailabph/core-js.git"
+  },
+  "keywords": [
+    "ailab",
+    "core",
+    "js"
+  ],
+  "author": "ailabph",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ailabph/core-js/issues"
+  },
+  "homepage": "https://github.com/ailabph/core-js#readme"
+}
