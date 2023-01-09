@@ -1,5 +1,1 @@
-import {build} from "./build";
-
-module.exports = {
-    build
-};
+export {build} from "./build";
