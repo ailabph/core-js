@@ -1,6 +1,6 @@
 {
   "name": "@ailabph/ailab-core",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "ailab core js",
   "main": "ailab-core.js",
   "scripts": {
@@ -8,11 +8,13 @@
   },
   "dependencies": {
     "@types/handlebars": "^4.1.0",
+    "@types/mysql2": "github:types/mysql2",
     "@types/node": "^18.11.18",
     "axios": "^0.18.0",
     "base64url": "^3.0.1",
     "chai": "^4.3.7",
     "cookie": "^0.3.1",
+    "dotenv": "^16.0.3",
     "ethers": "^5.7.0",
     "fp-ts": "^2.13.1",
     "fs": "^0.0.1-security",
