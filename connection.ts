@@ -1,6 +1,6 @@
 import {config} from "./config";
 import * as mysql from "mysql2/promise";
-import { Connection, Pool, PoolConnection} from "mysql2-promise";
+import { Connection, Pool, PoolConnection} from "mysql2/promise";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 
