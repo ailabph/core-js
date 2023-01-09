@@ -4,6 +4,7 @@ const path = require('path');
 const os = require("os");
 const loadIniFile = require('read-ini-file');
 const u = require("underscore");
+require('dotenv').config()
 
 export class config{
 
@@ -57,7 +58,13 @@ export class config{
     }
 
     static getBaseDirectory(): string{
-        return path.join(__dirname, tools.BASE_DIR);
+        if(typeof process.env.AILAB_CONFIG_PATH !== "undefined"){
+            return process.env.AILAB_CONFIG_PATH;
+        }
+        else{
+            throw new Error("AILAB_CONFIG_PATH env value not set");
+        }
+        // return path.join(__dirname, tools.BASE_DIR);
     }
 
     //endregion

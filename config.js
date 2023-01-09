@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
-const tools_1 = require("./tools");
 const path = require('path');
 const os = require("os");
 const loadIniFile = require('read-ini-file');
 const u = require("underscore");
+require('dotenv').config();
 class config {
     constructor() {
         this.db_host = "";
@@ -53,7 +53,13 @@ class config {
         return os.hostname();
     }
     static getBaseDirectory() {
-        return path.join(__dirname, tools_1.tools.BASE_DIR);
+        if (typeof process.env.AILAB_CONFIG_PATH !== "undefined") {
+            return process.env.AILAB_CONFIG_PATH;
+        }
+        else {
+            throw new Error("AILAB_CONFIG_PATH env value not set");
+        }
+        // return path.join(__dirname, tools.BASE_DIR);
     }
     //endregion
     //region INIT
