@@ -6,3 +6,6 @@ test setup
 3) run tsc
 4) npm test -- -g "build spec"
 5) tsc && npm test
+
+changelog
+- v1.0.1 - full implementation of core from composer ailabph/ailab-core
