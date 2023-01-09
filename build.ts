@@ -86,17 +86,28 @@ export class build{
         for(let i=0; i<tables.length; i++){
             if(config.getConfig().verbose_log) console.log(`processing table properties of ${tables[i].table_name}`);
             let table = await build.retrieveTableProperties(tables[i]);
+            if(config.getConfig().verbose_log) console.log(`properties retrieved`);
             for(let tableProperty of table.properties){
+                if(config.getConfig().verbose_log) console.log(`populating data_properties`);
                 table.data_properties.push(tableProperty.Field);
+                if(config.getConfig().verbose_log) console.log(`populating data_property_types`);
                 table.data_property_types[tableProperty.Field] = tableProperty.Type;
 
+                if(config.getConfig().verbose_log) console.log(`parse and collecting keys`);
                 build.parseAndCollectKeys(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`parse and collecting primary keys`);
                 build.parseAndCollectPrimaryKeys(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`parse and collecting unique keys`);
                 build.parseAndCollectUniqueKeys(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`parse and collecting auto increment`);
                 build.parseAndCollectAutoIncrement(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`parse and collecting required properties`);
                 build.parseAndCollectRequiredProperties(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`parse and collecting property index`);
                 build.parseAndCollectPropertiesIndex(table, tableProperty);
+                if(config.getConfig().verbose_log) console.log(`setting object types`);
                 build.setObjectType(tableProperty);
+                if(config.getConfig().verbose_log) console.log(`setting default values`);
                 build.setDefaultValues(tableProperty);
             }
             table.data_propertiesString = tools.convertArrayOfStringToString(table.data_properties,",","'");
