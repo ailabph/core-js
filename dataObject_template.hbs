@@ -1,0 +1,59 @@
+import {dataObject} from '{{{ target_dataObject }}}';
+
+export class {{ table_name }} extends dataObject {
+
+    {{#each data_properties}}
+    readonly PROP_{{ this }} = "{{ this }}";
+    {{/each}}
+
+    override _table_name = "{{ table_name }}";
+    override _dataKeys: string[] = [{{{ dataKeysString }}}];
+    override _dataKeysPrimary: string[] = [{{{ dataKeysPrimaryString }}}];
+    override _dataKeysAutoInc: string[] = [{{{ dataKeysAutoIncString }}}];
+    override _dataKeysUnique: string[] = [{{{ dataKeysUniqueString }}}];
+    override _data_properties_index: string[] = [{{{ data_properties_indexString }}}];
+    override _required: string[] = [{{{ requiredString }}}];
+    override _data_properties: string[] = [{{{ data_propertiesString }}}];
+    override _data_property_types = { {{{ data_property_typesString }}} };
+
+    protected use_secondary_connection:boolean = false;
+
+    {{#each properties}}
+    public {{ this.Field }}: {{{ this.object_types }}};
+    protected {{ this.Field }}_orig: {{{ this.object_types }}};
+    protected {{ this.Field }}_default: {{{ this.object_types }}};
+
+    {{/each}}
+
+    constructor() {
+        super();
+
+        {{#each properties}}
+        this.{{ this.Field }} = {{{ this.default_value }}};
+        this.{{ this.Field }}_orig = {{{ this.default_value }}};
+        this.{{ this.Field }}_default = {{{ this.default_value }}};
+
+        {{/each}}
+    }
+
+    async list(where: string, param: {[key:string]:any} = {}, order: string = "") {
+        let result = await this.get({where:where,param:param,order:order});
+        if(typeof result === "boolean"){
+            throw new Error("list query result expect array, boolean returned");
+        }
+        else{
+            let itemClass = {{{ table_name }}};
+            for(let x=0; x < result.length; x++){
+                let item = new itemClass();
+                item.loadValues(result[x]);
+                item.importOriginalValuesFromCurrentValues();
+                item._isNew = false;
+                this._dataList.push(item);
+            }
+        }
+    }
+
+    public getItem(): {{{ table_name }}} {
+        return super.getItem() as {{{ table_name }}};
+    }
+}
