@@ -68,14 +68,14 @@ export class build{
         for(let index in tables){
             let table = tables[index];
             if(config.getConfig().verbose_log) console.log("creating db orm class for "+table.table_name);
-            let tpl = await fs.promises.readFile("dataObject_template.hbs","utf-8");
+            let tpl = await fs.promises.readFile(__dirname+"/dataObject_template.hbs","utf-8");
             let template = handlebars.compile(tpl);
             // @ts-ignore
             table[`target_dataObject`] = target_dataObject;
             let result = template(table);
             await fs.promises.writeFile(`${target_dir}/${table.table_name}.ts`,result);
         }
-        if(config.getConfig().verbose_log) console.log("db orm ts classes build successful");
+        console.log("db orm ts classes build successful");
     }
 
     public static async getTablesInfo():Promise<TableDataHeader[]>{
