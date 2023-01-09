@@ -58,6 +58,8 @@ class connection {
         };
     }
     static setQueryConfig(conn) {
+        if (typeof conn === "undefined")
+            throw new Error("connection is undefined");
         conn.config.queryFormat = function (query, values) {
             if (!values) {
                 return query;

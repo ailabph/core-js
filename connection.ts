@@ -1,6 +1,6 @@
 import {config} from "./config";
-import * as mysql from 'mysql2/promise';
-import {Connection, Pool, PoolConnection} from "mysql2/promise";
+import * as mysql from "mysql2/promise";
+import { Connection, Pool, PoolConnection} from "mysql2-promise";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 
@@ -47,7 +47,8 @@ export class connection{
         };
     }
 
-    private static setQueryConfig(conn:PoolConnection | Connection):PoolConnection | Connection{
+    private static setQueryConfig(conn: Connection | undefined):PoolConnection | Connection{
+        if(typeof conn === "undefined") throw new Error("connection is undefined");
         conn.config.queryFormat = function (query:string, values:{[key:string]:any}) {
             if (!values) {
                 return query;
