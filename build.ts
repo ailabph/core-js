@@ -62,12 +62,12 @@ export class build{
         }
 
         if(typeof target_dir === "undefined") target_dir = config.getBaseDirectory();
-        console.log(`running orm build on ${target_dir}`);
+        if(config.getConfig().verbose_log) console.log(`running orm build on ${target_dir}`);
 
         let tables = await build.getTablesInfo();
         for(let index in tables){
             let table = tables[index];
-            console.log("creating db orm class for "+table.table_name);
+            if(config.getConfig().verbose_log) console.log("creating db orm class for "+table.table_name);
             let tpl = await fs.promises.readFile("dataObject_template.hbs","utf-8");
             let template = handlebars.compile(tpl);
             // @ts-ignore
@@ -75,14 +75,16 @@ export class build{
             let result = template(table);
             await fs.promises.writeFile(`${target_dir}/${table.table_name}.ts`,result);
         }
-        console.log("db orm ts classes build successful");
+        if(config.getConfig().verbose_log) console.log("db orm ts classes build successful");
     }
 
     public static async getTablesInfo():Promise<TableDataHeader[]>{
-        tools.BASE_DIR = build.CONFIG_LOCATION;
+        if(config.getConfig().verbose_log) console.log("retrieving tables information");
         build.connection = await connection.getConnection() as PoolConnection;
         let tables = await build.initiateAndRetrieveTableNames();
+        if(config.getConfig().verbose_log) console.log(`found table:${tables.length}`);
         for(let i=0; i<tables.length; i++){
+            if(config.getConfig().verbose_log) console.log(`processing table properties of ${tables[i].table_name}`);
             let table = await build.retrieveTableProperties(tables[i]);
             for(let tableProperty of table.properties){
                 table.data_properties.push(tableProperty.Field);

@@ -57,11 +57,13 @@ class build {
             }
             if (typeof target_dir === "undefined")
                 target_dir = config_1.config.getBaseDirectory();
-            console.log(`running orm build on ${target_dir}`);
+            if (config_1.config.getConfig().verbose_log)
+                console.log(`running orm build on ${target_dir}`);
             let tables = yield build.getTablesInfo();
             for (let index in tables) {
                 let table = tables[index];
-                console.log("creating db orm class for " + table.table_name);
+                if (config_1.config.getConfig().verbose_log)
+                    console.log("creating db orm class for " + table.table_name);
                 let tpl = yield fs.promises.readFile("dataObject_template.hbs", "utf-8");
                 let template = handlebars.compile(tpl);
                 // @ts-ignore
@@ -69,15 +71,21 @@ class build {
                 let result = template(table);
                 yield fs.promises.writeFile(`${target_dir}/${table.table_name}.ts`, result);
             }
-            console.log("db orm ts classes build successful");
+            if (config_1.config.getConfig().verbose_log)
+                console.log("db orm ts classes build successful");
         });
     }
     static getTablesInfo() {
         return __awaiter(this, void 0, void 0, function* () {
-            tools_1.tools.BASE_DIR = build.CONFIG_LOCATION;
+            if (config_1.config.getConfig().verbose_log)
+                console.log("retrieving tables information");
             build.connection = (yield connection_1.connection.getConnection());
             let tables = yield build.initiateAndRetrieveTableNames();
+            if (config_1.config.getConfig().verbose_log)
+                console.log(`found table:${tables.length}`);
             for (let i = 0; i < tables.length; i++) {
+                if (config_1.config.getConfig().verbose_log)
+                    console.log(`processing table properties of ${tables[i].table_name}`);
                 let table = yield build.retrieveTableProperties(tables[i]);
                 for (let tableProperty of table.properties) {
                     table.data_properties.push(tableProperty.Field);

@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dataObject = exports.connection = exports.config = exports.build = void 0;
+exports.dataObject = exports.connection = exports.tools = exports.config = exports.build = void 0;
 const build_1 = require("./build");
 Object.defineProperty(exports, "build", { enumerable: true, get: function () { return build_1.build; } });
 const config_1 = require("./config");
 Object.defineProperty(exports, "config", { enumerable: true, get: function () { return config_1.config; } });
+const tools_1 = require("./tools");
+Object.defineProperty(exports, "tools", { enumerable: true, get: function () { return tools_1.tools; } });
 const connection_1 = require("./connection");
 Object.defineProperty(exports, "connection", { enumerable: true, get: function () { return connection_1.connection; } });
 const dataObject_1 = require("./dataObject");
