@@ -99,15 +99,15 @@ class connection {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.init();
             if (force_pool || !this.inTransaction) {
-                // await this.initiatePoolConnection();
                 if (typeof this.pool === "undefined")
                     throw new Error("pool not connected");
+                if (typeof this.lastPoolConnection !== "undefined")
+                    return this.lastPoolConnection;
                 this.lastPoolConnection = yield this.pool.getConnection();
                 this.lastPoolConnection = this.setQueryConfig(this.lastPoolConnection);
                 return this.lastPoolConnection;
             }
             else {
-                // this.singleConnection = await this.initiateSingleConnection();
                 if (typeof this.singleConnection === "undefined") {
                     throw new Error("singleConnection is undefined");
                 }

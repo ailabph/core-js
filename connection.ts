@@ -86,14 +86,14 @@ export class connection{
     public static async getConnection(force_pool:boolean = false): Promise<PoolConnection | Connection>{
         await this.init();
         if(force_pool || !this.inTransaction){
-            // await this.initiatePoolConnection();
             if(typeof this.pool === "undefined") throw new Error("pool not connected");
+            if(typeof this.lastPoolConnection !== "undefined")
+                return this.lastPoolConnection;
             this.lastPoolConnection = await this.pool.getConnection();
             this.lastPoolConnection = this.setQueryConfig(this.lastPoolConnection) as PoolConnection;
             return this.lastPoolConnection;
         }
         else{
-            // this.singleConnection = await this.initiateSingleConnection();
             if(typeof this.singleConnection === "undefined"){
                 throw new Error("singleConnection is undefined");
             }
