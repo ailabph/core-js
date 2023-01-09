@@ -58,15 +58,16 @@ export class build{
 
     public static async run(target_dir?:string, target_dataObject:string = "./dataObject", restrict_to_local:boolean = true){
         if(restrict_to_local && config.getEnv() != config.ENV.local){
-            return;
+            throw new Error("unable to run orm build on a non-local environment");
         }
 
         if(typeof target_dir === "undefined") target_dir = config.getBaseDirectory();
+        console.log(`running orm build on ${target_dir}`);
 
         let tables = await build.getTablesInfo();
         for(let index in tables){
             let table = tables[index];
-            // console.log("creating db orm class for "+table.table_name);
+            console.log("creating db orm class for "+table.table_name);
             let tpl = await fs.promises.readFile("dataObject_template.hbs","utf-8");
             let template = handlebars.compile(tpl);
             // @ts-ignore

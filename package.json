@@ -1,6 +1,6 @@
 {
   "name": "@ailabph/ailab-core",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "ailab core js",
   "main": "ailab-core.js",
   "scripts": {

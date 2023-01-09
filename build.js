@@ -53,14 +53,15 @@ class build {
     static run(target_dir, target_dataObject = "./dataObject", restrict_to_local = true) {
         return __awaiter(this, void 0, void 0, function* () {
             if (restrict_to_local && config_1.config.getEnv() != config_1.config.ENV.local) {
-                return;
+                throw new Error("unable to run orm build on a non-local environment");
             }
             if (typeof target_dir === "undefined")
                 target_dir = config_1.config.getBaseDirectory();
+            console.log(`running orm build on ${target_dir}`);
             let tables = yield build.getTablesInfo();
             for (let index in tables) {
                 let table = tables[index];
-                // console.log("creating db orm class for "+table.table_name);
+                console.log("creating db orm class for " + table.table_name);
                 let tpl = yield fs.promises.readFile("dataObject_template.hbs", "utf-8");
                 let template = handlebars.compile(tpl);
                 // @ts-ignore
