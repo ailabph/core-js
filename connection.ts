@@ -102,8 +102,11 @@ export class connection{
     }
 
     public static async execute({ sql, param = {}, force_pool = false }:{ sql:string, param?:object, force_pool?:boolean }): Promise<ResultSetHeader | object[]>{
+        if(config.getConfig().verbose_log) console.log(`retrieving connection`);
         let conn = await this.getConnection(force_pool);
+        if(config.getConfig().verbose_log) console.log(`connection retrieved, executing sql:${sql}`);
         let result = await conn.execute(sql,param);
+        if(config.getConfig().verbose_log) console.log(`query executed`);
         return result[0] as ResultSetHeader;
     }
 

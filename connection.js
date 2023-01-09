@@ -117,8 +117,14 @@ class connection {
     }
     static execute({ sql, param = {}, force_pool = false }) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (config_1.config.getConfig().verbose_log)
+                console.log(`retrieving connection`);
             let conn = yield this.getConnection(force_pool);
+            if (config_1.config.getConfig().verbose_log)
+                console.log(`connection retrieved, executing sql:${sql}`);
             let result = yield conn.execute(sql, param);
+            if (config_1.config.getConfig().verbose_log)
+                console.log(`query executed`);
             return result[0];
         });
     }
