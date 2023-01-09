@@ -109,3 +109,8 @@ fabric.properties
 
 
 
+/build/
+/config.ini.php
+/.idea/*
+/scratch.js
+/scratch.ts
