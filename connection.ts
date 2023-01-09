@@ -48,7 +48,7 @@ export class connection{
     }
 
     private static setQueryConfig(conn:PoolConnection | Connection):PoolConnection | Connection{
-        conn.config.queryFormat = function (query, values) {
+        conn.config.queryFormat = function (query:string, values:{[key:string]:any}) {
             if (!values) {
                 return query;
             }

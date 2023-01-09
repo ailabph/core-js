@@ -1,6 +1,6 @@
 {
   "name": "@ailabph/ailab-core",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ailab core js",
   "main": "ailab-core.js",
   "scripts": {
@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@types/handlebars": "^4.1.0",
+    "@types/node": "^18.11.18",
     "axios": "^0.18.0",
     "base64url": "^3.0.1",
     "chai": "^4.3.7",
