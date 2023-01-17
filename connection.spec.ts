@@ -4,7 +4,6 @@ import {connection, ResultSetHeader} from "./connection";
 import {Connection, PoolConnection} from "mysql2/promise";
 
 let timeStamp = tools.getCurrentTimeStamp();
-tools.BASE_DIR = "";
 
 describe("connection spec",()=>{
 

@@ -13,7 +13,6 @@ const chai_1 = require("chai");
 const tools_1 = require("./tools");
 const connection_1 = require("./connection");
 let timeStamp = tools_1.tools.getCurrentTimeStamp();
-tools_1.tools.BASE_DIR = "";
 describe("connection spec", () => {
     afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
         yield connection_1.connection.execute({ sql: " TRUNCATE TABLE meta_options " });
