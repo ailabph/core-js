@@ -6,7 +6,7 @@ import {tools} from "./tools";
 import {connection} from "./connection";
 
 let timeStamp = tools.getCurrentTimeStamp();
-tools.BASE_DIR = "";
+
 describe("dataObject spec orm",()=>{
     before(async ()=>{
         await connection.execute({sql:"TRUNCATE TABLE meta_options"});
