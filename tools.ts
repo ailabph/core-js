@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import {assert} from "./assert";
+import fsPromise from "fs/promises";
 
 export class tools{
 
@@ -98,6 +101,33 @@ export class tools{
             }
         }
         return to_return;
+    }
+
+    public static async sleep(ms:number = 1000){
+        return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
+    public static async writeIntoFileArrayOfStrings(filePath: string, lines: string[]): Promise<void> {
+        if (assert.fileExists(filePath,false)) {
+            await fs.promises.writeFile(filePath, '');
+        } else {
+            await fs.promises.writeFile(filePath, '');
+        }
+        for (const line of lines) {
+            await fs.promises.appendFile(filePath, line + '\n');
+        }
+    }
+
+    public static async restructureDataFile(sourceFilePath:string, targetFilePath:string, separator:string, targetIndex:number){
+        assert.fileExists(sourceFilePath);
+        const file = await fsPromise.open(sourceFilePath, 'r');
+        let data:string[] = [];
+        for await (const line of file.readLines()) {
+            const parts = line.split(separator);
+            data.push(parts[targetIndex]);
+        }
+        await tools.writeIntoFileArrayOfStrings(targetFilePath,data);
+        console.log(`${data.length} lines processed. restructured data from ${sourceFilePath} to ${targetFilePath} `);
     }
 
 }
