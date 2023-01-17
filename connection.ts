@@ -152,4 +152,10 @@ export class connection{
     }
     //#endregion END UTILITIES
 
+
+    //#region GETTERS
+    public static inTransactionMode():boolean{
+        return this.inTransaction;
+    }
+    //#endregion END GETTERS
 }

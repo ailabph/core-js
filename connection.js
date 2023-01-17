@@ -172,6 +172,11 @@ class connection {
         this.pool = undefined;
         this.singleConnection = undefined;
     }
+    //#endregion END UTILITIES
+    //#region GETTERS
+    static inTransactionMode() {
+        return this.inTransaction;
+    }
 }
 exports.connection = connection;
 connection.inTransaction = false;
