@@ -4,7 +4,6 @@ import sinon from "ts-sinon";
 import {expect} from "chai";
 import {tools} from "./tools";
 
-tools.BASE_DIR = "";
 describe("config spec",()=>{
     afterEach(()=>{
         config.resetCache();

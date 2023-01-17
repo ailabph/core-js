@@ -30,8 +30,6 @@ const assert = __importStar(require("assert"));
 const config_1 = require("./config");
 const ts_sinon_1 = __importDefault(require("ts-sinon"));
 const chai_1 = require("chai");
-const tools_1 = require("./tools");
-tools_1.tools.BASE_DIR = "";
 describe("config spec", () => {
     afterEach(() => {
         config_1.config.resetCache();
