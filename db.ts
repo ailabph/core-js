@@ -1,6 +1,5 @@
 import {tools} from "./tools";
 
-tools.BASE_DIR = "";
 import {config} from "./config";
 const params = {
     host     : 'localhost',

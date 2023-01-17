@@ -1,7 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const tools_1 = require("./tools");
-tools_1.tools.BASE_DIR = "";
 const config_1 = require("./config");
 const params = {
     host: 'localhost',
