@@ -11,9 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const build_1 = require("./build");
 const connection_1 = require("./connection");
-const tools_1 = require("./tools");
 describe("build spec", () => {
-    tools_1.tools.BASE_DIR = "";
     beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
         yield connection_1.connection.startTransaction();
     }));

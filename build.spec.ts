@@ -6,7 +6,6 @@ import {connection} from "./connection";
 import {tools} from "./tools";
 
 describe("build spec",()=>{
-    tools.BASE_DIR = "";
 
     beforeEach(async()=>{
         await connection.startTransaction();
