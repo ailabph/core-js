@@ -18,7 +18,7 @@ import {eth_config} from "./eth_config";
 
 import {eth_tools} from "./eth_tools";
 
-import {eth_log_decoder} from "./eth_log_decoder";
+import {DepositLog, SwapLog, TransferLog, WithdrawalLog} from "./eth_log_decoder";
 
 import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_data} from "./build/eth_contract_data";
@@ -27,7 +27,8 @@ import {tools} from "./tools";
 import {assert} from "./assert";
 import {assert_eth} from "./assert_eth";
 import fsPromise from "fs/promises";
-import {eth_block} from "./build/eth_block";
+import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
+import {eth_receipt} from "./build/eth_receipt";
 
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
@@ -135,6 +136,14 @@ export class eth_worker{
         return false;
     }
 
+    static checkIfInvolved2({from=null,to=null,input=null}:{from:string|null,to:string|null,input:string|null}) : boolean{
+        if(from?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
+        if(to?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
+        const striped_tracked_token = eth_config.getTokenContract().toLowerCase().replace(/^(0x)/, "");
+        if(input?.toLowerCase().includes(striped_tracked_token)) return true;
+        return false;
+    }
+
     public static async importTransactionsFromFile(file_path:string, assert_involved:boolean = false){
         assert.inTransaction();
         assert.fileExists(file_path);
@@ -191,16 +200,68 @@ export class eth_worker{
         return await Web3Client.eth.getBlock(_block_num, true);
     }
 
+    public static async getTxnByHashWeb3(txn_hash:string):Promise<Transaction>{
+        return await Web3Client.eth.getTransaction(txn_hash);
+    }
+
     static async getTxnByHash(_txn_hash: string): Promise<Transaction> {
-        return await Web3Client.eth.getTransaction(_txn_hash);
+        let txn_db = new eth_transaction();
+        txn_db.hash = _txn_hash;
+        await txn_db.fetch();
+        if(txn_db.isNew()){
+            const web3_txn = await Web3Client.eth.getTransaction(_txn_hash);
+            if(tools.isEmpty(web3_txn)) throw new Error(`unable to retrieve transaction hash:${_txn_hash} from web3`);
+            txn_db.loadValues(web3_txn,true);
+            txn_db.fromAddress = web3_txn.from;
+            txn_db.toAddress = web3_txn.to;
+            await txn_db.save();
+        }
+        return {
+            blockHash: txn_db.blockHash,
+            blockNumber: txn_db.blockNumber,
+            from: txn_db.fromAddress ?? "",
+            gas: parseFloat(txn_db.gas ?? "0"),
+            gasPrice: txn_db.gasPrice ?? "",
+            hash: txn_db.hash,
+            input: txn_db.input ?? "",
+            nonce: txn_db.nonce ?? 0,
+            to: txn_db.toAddress ?? "",
+            transactionIndex: 0,
+            value: txn_db.value ?? ""
+        };
+    }
+
+    static async getDbTxnByHash(txn_hash:string): Promise<eth_transaction>{
+        let txn_db = new eth_transaction();
+        txn_db.hash = txn_hash;
+        await txn_db.fetch();
+        if(txn_db.isNew()){
+            await this.getTxnByHash(txn_hash);
+            txn_db.hash = txn_hash;
+            await txn_db.fetch();
+        }
+        if(txn_db.isNew()) throw new Error(`unable to retrieve txn record hash:${txn_hash}`);
+        return txn_db;
+    }
+
+    static getReceiptByTxnHashWeb3(txn_hash:string): Promise<TransactionReceipt>{
+        return Web3Client.eth.getTransactionReceipt(txn_hash);
     }
 
     static async getReceiptByTxnHash(_txn_hash: string) : Promise<TransactionReceipt | false> {
         try {
+            let receipt_db = new eth_receipt();
+            receipt_db.transactionHash = _txn_hash;
+            await receipt_db.fetch();
+            if(receipt_db.recordExists()){
+                let analyzeReceipt = await eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
+                return analyzeReceipt.receipt;
+            }
+
             let receipt;
             let waitLimit = 40;
             let waitCount = 0;
-            receipt = await Web3Client.eth.getTransactionReceipt(_txn_hash);
+            receipt = await eth_worker.getTxnByHash(_txn_hash);
             while (typeof receipt === "undefined" || receipt == null) {
                 if (waitCount >= waitLimit) break;
                 waitCount++;
@@ -208,9 +269,10 @@ export class eth_worker{
                 await new Promise((resolve) => {
                     setTimeout(resolve, 500);
                 });
-                receipt = await Web3Client.eth.getTransactionReceipt(_txn_hash);
+                receipt = await eth_worker.getTxnByHash(_txn_hash);
             }
-            return receipt;
+            let analyzeReceipt = await eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
+            return analyzeReceipt.receipt;
         } catch (e) {
             console.log("Error getting receipt from txn:%s", _txn_hash);
             console.log(e);
@@ -269,7 +331,7 @@ export class eth_worker{
         let contract_data = new eth_contract_data();
         contract_data.contract = _contract_address;
         await contract_data.fetch();
-        if(contract_data._isNew){
+        if(contract_data.isNew()){
             contract_data.name = "";
             contract_data.symbol = "";
             contract_data.decimals = 0;
@@ -336,49 +398,18 @@ export class eth_worker{
     //region ANALYZE TOOL
 
     static async analyzeTransaction2(_txn_hash: string | eth_transaction): Promise<AnalysisResult>{
-        let tx = new eth_transaction();
+        let tx: eth_transaction;
         if(_txn_hash instanceof eth_transaction){
             tx = _txn_hash;
         }
         else{
-            tx.hash = _txn_hash;
-            await tx.fetch();
+            tx = await eth_worker.getDbTxnByHash(_txn_hash);
         }
 
         if(tools.isEmpty(tx.hash)) throw new Error("hash must not be empty");
         if(tools.isEmpty(tx.blockNumber)) throw new Error("blockNumber must not be empty");
 
-        let result = eth_tools.getDefaultResult();
-        result.hash = tx.hash;
-        result.blockNumber = tx.blockNumber as number;
-
-        // ADD TRANSACTION IF NOT EXIST
-        if(tx._isNew){
-            let txLookup = await Web3Client.eth.getTransaction(tx.hash);
-            if(typeof txLookup === "undefined"){
-                throw new Error("transaction record not found with hash:"+_txn_hash);
-            }
-            console.log(txLookup);
-            tx.hash = txLookup.hash;
-            tx.blockHash = txLookup.blockHash;
-            tx.blockNumber = txLookup.blockNumber;
-            tx.fromAddress = txLookup.from;
-            tx.gas = txLookup.gas+"";
-            tx.gasPrice = txLookup.gasPrice;
-            tx.input = txLookup.input;
-            tx.nonce = txLookup.nonce;
-            tx.toAddress = txLookup.to;
-            tx.value = txLookup.value;
-            // tx.type = txLookup.type;
-            // tx.v = txLookup.v;
-            // tx.r = txLookup.r;
-            // tx.s = txLookup.s;
-            tx.status = "o";
-            await tx.save();
-        }
-
-        result.fromAddress = tx.fromAddress ?? "";
-        result.toAddress = tx.toAddress ?? "";
+        let result = eth_tools.getDefaultResult(tx);
 
         result = await this.processContractCreationEvent(tx,result);
         if (typeof tx.toAddress === "undefined" || tx.toAddress === null || tx.toAddress === "") return result;
@@ -387,7 +418,7 @@ export class eth_worker{
         if(!decodedAbi) return result;
         result.method = decodedAbi.abi.name;
 
-        if(eth_worker.checkIfInvolved({from:result.fromAddress,to:result.toAddress,abi:decodedAbi})){
+        if(eth_worker.checkIfInvolved2({from:result.fromAddress,to:result.toAddress,input:tx.input})){
             result = await this.processAddLiquidity(result,decodedAbi);
             result = await this.processApprovalEvent(tx,decodedAbi,result);
             result = await this.processTransferEvent(tx,decodedAbi,result);
@@ -403,51 +434,20 @@ export class eth_worker{
         result = this.processResultType(result);
         result = this.processTaxesFees(result);
         result = await this.processResultChecks(result, decodedAbi);
-        result = await this.processResultBlockTime(result);
+        // result = await this.processResultBlockTime(result);
 
         return result;
     }
 
     static async analyzeTransaction3(txn:string|eth_transaction):Promise<AnalysisResult>{
-        // establish eth_transaction
-        let transaction = new eth_transaction();
-        if(typeof txn === "string"){
-            transaction.hash = txn;
-            await transaction.fetch();
-
-            // update eth_transaction information
-            if(transaction.isNew()){
-                let web3Transaction = await eth_worker.getTxnByHash(txn);
-                transaction.loadValues(web3Transaction,true);
-                transaction.toAddress = web3Transaction.to;
-                transaction.fromAddress = web3Transaction.from;
-                await transaction.save();
-
-                // update eth_block information
-                let block = new eth_block();
-                block.blockNumber = assert.isNumber(transaction.blockNumber,"transaction.blockNumber",0);
-                await block.fetch();
-                if(block.isNew()){
-                    const web3Block = await eth_worker.getBlockByNumber(block.blockNumber);
-                    block.blockNumber = web3Block.number;
-                    block.blockHash = web3Block.hash;
-                    block.time_added = tools.getCurrentTimeStamp();
-                    await block.save();
-                }
-            }
-        }
-        else{
-            transaction = txn;
-        }
-        // double check required values
-        transaction.fromAddress = assert.isString({val:transaction.fromAddress,prop_name:"transaction.fromAddress",strict:true});
-        transaction.toAddress = assert.isString({val:transaction.toAddress,prop_name:"transaction.toAddress",strict:true});
-        transaction.blockNumber = assert.isNumber(transaction.blockNumber,"transaction.blockNumber",0);
-
-        // initiate analysis result object
+        const transaction:eth_transaction = typeof txn === "string" ? await eth_worker.getDbTxnByHash(txn) : txn;
         let result = eth_types.getDefaultAnalysisResult(transaction);
 
-        // decode abi
+        // result = await eth_worker.processContractCreationEvent(transaction,result);
+        // if(result.method === "createContract") return result;
+
+        if(!eth_worker.checkIfInvolved2({from:transaction.fromAddress,to:transaction.toAddress,input:transaction.input})) return result;
+        result.status = RESULT_STATUS.INVOLVED;
         const decoded_abi = eth_abi_decoder.decodeAbiObject(transaction.input);
         if(!decoded_abi) {
             result.abiDecodeStatus = "failed";
@@ -456,26 +456,17 @@ export class eth_worker{
         result.abiDecodeStatus = "success";
         result.method = decoded_abi.abi.name;
 
-        // check if involved
-        if(!eth_worker.checkIfInvolved({from:transaction.fromAddress,to:transaction.toAddress,abi:decoded_abi})) {
-            result.status = RESULT_STATUS.NOT_INVOLVED;
-            return result;
-        }
-        result.status = RESULT_STATUS.INVOLVED;
-
-        // if involved, identify method
-        if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processContractCreationEvent(transaction,result);
         if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processAddLiquidity(result,decoded_abi);
         if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processApprovalEvent(transaction,decoded_abi,result);
         if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processTransferEvent(transaction,decoded_abi,result);
         if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processSwapEvents(transaction,decoded_abi,result);
         if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processTransitSwap(transaction,decoded_abi,result);
-        if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processOtherEventsOfContract(result,decoded_abi);
+        // if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processOtherEventsOfContract(result,decoded_abi);
 
         result = eth_worker.processResultType(result);
         result = eth_worker.processTaxesFees(result);
-        result = await eth_worker.processResultChecks(result,decoded_abi);
-        result = await eth_worker.processResultBlockTime(result);
+        // result = await eth_worker.processResultChecks(result,decoded_abi);
+        // result = await eth_worker.processResultBlockTime(result);
 
         return result;
     }
@@ -535,107 +526,89 @@ export class eth_worker{
     static async processAddLiquidity(result: AnalysisResult, decodedAbi: DecodedAbiObject): Promise<AnalysisResult>{
         let action = "process add liquidity";
         let methodAbi = eth_abi_decoder.getAddLiquidityETH(decodedAbi);
-        if(methodAbi){
-            result.status = RESULT_STATUS.INVOLVED;
-            result.tag = this.getTagAddLiquidityToToken();
-            result.fromAmountGross = this.convertValueToToken(methodAbi.amountTokenDesired.toString());
-            result.fromValue = methodAbi.amountTokenMin.toString();
-            result.fromAmount = this.convertValueToToken(result.fromValue);
-            result.fromContract = eth_config.getTokenContract();
-            result.fromSymbol = eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config.getTokenDecimal();
-            result.toAmountGross = this.convertValueToETH(methodAbi.amountETHMin.toString());
-            result.toValue = methodAbi.amountETHMin.toString();
-            result.toAmount = result.toAmountGross;
-            result.toContract = eth_config.getEthContract();
-            result.toDecimal = eth_config.getEthDecimal();
-            result.toSymbol = eth_config.getEthSymbol();
+        if(!methodAbi) return result;
 
-            let analyzeLogsResult = await this.analyzeLogs(result.hash);
-            if(analyzeLogsResult.receipt.status){
-                result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
-            }
-        }
+        result.tag = this.getTagAddLiquidityToToken();
+
+        result.fromAmountGross = this.convertValueToToken(methodAbi.amountTokenDesired.toString());
+        result.fromValue = methodAbi.amountTokenMin.toString();
+        result.fromAmount = this.convertValueToToken(result.fromValue);
+        result.fromContract = eth_config.getTokenContract();
+        result.fromSymbol = eth_config.getTokenSymbol();
+        result.fromDecimal = eth_config.getTokenDecimal();
+
+        result.toAmountGross = this.convertValueToETH(methodAbi.amountETHMin.toString());
+        result.toValue = methodAbi.amountETHMin.toString();
+        result.toAmount = result.toAmountGross;
+        result.toContract = eth_config.getEthContract();
+        result.toDecimal = eth_config.getEthDecimal();
+        result.toSymbol = eth_config.getEthSymbol();
+
+        const receipt = await eth_worker.getReceiptByTxnHash(result.hash);
+        result.sendStatus = receipt && receipt.status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
+
         return result;
     }
 
     /// APPROVAL EVENT
     static async processApprovalEvent(tx: eth_transaction, decodedAbi: DecodedAbiObject, result: AnalysisResult): Promise<AnalysisResult>{
         let action = "process approval event";
-
-        if(typeof tx.toAddress !== "string") throw new Error("cannot "+action+", toAddress is not set");
-        if(typeof tx.hash !== "string") throw new Error("cannot "+action+", hash is not set");
-        if(tx.toAddress.toLowerCase() !== eth_config.getTokenContract().toLowerCase()){
-            return result;
-        }
+        tx.toAddress = assert.isString({val:tx.toAddress,prop_name:"tx.toAddress",strict:true});
+        if(tx.toAddress.toLowerCase() !== eth_config.getTokenContract().toLowerCase()) return result;
 
         let methodAbi = await eth_abi_decoder.getApproveAbi(decodedAbi);
-        if(methodAbi) {
-            result.status = RESULT_STATUS.INVOLVED;
-            result.fromContract = eth_config.getTokenContract();
-            result.fromSymbol = eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config.getTokenDecimal();
-            result.tag = "approval";
+        if(!methodAbi) return result;
 
-            let receipt = await this.getReceiptByTxnHash(tx.hash);
-            if (receipt && receipt.status) {
-                result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
-            }
-        }
+        result.fromContract = eth_config.getTokenContract();
+        result.fromSymbol = eth_config.getTokenSymbol();
+        result.fromDecimal = eth_config.getTokenDecimal();
+        result.tag = "approval";
+
+        let receipt = await this.getReceiptByTxnHash(tx.hash);
+        result.sendStatus = receipt && receipt.status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
+
         return result;
     }
 
     /// TRANSFER EVENT
     static async processTransferEvent(tx: eth_transaction, decodedAbi: DecodedAbiObject, result: AnalysisResult): Promise<AnalysisResult>{
         let action = "process transfer event";
-
         tx.toAddress = assert.isString({val:tx.toAddress,prop_name:"tx.toAddress",strict:true});
         tx.hash = assert.isString({val:tx.hash,prop_name:"tx.hash",strict:true});
-
         if(tx.toAddress.toLowerCase() !== eth_config.getTokenContract().toLowerCase()) return result;
 
         let methodAbi = await eth_abi_decoder.getTransferAbi(decodedAbi);
-        if(methodAbi){
-            result.status = RESULT_STATUS.INVOLVED;
-            result.fromContract = eth_config.getTokenContract();
-            result.fromSymbol = eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config.getTokenDecimal();
+        if(!methodAbi) return result;
 
-            result.toContract = eth_config.getTokenContract();
-            result.toSymbol = eth_config.getTokenSymbol();
-            result.toDecimal = eth_config.getTokenDecimal();
+        result.fromContract = eth_config.getTokenContract();
+        result.fromSymbol = eth_config.getTokenSymbol();
+        result.fromDecimal = eth_config.getTokenDecimal();
 
-            result.toAddress = methodAbi.recipient;
-            result.tag = this.getTagTransferTokenToOther();
+        result.toContract = eth_config.getTokenContract();
+        result.toSymbol = eth_config.getTokenSymbol();
+        result.toDecimal = eth_config.getTokenDecimal();
 
-            /// GROSS FROM
-            result.fromValue = methodAbi.amount.toString();
-            result.fromAmount = this.convertValueToAmount(methodAbi.amount.toString(),eth_config.getTokenDecimal());
-            result.fromAmountGross = this.convertValueToAmount(methodAbi.amount.toString(),eth_config.getTokenDecimal());
-            result.toAmountGross = this.convertValueToAmount(methodAbi.amount.toString(),eth_config.getTokenDecimal());
-            result.toValue = methodAbi.amount.toString();
+        result.toAddress = methodAbi.recipient;
+        result.tag = eth_worker.getTagTransferTokenToOther();
 
-            let receipt = await this.getReceiptByTxnHash(tx.hash);
-            if(receipt && receipt.status){
-                result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
-            }
-            else{
-                return result;
-            }
+        /// GROSS FROM
+        result.fromValue = methodAbi.amount.toString();
+        result.fromAmount = eth_worker.convertValueToAmount(result.fromValue.toString(),eth_config.getTokenDecimal());
+        result.fromAmountGross = result.fromAmount;
 
-            for(let x=0;x<receipt.logs.length;x++){
-                let log = receipt.logs[x];
-                let transferLog = await eth_log_decoder.getTransferLog(log);
-                if(transferLog){
-                    if(
-                        transferLog.from.toLowerCase() === result.fromAddress.toLowerCase()
-                        && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLog.ContractInfo, transferLog.value.toString());
-                    }
-                }
-            }
+        result.toValue = result.fromValue;
+        result.toAmount = result.fromAmount;
+        result.toAmountGross = result.fromAmountGross;
+
+        let receipt = await this.getReceiptByTxnHash(tx.hash);
+        result.sendStatus = receipt && receipt.status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
+
+        const transferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(tx.hash,"transfer");
+        if(transferLog && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()){
+            result.toValue = transferLog.value.toString();
+            result.toAmount = eth_worker.convertValueToAmount(result.toValue,eth_config.getTokenDecimal());
         }
+
         return result;
     }
 
@@ -650,344 +623,144 @@ export class eth_worker{
         // CHECK IF DEX
         if(tx.toAddress.toLowerCase() !== eth_config.getDexContract().toLowerCase()) return result;
 
-        // CHECK IF TOKEN IS IN PATHS
-        if(!eth_worker.checkIfInvolved({from:tx.fromAddress,to:tx.toAddress,abi:decodedAbi})) return result
-        result.status = RESULT_STATUS.INVOLVED;
+        // set toAddress same with fromAddress because of swap
+        result.toAddress = result.fromAddress;
 
         // CHECK IF SEND SUCCESS
         const receipt = await this.getReceiptByTxnHash(tx.hash);
-        if(!receipt || !receipt.status) return result;
-        result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
+        result.sendStatus = receipt && receipt.status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
 
         // identify contract informations
         const fromContract = assert.isString({val: decodedAbi.argument_key_value["path"][0],prop_name:"fromContract path",strict:true});
         const fromContractInfo = await this.getContractMetaData(fromContract);
         const toContract = assert.isString({val: decodedAbi.argument_key_value["path"][decodedAbi.argument_key_value["path"].length-1],prop_name:"toContract",strict:true});
-        const toContractInfo = await this.getContractMetaData(toContract);
 
-        // set toAddress same with fromAddress because of swap
-        result.toAddress = result.fromAddress;
+        const analyzeResultLogs = await eth_receipt_logs_tools.getReceiptLogs(tx.hash);
 
-        let fromProcessed = false;
-        let grossProccessed = false;
-        let toProcessed = false;
+        // BUY
+        const swapExactETHForTokens = await eth_abi_decoder.getSwapExactETHForTokens(decodedAbi);
+        if(swapExactETHForTokens){
+            result.tag = eth_worker.getTagSwapEthToToken();
+            // FROM
+            const firstDepositLog = await eth_receipt_logs_tools.getFirstLogByMethod<DepositLog>(analyzeResultLogs,"deposit",true) as DepositLog;
+            result = this.importResultFromValuesFromLog(result, firstDepositLog.ContractInfo, firstDepositLog.amount.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
+            // TO AMOUNT GROSS
+            const swapLog = await eth_receipt_logs_tools.getFirstLogByMethod<SwapLog>(analyzeResultLogs,"swap",true) as SwapLog;
+            result.toAmountGross = swapLog.amount1Out.toString();
+            result.toAmountGross = this.convertValueToETH(result.toAmountGross);
+        }
 
-        // swapExactETHForTokens
-        if(result.tag === ""){
-            let swapExactETHForTokens = await eth_abi_decoder.getSwapExactETHForTokens(decodedAbi);
-            if(swapExactETHForTokens){
-                result.tag = this.getTagSwapEthToToken();
+        const swapETHForExactTokens = await eth_abi_decoder.getSwapETHForExactTokens(decodedAbi);
+        if(swapETHForExactTokens){
+            result.tag = this.getTagSwapEthToToken();
+            // FROM
+            const depositLog = await eth_receipt_logs_tools.getFirstLogByMethod<DepositLog>(analyzeResultLogs,"deposit",true) as DepositLog;
+            result = this.importResultFromValuesFromLog(result, depositLog.ContractInfo, depositLog.amount.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
+            // TO AMOUNT GROSS
+            const swapLog = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(analyzeResultLogs,"swap",true) as SwapLog;
+            result.toAmountGross = swapLog.amount1Out.toString();
+            result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
+        }
 
-                /// SWAP LOGIC FOR EXACT ETH -> TOKEN
-                for(let x=0; x < receipt.logs.length; x++){
-                    let log = receipt.logs[x];
+        const swapExactETHForTokensSupportingFeeOnTransferTokens =  await eth_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
+        if(swapExactETHForTokensSupportingFeeOnTransferTokens){
+            result.tag = this.getTagSwapEthToToken();
+            // FROM
+            const firstDepositLog = await eth_receipt_logs_tools.getFirstLogByMethod<DepositLog>(analyzeResultLogs,"deposit",true) as DepositLog;
+            result = this.importResultFromValuesFromLog(result, firstDepositLog.ContractInfo, firstDepositLog.amount.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
+            // TO AMOUNT GROSS
+            const lastSwapLog = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(analyzeResultLogs,"swap",true) as SwapLog;
+            result.toAmountGross = lastSwapLog.amount1Out.toString();
+            result.toAmountGross = this.convertValueToAmount(result.toAmountGross,result.toDecimal);
+        }
 
-                    //// -> FROM INFORMATION
-                    let depositLog = await eth_log_decoder.getDepositLog(log);
-                    if(
-                        depositLog
-                        && depositLog.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, depositLog.ContractInfo, depositLog.amount.toString());
-                        fromProcessed = true;
-                    }
 
-                    //// -> GROSS INFO
-                    let swapLog = await eth_log_decoder.getSwapLog(log);
-                    if(
-                        swapLog
-                        && swapLog.sender.toLowerCase() === eth_config.getDexContract().toLowerCase()
-                        && swapLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result.toAmountGross = swapLog.amount1Out.toString();
-                        result.toAmountGross = this.convertValueToETH(result.toAmountGross);
-                        grossProccessed = true;
-                    }
 
-                    //// -> TO INFO
-                    let transferLog = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLog
-                        && transferLog.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase()
-                        && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLog.ContractInfo, transferLog.value.toString());
-                        toProcessed = true;
-                    }
-                }
+        // SELL
+        const swapTokensForExactETH = await eth_abi_decoder.getSwapTokensForExactETH(decodedAbi);
+        if(swapTokensForExactETH){
+            result.tag = this.getTagSwapTokenToEth();
+            result.fromAmountGross = this.convertValueToAmount(swapTokensForExactETH.amountInMax.toString(),fromContractInfo.decimals);
+            // FROM
+            const firstTransferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
+            // FROM GROSS AMOUNT
+            // const syncLog = await eth_receipt_logs_tools.getFirstLogByMethod<SyncLog>(analyzeResultLogs,"sync",true) as SyncLog;
+            // result.fromAmountGross = eth_worker.convertValueToAmount(syncLog.reserve1.toString(),firstTransferLog.ContractInfo.decimals);
+        }
+
+        const swapExactTokensForETHSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
+        if(swapExactTokensForETHSupportingFeeOnTransferTokens){
+            result.tag = this.getTagSwapTokenToOtherToken();
+            // FROM AMOUNT GROSS
+            result.fromAmountGross = swapExactTokensForETHSupportingFeeOnTransferTokens.amountIn.toString();
+            result.fromAmountGross = this.convertValueToAmount(result.fromAmountGross,fromContractInfo.decimals);
+            // FROM
+            const firstTransferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
+            // TO
+            const withdrawalLog = await eth_receipt_logs_tools.getLastLogByMethod<WithdrawalLog>(analyzeResultLogs,"withdrawal",true) as WithdrawalLog;
+            result = this.importResultToValuesFromLog(result, withdrawalLog.ContractInfo, withdrawalLog.wad.toString());
+        }
+
+
+        const swapExactTokensForTokens = await eth_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
+        if(swapExactTokensForTokens){
+            if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapTokenToOtherToken();
+            if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapOtherTokenToToken();
+            result.fromAmountGross = this.convertValueToAmount(swapExactTokensForTokens.amountIn.toString(),fromContractInfo.decimals);
+            // FROM
+            const firstTransferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result,lastTransferLog.ContractInfo,lastTransferLog.value.toString());
+            // TO AMOUNT GROSS
+            const lastSwapLog = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(analyzeResultLogs,"swap",true) as SwapLog;
+            result.toAmountGross = lastSwapLog.amount1Out.toString();
+            result.toAmountGross = this.convertValueToToken(result.toAmountGross);
+        }
+
+
+
+
+
+
+
+        const swapExactTokensForTokensSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
+        if(swapExactTokensForTokensSupportingFeeOnTransferTokens){
+            if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapTokenToOtherToken();
+            if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapOtherTokenToToken();
+            // FROM
+            const firstTransferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
+            // TO
+            const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
+            // TO AMOUNT GROSS
+            if(result.fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
+                result.fromAmountGross = swapExactTokensForTokensSupportingFeeOnTransferTokens.amountIn.toString();
+                result.fromAmountGross = eth_worker.convertValueToAmount(result.fromAmountGross,eth_config.getTokenDecimal());
             }
-        }
-
-        // swapETHForExactTokens
-        if(result.tag === ""){
-            let swapETHForExactTokens = await eth_abi_decoder.getSwapETHForExactTokens(decodedAbi);
-            if(swapETHForExactTokens){
-                result.tag = this.getTagSwapEthToToken();
-                /// SWAP LOGIC FOR ETH -> TOKEN
-                for(let x=0; x < receipt.logs.length; x++) {
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let depositLog = await eth_log_decoder.getDepositLog(log);
-                    if(
-                        depositLog
-                        && depositLog.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, depositLog.ContractInfo, depositLog.amount.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> GROSS INFO
-                    let swapLog = await eth_log_decoder.getSwapLog(log);
-                    if(swapLog){
-                        result.toAmountGross = swapLog.amount1Out.toString();
-                        result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
-                        grossProccessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let transferLog = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLog
-                        && transferLog.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                        && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLog.ContractInfo, transferLog.value.toString());
-                        toProcessed = true;
-                    }
-
-                }
+            else{
+                const lastSwapLog = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(analyzeResultLogs,"swap",true) as SwapLog;
+                result.toAmountGross = lastSwapLog.amount1Out.toString();
+                result.toAmountGross = this.convertValueToAmount(result.toAmountGross,result.toDecimal);
             }
+
         }
-
-        // swapExactTokensForTokens
-        if(result.tag === ""){
-            let swapExactTokensForTokens = await eth_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
-            if(swapExactTokensForTokens){
-                if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                    result.tag = this.getTagSwapTokenToOtherToken();
-                }
-                if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                    result.tag = this.getTagSwapOtherTokenToToken();
-                }
-
-                result.fromAmountGross = this.convertValueToAmount(swapExactTokensForTokens.amountIn.toString(),fromContractInfo.decimals);
-
-                /// SWAP LOGIC FOR EXACT TOKENS -> TOKEN
-                for(let x=0; x < receipt.logs.length; x++){
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let transferLogFrom = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogFrom
-                        && transferLogFrom.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                        && transferLogFrom.from.toLowerCase() === result.fromAddress.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, transferLogFrom.ContractInfo, transferLogFrom.value.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> GROSS INFO
-                    let swapLog = await eth_log_decoder.getSwapLog(log);
-                    if(
-                        swapLog
-                        && swapLog.to.toLowerCase() === result.fromAddress.toLowerCase()
-                    ){
-                        result.toAmountGross = swapLog.amount1Out.toString();
-                        result.toAmountGross = this.convertValueToToken(result.toAmountGross);
-                        grossProccessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let transferLogTo = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogTo
-                        && transferLogTo.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result,transferLogTo.ContractInfo,transferLogTo.value.toString());
-                        toProcessed = true;
-                    }
-                }
-            }
-        }
-
-        // swapTokensForExactETH
-        if(result.tag === ""){
-            let swapTokensForExactETH = await eth_abi_decoder.getSwapTokensForExactETH(decodedAbi);
-            if(swapTokensForExactETH){
-                result.tag = this.getTagSwapTokenToEth();
-
-                result.fromAmountGross = this.convertValueToAmount(swapTokensForExactETH.amountInMax.toString(),fromContractInfo.decimals);
-                grossProccessed = true;
-
-                for(let x=0; x < receipt.logs.length; x++) {
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let transferLogFrom = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogFrom
-                        && transferLogFrom.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                        && transferLogFrom.from.toLowerCase() === result.fromAddress.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, transferLogFrom.ContractInfo, transferLogFrom.value.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let transferLogTo = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogTo
-                        && transferLogTo.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLogTo.ContractInfo, transferLogTo.value.toString());
-                        toProcessed = true;
-                    }
-                }
-            }
-        }
-
-        // swapExactETHForTokensSupportingFeeOnTransferTokens
-        if(result.tag === ""){
-            let swapExactETHForTokensSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
-            if(swapExactETHForTokensSupportingFeeOnTransferTokens){
-                result.tag = this.getTagSwapEthToToken();
-
-                for(let x=0; x < receipt.logs.length; x++) {
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let depositLog = await eth_log_decoder.getDepositLog(log);
-                    if(
-                        depositLog
-                        && depositLog.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, depositLog.ContractInfo, depositLog.amount.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> GROSS INFO
-                    let swapLog = await eth_log_decoder.getSwapLog(log);
-                    if(swapLog){
-                        result.toAmountGross = swapLog.amount1Out.toString();
-                        result.toAmountGross = this.convertValueToAmount(result.toAmountGross,result.toDecimal);
-                        grossProccessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let transferLog = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLog
-                        && transferLog.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                        && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLog.ContractInfo, transferLog.value.toString());
-                        toProcessed = true;
-                    }
-                }
-            }
-        }
-
-        // swapExactTokensForETHSupportingFeeOnTransferTokens
-        if(result.tag === ""){
-            let swapExactTokensForETHSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
-            if(swapExactTokensForETHSupportingFeeOnTransferTokens){
-                if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                    result.tag = this.getTagSwapTokenToOtherToken();
-                }
-
-                result.fromAmountGross = swapExactTokensForETHSupportingFeeOnTransferTokens.amountIn.toString();
-                result.fromAmountGross = this.convertValueToAmount(result.fromAmountGross,fromContractInfo.decimals);
-                grossProccessed = true;
-
-                /// SWAP LOGIC FOR EXACT TOKENS -> TOKEN
-                for(let x=0; x < receipt.logs.length; x++){
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let transferLog = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLog
-                        && transferLog.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                        && transferLog.from.toLowerCase() === result.fromAddress.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, transferLog.ContractInfo, transferLog.value.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let withdrawalLog = await eth_log_decoder.getWithdrawalLog(log);
-                    if(
-                        withdrawalLog
-                        && withdrawalLog.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, withdrawalLog.ContractInfo, withdrawalLog.wad.toString());
-                        toProcessed = true;
-                    }
-                }
-            }
-        }
-
-        // swapExactTokensForTokensSupportingFeeOnTransferTokens
-        if(result.tag === ""){
-            let swapExactTokensForTokensSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
-            if(swapExactTokensForTokensSupportingFeeOnTransferTokens){
-                if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                    result.tag = this.getTagSwapTokenToOtherToken();
-                }
-                if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                    result.tag = this.getTagSwapOtherTokenToToken();
-                }
-
-                for(let x=0; x < receipt.logs.length; x++) {
-                    let log = receipt.logs[x];
-
-                    //// -> FROM INFO
-                    let transferLogFrom = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogFrom
-                        && transferLogFrom.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                        && transferLogFrom.from.toLowerCase() === result.fromAddress.toLowerCase()
-                    ){
-                        result = this.importResultFromValuesFromLog(result, transferLogFrom.ContractInfo, transferLogFrom.value.toString());
-                        fromProcessed = true;
-                    }
-
-                    //// -> GROSS INFO
-                    let swapLog = await eth_log_decoder.getSwapLog(log);
-                    if(
-                        swapLog
-                        && swapLog.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result.toAmountGross = swapLog.amount1Out.toString();
-                        result.toAmountGross = this.convertValueToAmount(result.toAmountGross,result.toDecimal);
-                        grossProccessed = true;
-                    }
-
-                    //// -> TO INFO
-                    let transferLogTo = await eth_log_decoder.getTransferLog(log);
-                    if(
-                        transferLogTo
-                        && transferLogTo.ContractInfo.address.toLowerCase() === toContract.toLowerCase()
-                        && transferLogTo.to.toLowerCase() === result.toAddress.toLowerCase()
-                    ){
-                        result = this.importResultToValuesFromLog(result, transferLogTo.ContractInfo, transferLogTo.value.toString());
-                        toProcessed = true;
-                    }
-                }
-            }
-        }
-
-        if(result.tag !== "" && (!fromProcessed || !grossProccessed || !toProcessed)){
-            console.error(result);
-            console.error(decodedAbi);
-            console.log(`${fromProcessed ? "from processed" : "from not processed"}`);
-            console.log(`${grossProccessed ? "gross processed" : "gross not processed"}`);
-            console.log(`${toProcessed ? "to processed" : "to not processed"}`);
-            throw new Error(`hash: ${result.hash} something wrong with processing method:${result.method}`);
-        }
-
         return result;
     }
     static async processTransitSwap(tx: eth_transaction, decodedAbi: DecodedAbiObject, result: AnalysisResult): Promise<AnalysisResult>{
@@ -996,113 +769,69 @@ export class eth_worker{
         let swap = await eth_abi_decoder.getSwap(decodedAbi);
 
         if(swap){
-            let fromProcessed = false;
-            let grossProcessed = false;
-            let toProcessed = false;
+            const analyzeResultLogs = await eth_receipt_logs_tools.getReceiptLogs(tx.hash);
+            result.fromContract = swap.srcToken;
+            result.toContract = swap.dstToken;
 
-            let fromContract = swap.srcToken;
-            let toContract = swap.dstToken;
-
-            if(fromContract === "0x0000000000000000000000000000000000000000"){
-                fromContract = swap.wrappedNative;
+            if(result.fromContract === "0x0000000000000000000000000000000000000000"){
+                result.fromContract = swap.wrappedNative;
             }
-            if(toContract === "0x0000000000000000000000000000000000000000"){
-                toContract = swap.wrappedNative;
+            if(result.toContract === "0x0000000000000000000000000000000000000000"){
+                result.toContract = swap.wrappedNative;
             }
 
-            if( fromContract.toLowerCase() !== eth_config.getTokenContract().toLowerCase()
-                && toContract.toLowerCase() !== eth_config.getTokenContract().toLowerCase()
-            ){
-                return result;
-            }
+            let fromContractInfo = await eth_worker.getContractMetaData(result.fromContract);
+            let toContractInfo = await eth_worker.getContractMetaData(result.toContract);
 
-            let fromContractInfo = await this.getContractMetaData(fromContract);
-            let toContractInfo = await this.getContractMetaData(toContract);
-
-            if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
-                result.tag = this.getTagSwapTokenToOtherToken();
+            if(result.fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
+                result.tag = eth_worker.getTagSwapTokenToOtherToken();
             }
             else{
-                result.tag = this.getTagSwapOtherTokenToToken();
+                result.tag = eth_worker.getTagSwapOtherTokenToToken();
             }
 
-            result.status = RESULT_STATUS.INVOLVED;
             result.toAddress = result.fromAddress;
             result.method = decodedAbi.abi.name;
 
-            let receipt = await this.getReceiptByTxnHash(tx.hash);
-            if(receipt && receipt.status){
-                result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
+            let receipt = await eth_worker.getReceiptByTxnHash(tx.hash);
+            result.sendStatus = receipt && receipt.status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
+
+            // FROM
+            const firstTransferLog = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+            result = await eth_worker.importResultValues("from",result, fromContractInfo, firstTransferLog.value.toString());
+
+            // TO
+            const withdrawalLog = await eth_receipt_logs_tools.getLastLogByMethod<WithdrawalLog>(analyzeResultLogs,"withdrawal",false) as WithdrawalLog;
+            if(withdrawalLog){
+                const withdrawalLog = await eth_receipt_logs_tools.getLastLogByMethod<WithdrawalLog>(analyzeResultLogs,"withdrawal",true) as WithdrawalLog;
+                result = await eth_worker.importResultValues("to",result,toContractInfo, withdrawalLog.wad.toString());
             }
             else{
-                result.sendStatus = RESULT_SEND_STATUS.FAILED;
-                return result;
+                const lastTransferLog = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(analyzeResultLogs,"transfer",true) as TransferLog;
+                result = await eth_worker.importResultValues("to",result,toContractInfo,lastTransferLog.value.toString());
             }
 
-            //// -> GROSS INFO
-            result.fromAmountGross = this.convertValueToAmount(swap.amount.toString(),fromContractInfo.decimals);
-            grossProcessed = true;
-
-            for(let x=0; x < receipt.logs.length; x++) {
-                let log = receipt.logs[x];
-
-                //// -> FROM INFO
-                let transferLog = await eth_log_decoder.getTransferLog(log);
-                if(
-                    transferLog
-                    && transferLog.from.toLowerCase() === result.fromAddress.toLowerCase()
-                ){
-                    result = await this.importResultValues("from",result, fromContractInfo, transferLog.value.toString());
-                    fromProcessed = true;
-                }
-
-                //// -> FROM INFO ALTERNATIVE
-                let depositLog = await eth_log_decoder.getDepositLog(log);
-                if(
-                    depositLog
-                    && depositLog.ContractInfo.address.toLowerCase() === fromContract.toLowerCase()
-                ){
-                    result = await this.importResultValues("from",result,fromContractInfo,depositLog.amount.toString());
-                    fromProcessed = true;
-                }
-
-                //// -> GROSS ALTERNATIVE
-                let swap = await eth_log_decoder.getSwapLog(log);
-                if(
-                    swap
-                    && swap.to.toLowerCase() === result.toAddress.toLowerCase()
-                ){
-                    result.toAmountGross = this.convertValueToAmount(swap.amount1Out.toString(),toContractInfo.decimals);
-                    grossProcessed = true;
-                }
-
-                //// -> TO INFO
-                let withdrawalLog = await eth_log_decoder.getWithdrawalLog(log);
-                if(
-                    withdrawalLog
-                    && withdrawalLog.ContractInfo.address.toLowerCase() === toContractInfo.address.toLowerCase()
-                ){
-                    result = await this.importResultValues("to",result,toContractInfo, withdrawalLog.wad.toString());
-                    toProcessed = true;
-                }
-
-                //// -> TO INFO ALTERNATIVE
-                let transferLogTo = await eth_log_decoder.getTransferLog(log);
-                if(
-                    transferLogTo
-                    && transferLogTo.to.toLowerCase() === result.toAddress.toLowerCase()
-                ){
-                    result = await this.importResultValues("to",result,toContractInfo, transferLogTo.value.toString());
-                    toProcessed = true;
-                }
-            }
-            if( result.status === RESULT_STATUS.INVOLVED && result.sendStatus === "success"
-                && (!fromProcessed || !grossProcessed || !toProcessed)
-            ){
-                throw new Error(`transaction is involved but not processed properly. hash:${result.hash}`);
-            }
+            // FROM AMOUNT GROSS
+            result.fromAmountGross = eth_worker.convertValueToAmount(swap.amount.toString(),fromContractInfo.decimals);
         }
 
+        return result;
+    }
+
+    static async processGenericSwapEvents(tx:eth_transaction|string, result:AnalysisResult): Promise<AnalysisResult>{
+        tx = typeof tx === "string" ? await eth_worker.getDbTxnByHash(tx) : tx;
+        tx.toAddress = assert.isString({val:tx.toAddress,prop_name:"processGenericSwapEvents tx.toAddress",strict:true});
+        tx.fromAddress = assert.isString({val:tx.fromAddress,prop_name:"processGenericSwapEvents tx.fromAddress",strict:true});
+        if(!eth_worker.checkIfInvolved2({from:tx.fromAddress,to:tx.toAddress,input:tx.input})){
+            result.status = RESULT_STATUS.NOT_INVOLVED;
+            return result;
+        }
+        result.status = RESULT_STATUS.INVOLVED;
+        const receipt = await eth_worker.getReceiptByTxnHash(tx.hash);
+        if(!receipt){
+            result.sendStatus = RESULT_SEND_STATUS.FAILED;
+            return result;
+        }
         return result;
     }
 
@@ -1116,7 +845,7 @@ export class eth_worker{
             result.fromAddress.toLowerCase() === eth_config.getTokenContract().toLowerCase()
             || result.toAddress.toLowerCase() === eth_config.getTokenContract().toLowerCase()
         ){
-            let analyzeLogsResult = await this.analyzeLogs(result.hash);
+            let analyzeLogsResult = await eth_receipt_logs_tools.getReceiptLogs(result.hash);
             if(analyzeLogsResult.receipt.status){
                 result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
                 result.status = RESULT_STATUS.INVOLVED;
@@ -1142,7 +871,7 @@ export class eth_worker{
             }
         }
         if(foundContract){
-            let analyzeLogsResult = await this.analyzeLogs(result.hash);
+            let analyzeLogsResult = await eth_receipt_logs_tools.getReceiptLogs(result.hash);
             if(analyzeLogsResult.receipt.status){
                 result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
                 result.status = RESULT_STATUS.INVOLVED;
@@ -1202,6 +931,7 @@ export class eth_worker{
             if(fromTaxAmountBn.comparedTo(0) === 1 && fromAmountGrossBn.comparedTo(0) === 1){
                 fromTaxPercBn = fromTaxAmountBn.dividedBy(fromAmountGrossBn);
                 result.fromTaxPerc = fromTaxPercBn.toFixed(5);
+                result.toTaxAmount = fromTaxAmountBn.toFixed(8);
             }
 
             result.toTaxPerc = "0";
@@ -1214,7 +944,11 @@ export class eth_worker{
             if(toTaxAmountBn.comparedTo(0) === 1 && toAmountGrossBn.comparedTo(0) === 1){
                 toTaxPercBn = toTaxAmountBn.dividedBy(toAmountGrossBn);
                 result.toTaxPerc = toTaxPercBn.toFixed(5);
+                result.toTaxAmount = toTaxAmountBn.toFixed(8);
             }
+
+            result.taxAmount = result.toTaxAmount > result.fromTaxAmount ? result.toTaxAmount : result.fromTaxAmount;
+            result.taxPerc = result.toTaxPerc > result.fromTaxAmount ? result.toTaxPerc : result.fromTaxPerc;
         }
         return result;
     }
@@ -1265,7 +999,7 @@ export class eth_worker{
                 || result.toAddress.toLowerCase() === eth_config.getTokenContract().toLowerCase()
             ){
                 if(ignoreEvents.indexOf(result.method) < 0){
-                    let analyzeLogsResult = await this.analyzeLogs(result.hash);
+                    let analyzeLogsResult = await eth_receipt_logs_tools.getReceiptLogs(result.hash);
                     if(analyzeLogsResult.receipt.status){
                         result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
                         throw new Error("tracked contract found on tx, should be involved. hash:"+result.hash);
@@ -1293,7 +1027,7 @@ export class eth_worker{
             }
             if(foundContract){
                 if(ignoreEvents.indexOf(result.method) < 0){
-                    let analyzeLogsResult = await this.analyzeLogs(result.hash);
+                    let analyzeLogsResult = await eth_receipt_logs_tools.getReceiptLogs(result.hash);
                     if(analyzeLogsResult.receipt.status){
                         result.sendStatus = RESULT_SEND_STATUS.SUCCESS;
                         console.log(result);
@@ -1335,7 +1069,9 @@ export class eth_worker{
         return result;
     }
 
-    static async analyzeLogs(_tx_hash: string): Promise<AnalyzeLogsResult>{
+    static async analyzeLogs(_tx_hash: string, strict:boolean = true): Promise<AnalyzeLogsResult>{
+
+        let logResult:AnalyzeLogsResult = {receipt:eth_types.getDefaultTransactionReceipt(), result: []};
         let action = "analyze logs";
         let receipt = await this.getReceiptByTxnHash(_tx_hash);
         if(!receipt) throw new Error("cannot "+action+", unable to get receipt of hash:"+_tx_hash);
