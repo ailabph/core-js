@@ -5,8 +5,9 @@ import {tools} from "./tools";
 import {assert} from "./assert";
 
 export class eth_types{
+
     public static getDefaultAnalysisResult(eth?:eth_transaction|undefined):AnalysisResult{
-        let result = {
+        let result:AnalysisResult = {
             abiDecodeStatus: "",
             blockNumber: 0,
             block_time: "",
@@ -16,8 +17,8 @@ export class eth_types{
             fromContract: "",
             fromDecimal: 0,
             fromSymbol: "",
-            fromTaxAmount: "",
-            fromTaxPerc: "",
+            fromTaxAmount: "0",
+            fromTaxPerc: "0",
             fromValue: "",
             hash: "",
             method: "",
@@ -30,19 +31,39 @@ export class eth_types{
             toContract: "",
             toDecimal: 0,
             toSymbol: "",
-            toTaxAmount: "",
-            toTaxPerc: "",
+            toTaxAmount: "0",
+            toTaxPerc: "0",
             toValue: "",
+            taxPerc:"0",
+            taxAmount:"0",
             type: ""
         };
         if(eth){
+            result = tools.importObjectValuesInto<eth_transaction,AnalysisResult>(eth,result);
             result.hash = assert.isString({val:eth.hash,prop_name:"eth.hash"});
             result.blockNumber = assert.isNumber(eth.blockNumber,"result.blockNumber",0);
             result.fromAddress = assert.isString({val:eth.fromAddress,prop_name:"eth.fromAddress"});
-            result.toAddress = assert.isString({val:eth.toAddress,prop_name:"eth.toAddress"});
+            result.toAddress = assert.isString({val:eth.toAddress ?? "",prop_name:"eth.toAddress"});
         }
         return result;
     }
+
+    public static getDefaultTransactionReceipt():TransactionReceipt{
+        return {
+            blockHash: "",
+            blockNumber: 0,
+            cumulativeGasUsed: 0,
+            from: "",
+            gasUsed: 0,
+            logs: [],
+            logsBloom: "",
+            status: false,
+            to: "",
+            transactionHash: "",
+            transactionIndex: 0
+        };
+    }
+
 }
 
 type AnalysisResult = {
@@ -71,6 +92,8 @@ type AnalysisResult = {
     toAmountGross: string,
     toTaxAmount: string,
     toTaxPerc: string,
+    taxPerc: string,
+    taxAmount: string,
     abiDecodeStatus: string,
     sendStatus: RESULT_SEND_STATUS,
 }
@@ -103,10 +126,6 @@ type ContractInfo = {
     decimals: number|string,
 }
 export { ContractInfo };
-
-
-
-
 
 type LogData = {
     contract: string,
