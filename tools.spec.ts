@@ -37,4 +37,11 @@ describe("tools spec",()=>{
         let x = {name:"bob",age:23};
         assert.equal(tools.convertArrayOfStringToString(x,",","",true),`name:"bob", age:"23"`);
     });
+    it("import object values",()=>{
+        let x = {name:"bob",age:23};
+        let y = {name:"jane",address:"street"};
+        x = tools.importObjectValuesInto(y,x);
+        assert.equal(x.name,"jane");
+        assert.equal((x as any)['address'],undefined);
+    });
 });

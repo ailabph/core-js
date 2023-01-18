@@ -46,6 +46,7 @@ exports.tools = void 0;
 const fs = __importStar(require("fs"));
 const assert_1 = require("./assert");
 const promises_1 = __importDefault(require("fs/promises"));
+const bignumber_js_1 = __importDefault(require("bignumber.js"));
 class tools {
     static getCurrentTimeStamp() {
         return new Date() / 1000 | 0;
@@ -176,6 +177,18 @@ class tools {
             yield tools.writeIntoFileArrayOfStrings(targetFilePath, data);
             console.log(`${data.length} lines processed. restructured data from ${sourceFilePath} to ${targetFilePath} `);
         });
+    }
+    static importObjectValuesInto(from, to) {
+        for (const key in from) {
+            if (to.hasOwnProperty(key)) {
+                to[key] = from[key];
+            }
+        }
+        return to;
+    }
+    static toFixed(num, decimal = 2) {
+        let bn = new bignumber_js_1.default(num);
+        return bn.decimalPlaces(decimal).toString();
     }
 }
 exports.tools = tools;
