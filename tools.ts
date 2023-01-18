@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import {assert} from "./assert";
 import fsPromise from "fs/promises";
+import BigNumber from "bignumber.js";
 
 export class tools{
 
@@ -128,6 +129,20 @@ export class tools{
         }
         await tools.writeIntoFileArrayOfStrings(targetFilePath,data);
         console.log(`${data.length} lines processed. restructured data from ${sourceFilePath} to ${targetFilePath} `);
+    }
+
+    public static importObjectValuesInto<T extends object,U extends object>(from:T, to:U):U{
+        for(const key in from){
+            if(to.hasOwnProperty(key)){
+                (to as any)[key] = (from as any)[key];
+            }
+        }
+        return to;
+    }
+
+    public static toFixed(num:string|number,decimal:number = 2):string{
+        let bn = new BigNumber(num);
+        return bn.decimalPlaces(decimal).toString();
     }
 
 }
