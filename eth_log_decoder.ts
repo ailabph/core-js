@@ -5,6 +5,7 @@ import {Log} from "web3-core";
 import {eth_config} from "./eth_config";
 import {eth_worker} from "./eth_worker";
 import {assert} from "./assert";
+import {tools} from "./tools";
 
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
@@ -12,9 +13,6 @@ const Web3Client = new Web3(Web3Provider);
 
 //region Log Types
 
-type BaseType = {
-    method_name:string,
-}
 const ContractInfoCodec = t.type({
     address: t.string,
     name: t.string,
@@ -22,6 +20,12 @@ const ContractInfoCodec = t.type({
     decimals: t.union([t.string,t.number]),
 });
 type ContractInfo = t.TypeOf<typeof ContractInfoCodec>;
+
+type BaseType = {
+    method_name:string,
+    ContractInfo:ContractInfo,
+}
+export { BaseType }
 
 const TransferLogCodec = t.type({
     method_name:t.literal("Transfer"),
@@ -31,6 +35,7 @@ const TransferLogCodec = t.type({
     value:t.bigint,
 },"transfer");
 type TransferLog = t.TypeOf<typeof TransferLogCodec>;
+export { TransferLog }
 
 const SwapLogCodec = t.type({
     method_name:t.literal("Swap"),
@@ -43,6 +48,7 @@ const SwapLogCodec = t.type({
     to:t.string,
 },"swap");
 type SwapLog = t.TypeOf<typeof SwapLogCodec>;
+export { SwapLog }
 
 const ApprovalLogCodec = t.type({
     method_name:t.literal("Approval"),
@@ -52,6 +58,7 @@ const ApprovalLogCodec = t.type({
     value:t.bigint,
 },"approval");
 type ApprovalLog = t.TypeOf<typeof ApprovalLogCodec>;
+export { ApprovalLog }
 
 const WithdrawalLogCodec = t.type({
     method_name:t.literal("Withdrawal"),
@@ -60,6 +67,7 @@ const WithdrawalLogCodec = t.type({
     wad:t.bigint,
 },"withdrawal");
 type WithdrawalLog = t.TypeOf<typeof WithdrawalLogCodec>;
+export { WithdrawalLog }
 
 const SyncLogCodec = t.type({
     method_name:t.literal("Sync"),
@@ -68,7 +76,7 @@ const SyncLogCodec = t.type({
     reserve1:t.bigint,
 },"sync");
 type SyncLog = t.TypeOf<typeof SyncLogCodec>;
-
+export { SyncLog }
 
 const DepositLogCodec = t.type({
     method_name:t.literal("Deposit"),
@@ -77,7 +85,7 @@ const DepositLogCodec = t.type({
     amount:t.bigint,
 },"deposit");
 type DepositLog = t.TypeOf<typeof DepositLogCodec>;
-
+export { DepositLog }
 
 const MintLogCodec = t.type({
     method_name:t.literal("Mint"),
@@ -87,11 +95,13 @@ const MintLogCodec = t.type({
     amount1: t.bigint,
 },"mint");
 type MintLog = t.TypeOf<typeof MintLogCodec>;
+export { MintLog }
 
 //endregion
 
 export class eth_log_decoder{
-    public static async decodeLog(log: Log): Promise<BaseType|false> {
+
+    public static async decodeLog(log: Log): Promise<BaseType> {
         if (log.topics.length === 0) throw new Error("log has no topics");
 
         // extract signature
@@ -101,16 +111,17 @@ export class eth_log_decoder{
         let logSig = new eth_log_sig();
         logSig.signature = signature;
         await logSig.fetch();
-        if (logSig._isNew) {
-            console.log(`signature not found on database. hash:${log.transactionHash} log_signature:${signature}`);
-            return false;
+        if(logSig.isNew()) {
+            // console.warn(`signature not found on database for hash:${log.transactionHash} log_signature:${signature}`);
+            return {ContractInfo: {
+                    address: "",
+                    name: "",
+                    symbol: "",
+                    decimals: 0,
+                }, method_name: ""};
         }
-
-        if(typeof logSig.params_names !== "string"){
-            console.log(logSig);
-            console.log("retrieved signature on database has no params_names");
-            return false;
-        }
+        assert.notEmpty(logSig.params_names,"params_names");
+        logSig.params_names = assert.isString({val:logSig.params_names,prop_name:"params_names",strict:true});
 
         // build data object
         // For future reference example:
@@ -135,12 +146,7 @@ export class eth_log_decoder{
         } as ContractInfo;
 
         let contractMetaData = await eth_worker.getContractMetaData(log.address);
-        if(typeof contractMetaData === "undefined"){
-            throw new Error("no contract meta data not found");
-        }
-        if(typeof contractMetaData.symbol === "undefined"){
-            throw new Error("no contract symbol not found");
-        }
+        assert.isset({val:contractMetaData.symbol,prop_name:"contractMetaData.symbol",strict:true});
 
         method_object.ContractInfo.address = log.address;
         method_object.ContractInfo.name = contractMetaData.name;

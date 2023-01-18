@@ -42,6 +42,7 @@ const assert_1 = require("./assert");
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config_1.eth_config.getRPCUrl());
 const Web3Client = new Web3(Web3Provider);
+//region Log Types
 const ContractInfoCodec = t.type({
     address: t.string,
     name: t.string,
@@ -110,15 +111,17 @@ class eth_log_decoder {
             let logSig = new eth_log_sig_1.eth_log_sig();
             logSig.signature = signature;
             yield logSig.fetch();
-            if (logSig._isNew) {
-                console.log(`signature not found on database. hash:${log.transactionHash} log_signature:${signature}`);
-                return false;
+            if (logSig.isNew()) {
+                // console.warn(`signature not found on database for hash:${log.transactionHash} log_signature:${signature}`);
+                return { ContractInfo: {
+                        address: "",
+                        name: "",
+                        symbol: "",
+                        decimals: 0,
+                    }, method_name: "" };
             }
-            if (typeof logSig.params_names !== "string") {
-                console.log(logSig);
-                console.log("retrieved signature on database has no params_names");
-                return false;
-            }
+            assert_1.assert.notEmpty(logSig.params_names, "params_names");
+            logSig.params_names = assert_1.assert.isString({ val: logSig.params_names, prop_name: "params_names", strict: true });
             // build data object
             // For future reference example:
             // -- Transfer(address indexed from,address indexed to,uint256 value);Transfer...
@@ -139,12 +142,7 @@ class eth_log_decoder {
                 decimals: 0,
             };
             let contractMetaData = yield eth_worker_1.eth_worker.getContractMetaData(log.address);
-            if (typeof contractMetaData === "undefined") {
-                throw new Error("no contract meta data not found");
-            }
-            if (typeof contractMetaData.symbol === "undefined") {
-                throw new Error("no contract symbol not found");
-            }
+            assert_1.assert.isset({ val: contractMetaData.symbol, prop_name: "contractMetaData.symbol", strict: true });
             method_object.ContractInfo.address = log.address;
             method_object.ContractInfo.name = contractMetaData.name;
             method_object.ContractInfo.symbol = contractMetaData.symbol;
