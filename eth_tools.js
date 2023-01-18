@@ -12,35 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_tools = void 0;
 const eth_types_1 = require("./eth_types");
 class eth_tools {
-    static getDefaultResult() {
-        let result = {};
-        result.hash = "";
-        result.blockNumber = 0;
-        result.block_time = 0;
-        result.status = eth_types_1.RESULT_STATUS.NOT_INVOLVED;
-        result.tag = "";
-        result.method = "";
-        result.fromAddress = "";
-        result.fromContract = "";
-        result.fromSymbol = "";
-        result.fromDecimal = 0;
-        result.fromValue = "";
-        result.fromAmount = "";
-        result.fromAmountGross = "";
-        result.fromTaxAmount = "";
-        result.fromTaxPerc = "";
-        result.toAddress = "";
-        result.toContract = "";
-        result.toSymbol = "";
-        result.toDecimal = 0;
-        result.toValue = "";
-        result.toAmount = "";
-        result.toAmountGross = "";
-        result.toTaxAmount = "";
-        result.toTaxPerc = "";
-        result.abiDecodeStatus = "";
-        result.sendStatus = eth_types_1.RESULT_SEND_STATUS.FAILED;
-        return result;
+    static getDefaultResult(eth_txn) {
+        return eth_types_1.eth_types.getDefaultAnalysisResult(eth_txn);
     }
     static wait(ms) {
         return __awaiter(this, void 0, void 0, function* () {
