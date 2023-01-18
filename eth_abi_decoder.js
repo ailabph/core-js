@@ -224,23 +224,16 @@ class eth_abi_decoder {
         console.log(paramAsObject);
         throw new Error("unable to decode method " + typeName);
     }
-    // TRANSFER
-    static getTransferAbiByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getTransferAbi(abiObj);
-    }
     static getTransferAbi(abiObj) {
         let methodName = "transfer";
         if (typeof abiObj === "boolean" && !abiObj)
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, transferCodec, methodName);
-    }
-    // APPROVE
-    static getApproveAbiByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getApproveAbi(abiObj);
+        const transferAbi = this.getGenericAbiTypeStrict(abiObj, transferCodec, methodName);
+        if (!transferAbi)
+            throw new Error("failed to decode transfer abi");
+        return transferAbi;
     }
     static getApproveAbi(abiObj) {
         let methodName = "approve";
@@ -248,12 +241,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, approveCodec, methodName);
-    }
-    // addLiquidityETH
-    static getAddLiquidityETHByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getAddLiquidityETH(abiObj);
+        const approveAbi = this.getGenericAbiTypeStrict(abiObj, approveCodec, methodName);
+        if (!approveAbi)
+            throw new Error("failed to decode approve abi");
+        return approveAbi;
     }
     static getAddLiquidityETH(abiObj) {
         let methodName = "addLiquidityETH";
@@ -261,12 +252,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, addLiquidityETHCodec, methodName);
-    }
-    // swapETHForExactTokens
-    static getSwapETHForExactTokensByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSwapETHForExactTokens(abiObj);
+        const addLiquidityETHAbi = this.getGenericAbiTypeStrict(abiObj, addLiquidityETHCodec, methodName);
+        if (!addLiquidityETHAbi)
+            throw new Error("failed to retrieve addLiquidityETH abi");
+        return addLiquidityETHAbi;
     }
     static getSwapETHForExactTokens(abiObj) {
         let methodName = "swapETHForExactTokens";
@@ -274,12 +263,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapETHForExactTokensCodec, methodName);
-    }
-    // swapExactETHForTokens
-    static getSwapExactETHForTokensByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSwapExactETHForTokens(abiObj);
+        const swapETHForExactTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapETHForExactTokensCodec, methodName);
+        if (!swapETHForExactTokensAbi)
+            throw new Error("failed to decode swapETHForExactTokens abi");
+        return swapETHForExactTokensAbi;
     }
     static getSwapExactETHForTokens(abiObj) {
         let methodName = "swapExactETHForTokens";
@@ -287,12 +274,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapExactETHForTokensCodec, "swapExactETHForTokens");
-    }
-    // excludeFromFee
-    static getExcludeFromFeeByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getExcludeFromFee(abiObj);
+        const swapExactETHForTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapExactETHForTokensCodec, "swapExactETHForTokens");
+        if (!swapExactETHForTokensAbi)
+            throw new Error("failed to decode swapExactETHForTokens Abi");
+        return swapExactETHForTokensAbi;
     }
     static getExcludeFromFee(abiObj) {
         let methodName = "excludeFromFee";
@@ -300,12 +285,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, excludeFromFeeCodec, "excludeFromFee");
-    }
-    // swapExactTokensForTokens
-    static getSwapExactTokensForTokensByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSwapExactTokensForTokens(abiObj);
+        const excludeFromFeeAbi = this.getGenericAbiTypeStrict(abiObj, excludeFromFeeCodec, "excludeFromFee");
+        if (!excludeFromFeeAbi)
+            throw new Error("failed to decode excludeFromFee abi");
+        return excludeFromFeeAbi;
     }
     static getSwapExactTokensForTokens(abiObj) {
         let methodName = "swapExactTokensForTokens";
@@ -313,12 +296,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapExactTokensForTokensCodec, "swapExactTokensForTokens");
-    }
-    // setNumTokensSellToAddToLiquidity
-    static getSetNumTokensSellToAddToLiquidityByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSetNumTokensSellToAddToLiquidity(abiObj);
+        const swapExactTokensForTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapExactTokensForTokensCodec, "swapExactTokensForTokens");
+        if (!swapExactTokensForTokensAbi)
+            throw new Error("failed to decode swapExactTokensForTokens abi");
+        return swapExactTokensForTokensAbi;
     }
     static getSetNumTokensSellToAddToLiquidity(abiObj) {
         let methodName = "setNumTokensSellToAddToLiquidity";
@@ -326,12 +307,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, setNumTokensSellToAddToLiquidityCodec, "setNumTokensSellToAddToLiquidity");
-    }
-    // clearStuckBNBBalance
-    static getClearStuckBNBBalanceByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getClearStuckBNBBalance(abiObj);
+        const setNumTokensSellToAddToLiquidityAbi = this.getGenericAbiTypeStrict(abiObj, setNumTokensSellToAddToLiquidityCodec, "setNumTokensSellToAddToLiquidity");
+        if (!setNumTokensSellToAddToLiquidityAbi)
+            throw new Error("failed to decode setNumTokensSellToAddToLiquidity abi");
+        return setNumTokensSellToAddToLiquidityAbi;
     }
     static getClearStuckBNBBalance(abiObj) {
         let methodName = "clearStuckBNBBalance";
@@ -339,12 +318,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, clearStuckBNBBalanceCodec, "clearStuckBNBBalance");
-    }
-    // swapTokensForExactETH
-    static getSwapTokensForExactETHByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSwapTokensForExactETH(abiObj);
+        const clearStuckBNBBalanceAbi = this.getGenericAbiTypeStrict(abiObj, clearStuckBNBBalanceCodec, "clearStuckBNBBalance");
+        if (!clearStuckBNBBalanceAbi)
+            throw new Error("failed to decode clearStuckBNBBalance abi");
+        return clearStuckBNBBalanceAbi;
     }
     static getSwapTokensForExactETH(abiObj) {
         let methodName = "swapTokensForExactETH";
@@ -352,12 +329,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapTokensForExactETHCodec, "swapTokensForExactETH");
-    }
-    // setMarketFee
-    static getSetMarketFeeByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSetMarketFee(abiObj);
+        const swapTokensForExactETHAbi = this.getGenericAbiTypeStrict(abiObj, swapTokensForExactETHCodec, "swapTokensForExactETH");
+        if (!swapTokensForExactETHAbi)
+            throw new Error("failed to decode swapTokensForExactETH abi");
+        return swapTokensForExactETHAbi;
     }
     static getSetMarketFee(abiObj) {
         let methodName = "setMarketFee";
@@ -365,12 +340,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, setMarketFeeCodec, "setMarketFee");
-    }
-    // setSellFeeMultiplier
-    static getSetSellFeeMultiplierByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSetSellFeeMultiplier(abiObj);
+        const setMarketFeeAbi = this.getGenericAbiTypeStrict(abiObj, setMarketFeeCodec, "setMarketFee");
+        if (!setMarketFeeAbi)
+            throw new Error("failed to decode setMarketFee abi");
+        return setMarketFeeAbi;
     }
     static getSetSellFeeMultiplier(abiObj) {
         let methodName = "setSellFeeMultiplier";
@@ -378,12 +351,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, setSellFeeMultiplierCodec, "setSellFeeMultiplier");
-    }
-    // setLiquidityFee
-    static getSetLiquidityFeeByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.setLiquidityFee(abiObj);
+        const setSellFeeMultiplierAbi = this.getGenericAbiTypeStrict(abiObj, setSellFeeMultiplierCodec, "setSellFeeMultiplier");
+        if (!setSellFeeMultiplierAbi)
+            throw new Error("failed to decode setSellFeeMultiplier abi");
+        return setSellFeeMultiplierAbi;
     }
     static setLiquidityFee(abiObj) {
         let methodName = "setLiquidityFee";
@@ -391,12 +362,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, setLiquidityFeeCodec, "setLiquidityFee");
-    }
-    // swapExactTokensForETHSupportingFeeOnTransferTokens
-    static getSwapExactTokensForETHSupportingFeeOnTransferTokensByInput(input) {
-        let abiObj = this.decodeAbiObject(input);
-        return this.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abiObj);
+        const setLiquidityFeeAbi = this.getGenericAbiTypeStrict(abiObj, setLiquidityFeeCodec, "setLiquidityFee");
+        if (!setLiquidityFeeAbi)
+            throw new Error("failed to decode setLiquidityFee abi");
+        return setLiquidityFeeAbi;
     }
     static getSwapExactTokensForETHSupportingFeeOnTransferTokens(abiObj) {
         let methodName = "swapExactTokensForETHSupportingFeeOnTransferTokens";
@@ -404,12 +373,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapExactTokensForETHSupportingFeeOnTransferTokensCodec, "swapExactTokensForETHSupportingFeeOnTransferTokens");
-    }
-    // swapExactETHForTokensSupportingFeeOnTransferTokens
-    static getSwapExactETHForTokensSupportingFeeOnTransferTokensByInput(input) {
-        let abi = this.decodeAbiObject(input);
-        return this.getSwapExactETHForTokensSupportingFeeOnTransferTokens(abi);
+        const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapExactTokensForETHSupportingFeeOnTransferTokensCodec, "swapExactTokensForETHSupportingFeeOnTransferTokens");
+        if (!swapExactTokensForETHSupportingFeeOnTransferTokensAbi)
+            throw new Error("unable to decode swapExactTokensForETHSupportingFeeOnTransferTokens abi");
+        return swapExactTokensForETHSupportingFeeOnTransferTokensAbi;
     }
     static getSwapExactETHForTokensSupportingFeeOnTransferTokens(abiObj) {
         let methodName = "swapExactETHForTokensSupportingFeeOnTransferTokens";
@@ -417,12 +384,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapExactETHForTokensSupportingFeeOnTransferTokensCodec, "swapExactETHForTokensSupportingFeeOnTransferTokens");
-    }
-    // swapExactTokensForTokensSupportingFeeOnTransferTokens
-    static getSwapExactTokensForTokensSupportingFeeOnTransferTokensByInput(input) {
-        let abi = this.decodeAbiObject(input);
-        return this.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
+        const swapExactETHForTokensSupportingFeeOnTransferTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapExactETHForTokensSupportingFeeOnTransferTokensCodec, "swapExactETHForTokensSupportingFeeOnTransferTokens");
+        if (!swapExactETHForTokensSupportingFeeOnTransferTokensAbi)
+            throw new Error("unable to decode swapExactETHForTokensSupportingFeeOnTransferTokens abi");
+        return swapExactETHForTokensSupportingFeeOnTransferTokensAbi;
     }
     static getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abiObj) {
         let methodName = "swapExactTokensForTokensSupportingFeeOnTransferTokens";
@@ -430,12 +395,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapExactTokensForTokensSupportingFeeOnTransferTokensCodec, "swapExactTokensForTokensSupportingFeeOnTransferTokens");
-    }
-    //swap
-    static getSwapByInput(input) {
-        let abi = this.decodeAbiObject(input);
-        return this.getSwap(abi);
+        const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = this.getGenericAbiTypeStrict(abiObj, swapExactTokensForTokensSupportingFeeOnTransferTokensCodec, "swapExactTokensForTokensSupportingFeeOnTransferTokens");
+        if (!swapExactTokensForTokensSupportingFeeOnTransferTokensAbi)
+            throw new Error("unable to decode swapExactTokensForTokensSupportingFeeOnTransferTokens abi");
+        return swapExactTokensForTokensSupportingFeeOnTransferTokensAbi;
     }
     static getSwap(abiObj) {
         let methodName = "swap";
@@ -443,7 +406,10 @@ class eth_abi_decoder {
             return false;
         if (abiObj.abi.name.toLowerCase() !== methodName.toLowerCase())
             return false;
-        return this.getGenericAbiTypeStrict(abiObj, swapCodec, "swap");
+        const swapAbi = this.getGenericAbiTypeStrict(abiObj, swapCodec, "swap");
+        if (!swapAbi)
+            throw new Error("unable to decode swap abi");
+        return swapAbi;
     }
 }
 exports.eth_abi_decoder = eth_abi_decoder;
