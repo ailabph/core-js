@@ -6,6 +6,8 @@ import {eth_worker} from "./eth_worker";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {Log} from "web3-core";
 import {BaseType, eth_log_decoder} from "./eth_log_decoder";
+import {tools} from "./tools";
+import {eth_config} from "./eth_config";
 
 export class eth_receipt_logs_tools{
 
@@ -126,6 +128,49 @@ export class eth_receipt_logs_tools{
         }
         if(!to_return && strict) throw new Error(`hash:${analyzeLogsResult.receipt.transactionHash} unable to find log:${method_name}`);
         return to_return ? to_return : false;
+    }
+
+    public static async getLogsByMethod<T>(txn_hash:string|AnalyzeLogsResult,method_name:string,strict:boolean = false): Promise<T[]>{
+        const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
+        if(
+            analyzeLogsResult.receipt.status
+            && analyzeLogsResult.receipt.logs.length === 0
+        ) {
+            const error_msg = `transaction(${txn_hash}) has no log topics`;
+            if(strict) throw new Error(error_msg);
+            console.warn(error_msg);
+        }
+        let collection:T[] = [];
+        for(const log of analyzeLogsResult.receipt.logs){
+            const decodedLog = await eth_log_decoder.decodeLog(log);
+            if(decodedLog.method_name.toLowerCase() === method_name.toLowerCase()){
+                collection.push(decodedLog as unknown as T);
+            }
+        }
+        if(collection.length === 0 && strict) throw new Error(`no logs found for method:${method_name} in hash:${analyzeLogsResult.receipt.transactionHash}`);
+        return collection;
+    }
+
+    public static async findValueInLogs(txn_hash:string|AnalyzeLogsResult,find_value:string):Promise<boolean>{
+        assert.notEmpty(find_value);
+        const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
+
+        let receipt = await eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash) as TransactionReceipt;
+        for(const log of receipt.logs){
+            for(const key in log){
+                const value = (log as any)[key];
+                if(tools.stringFoundInStringOrArray(value,find_value)){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public static async findTokenInLogs(txn_hash:string|AnalyzeLogsResult):Promise<boolean>{
+        const findTokenContract = eth_worker.stripBeginningZeroXFromString(eth_config.getTokenContract());
+        return await eth_receipt_logs_tools.findValueInLogs(txn_hash,findTokenContract);
     }
 
 }

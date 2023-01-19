@@ -15,6 +15,8 @@ const eth_receipt_1 = require("./build/eth_receipt");
 const eth_worker_1 = require("./eth_worker");
 const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
 const eth_log_decoder_1 = require("./eth_log_decoder");
+const tools_1 = require("./tools");
+const eth_config_1 = require("./eth_config");
 class eth_receipt_logs_tools {
     static getReceiptLogs(txn_hash) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
@@ -143,6 +145,50 @@ class eth_receipt_logs_tools {
             if (!to_return && strict)
                 throw new Error(`hash:${analyzeLogsResult.receipt.transactionHash} unable to find log:${method_name}`);
             return to_return ? to_return : false;
+        });
+    }
+    static getLogsByMethod(txn_hash, method_name, strict = false) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
+            if (analyzeLogsResult.receipt.status
+                && analyzeLogsResult.receipt.logs.length === 0) {
+                const error_msg = `transaction(${txn_hash}) has no log topics`;
+                if (strict)
+                    throw new Error(error_msg);
+                console.warn(error_msg);
+            }
+            let collection = [];
+            for (const log of analyzeLogsResult.receipt.logs) {
+                const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
+                if (decodedLog.method_name.toLowerCase() === method_name.toLowerCase()) {
+                    collection.push(decodedLog);
+                }
+            }
+            if (collection.length === 0 && strict)
+                throw new Error(`no logs found for method:${method_name} in hash:${analyzeLogsResult.receipt.transactionHash}`);
+            return collection;
+        });
+    }
+    static findValueInLogs(txn_hash, find_value) {
+        return __awaiter(this, void 0, void 0, function* () {
+            assert_1.assert.notEmpty(find_value);
+            const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
+            let receipt = yield eth_worker_1.eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash);
+            for (const log of receipt.logs) {
+                for (const key in log) {
+                    const value = log[key];
+                    if (tools_1.tools.stringFoundInStringOrArray(value, find_value)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+    }
+    static findTokenInLogs(txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const findTokenContract = eth_worker_1.eth_worker.stripBeginningZeroXFromString(eth_config_1.eth_config.getTokenContract());
+            return yield eth_receipt_logs_tools.findValueInLogs(txn_hash, findTokenContract);
         });
     }
 }
