@@ -1,8 +1,9 @@
 import {config} from "./ailab-core";
-export class eth_config{
+
+export class eth_config {
 
     //region ETH
-    public static getEthAbi(): any[]{
+    public static getEthAbi(): any[] {
         return [{
             "constant": true,
             "inputs": [],
@@ -132,19 +133,23 @@ export class eth_config{
             "type": "event"
         }];
     }
-    public static getEthContract(): string{
-        return config.getCustomOption("ETH_CONTRACT",true) as string;
+
+    public static getEthContract(): string {
+        return config.getCustomOption("ETH_CONTRACT", true) as string;
     }
-    public static getEthSymbol(): string{
-        return config.getCustomOption("ETH_SYMBOL",true) as string;
+
+    public static getEthSymbol(): string {
+        return config.getCustomOption("ETH_SYMBOL", true) as string;
     }
-    public static getEthDecimal(): number{
-        return config.getCustomOption("ETH_DECIMAL",true) as number;
+
+    public static getEthDecimal(): number {
+        return config.getCustomOption("ETH_DECIMAL", true) as number;
     }
+
     //endregion
 
     //region TOKEN
-    public static getTokenAbi(): any[]{
+    public static getTokenAbi(): any[] {
         return [{
             "inputs": [],
             "stateMutability": "nonpayable",
@@ -582,7 +587,8 @@ export class eth_config{
             }], "name": "withdrawStuckTokens", "outputs": [], "stateMutability": "nonpayable", "type": "function"
         }, {"stateMutability": "payable", "type": "receive"}];
     }
-    public static getTransferAbi(): any[]{
+
+    public static getTransferAbi(): any[] {
         return [
             {
                 constant: false,
@@ -607,7 +613,8 @@ export class eth_config{
             },
         ];
     }
-    public static getBalanceAbi(): any[]{
+
+    public static getBalanceAbi(): any[] {
         return [
             // balanceOf
             {
@@ -619,28 +626,35 @@ export class eth_config{
             },
         ];
     }
-    public static getTokenContract(): string{
-        return config.getCustomOption("TOKEN_TO_TRACK",true) as string;
+
+    public static getTokenContract(): string {
+        return config.getCustomOption("TOKEN_TO_TRACK", true) as string;
     }
-    public static getTokenSymbol(): string{
-        return config.getCustomOption("TOKEN_TO_TRACK_SYMBOL",true) as string;
+
+    public static getTokenSymbol(): string {
+        return config.getCustomOption("TOKEN_TO_TRACK_SYMBOL", true) as string;
     }
-    public static getTokenDecimal(): number{
-        return config.getCustomOption("TOKEN_TO_TRACK_DECIMAL",true) as number;
+
+    public static getTokenDecimal(): number {
+        return config.getCustomOption("TOKEN_TO_TRACK_DECIMAL", true) as number;
     }
-    public static getTokenGenesisHash(): string{
-        return config.getCustomOption("TOKEN_CREATION_HASH",true) as string;
+
+    public static getTokenGenesisHash(): string {
+        return config.getCustomOption("TOKEN_CREATION_HASH", true) as string;
     }
-    public static getTokenGenesisBlock(): number{
-        return config.getCustomOption("STARTING_BLOCK",true) as number;
+
+    public static getTokenGenesisBlock(): number {
+        return config.getCustomOption("STARTING_BLOCK", true) as number;
     }
-    public static getTokenOwner(): string{
-        return config.getCustomOption("OWNER_WALLET",true) as string;
+
+    public static getTokenOwner(): string {
+        return config.getCustomOption("OWNER_WALLET", true) as string;
     }
+
     //endregion
 
     //region DEX
-    public static getDexAbi(): any[]{
+    public static getDexAbi(): any[] {
         return [{
             "inputs": [{
                 "internalType": "address",
@@ -925,14 +939,14 @@ export class eth_config{
             "inputs": [
                 {"internalType": "uint256", "name": "amountOutMin", "type": "uint256"},
                 {
-                "internalType": "address[]",
-                "name": "path",
-                "type": "address[]"
-            }, {"internalType": "address", "name": "to", "type": "address"}, {
-                "internalType": "uint256",
-                "name": "deadline",
-                "type": "uint256"
-            }],
+                    "internalType": "address[]",
+                    "name": "path",
+                    "type": "address[]"
+                }, {"internalType": "address", "name": "to", "type": "address"}, {
+                    "internalType": "uint256",
+                    "name": "deadline",
+                    "type": "uint256"
+                }],
             "name": "swapExactETHForTokens",
             "outputs": [{"internalType": "uint256[]", "name": "amounts", "type": "uint256[]"}],
             "stateMutability": "payable",
@@ -1037,39 +1051,406 @@ export class eth_config{
             "type": "function"
         }, {"stateMutability": "payable", "type": "receive"}];
     }
-    public static getSwapRouterAbi(): any[]{
-        return [{"inputs":[{"internalType":"address","name":"transitSwap_","type":"address"},{"internalType":"address","name":"transitCross_","type":"address"},{"internalType":"address","name":"transitFees_","type":"address"},{"internalType":"address","name":"executor","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint8[]","name":"types","type":"uint8[]"},{"indexed":false,"internalType":"bool[]","name":"newModes","type":"bool[]"}],"name":"ChangeSwapTypeMode","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousTransit","type":"address"},{"indexed":true,"internalType":"address","name":"newTransit","type":"address"}],"name":"ChangeTransitCross","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousTransitFees","type":"address"},{"indexed":true,"internalType":"address","name":"newTransitFees","type":"address"}],"name":"ChangeTransitFees","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousTransit","type":"address"},{"indexed":true,"internalType":"address","name":"newTransit","type":"address"}],"name":"ChangeTransitSwap","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousExecutor","type":"address"},{"indexed":true,"internalType":"address","name":"newExecutor","type":"address"}],"name":"ExecutorshipTransferStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousExecutor","type":"address"},{"indexed":true,"internalType":"address","name":"newExecutor","type":"address"}],"name":"ExecutorshipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Paused","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Receipt","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"srcToken","type":"address"},{"indexed":true,"internalType":"address","name":"dstToken","type":"address"},{"indexed":true,"internalType":"address","name":"dstReceiver","type":"address"},{"indexed":false,"internalType":"address","name":"trader","type":"address"},{"indexed":false,"internalType":"bool","name":"feeMode","type":"bool"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"returnAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"minReturnAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"toChainID","type":"uint256"},{"indexed":false,"internalType":"string","name":"channel","type":"string"},{"indexed":false,"internalType":"uint256","name":"time","type":"uint256"}],"name":"TransitSwapped","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Unpaused","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"executor","type":"address"},{"indexed":true,"internalType":"address","name":"recipient","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[],"name":"acceptExecutorship","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"acceptOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bool","name":"paused","type":"bool"}],"name":"changePause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint8[]","name":"swapTypes","type":"uint8[]"}],"name":"changeSwapTypeMode","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newTransit","type":"address"}],"name":"changeTransitCross","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newTransitFees","type":"address"}],"name":"changeTransitFees","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newTransit","type":"address"}],"name":"changeTransitSwap","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint8","name":"swapType","type":"uint8"},{"internalType":"address","name":"srcToken","type":"address"},{"internalType":"address","name":"dstToken","type":"address"},{"internalType":"address","name":"srcReceiver","type":"address"},{"internalType":"address","name":"dstReceiver","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"minReturnAmount","type":"uint256"},{"internalType":"string","name":"channel","type":"string"},{"internalType":"uint256","name":"toChainID","type":"uint256"},{"internalType":"address","name":"wrappedNative","type":"address"}],"internalType":"struct TransitStructs.TransitSwapDescription","name":"desc","type":"tuple"},{"components":[{"internalType":"uint8","name":"flag","type":"uint8"},{"internalType":"address","name":"srcToken","type":"address"},{"internalType":"bytes","name":"calldatas","type":"bytes"}],"internalType":"struct TransitStructs.CallbytesDescription","name":"callbytesDesc","type":"tuple"}],"name":"cross","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"executor","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"paused","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingExecutor","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingOwner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint8","name":"swapType","type":"uint8"},{"internalType":"address","name":"srcToken","type":"address"},{"internalType":"address","name":"dstToken","type":"address"},{"internalType":"address","name":"srcReceiver","type":"address"},{"internalType":"address","name":"dstReceiver","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"minReturnAmount","type":"uint256"},{"internalType":"string","name":"channel","type":"string"},{"internalType":"uint256","name":"toChainID","type":"uint256"},{"internalType":"address","name":"wrappedNative","type":"address"}],"internalType":"struct TransitStructs.TransitSwapDescription","name":"desc","type":"tuple"},{"components":[{"internalType":"uint8","name":"flag","type":"uint8"},{"internalType":"address","name":"srcToken","type":"address"},{"internalType":"bytes","name":"calldatas","type":"bytes"}],"internalType":"struct TransitStructs.CallbytesDescription","name":"callbytesDesc","type":"tuple"}],"name":"swap","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint8","name":"swapType","type":"uint8"}],"name":"swapTypeMode","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newExecutor","type":"address"}],"name":"transferExecutorship","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"transitCross","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"transitFees","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"transitSwap","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"tokens","type":"address[]"},{"internalType":"address","name":"recipient","type":"address"}],"name":"withdrawTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
+
+    public static getSwapRouterAbi(): any[] {
+        return [{
+            "inputs": [{
+                "internalType": "address",
+                "name": "transitSwap_",
+                "type": "address"
+            }, {"internalType": "address", "name": "transitCross_", "type": "address"}, {
+                "internalType": "address",
+                "name": "transitFees_",
+                "type": "address"
+            }, {"internalType": "address", "name": "executor", "type": "address"}],
+            "stateMutability": "nonpayable",
+            "type": "constructor"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": false,
+                "internalType": "uint8[]",
+                "name": "types",
+                "type": "uint8[]"
+            }, {"indexed": false, "internalType": "bool[]", "name": "newModes", "type": "bool[]"}],
+            "name": "ChangeSwapTypeMode",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousTransit",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newTransit", "type": "address"}],
+            "name": "ChangeTransitCross",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousTransitFees",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newTransitFees", "type": "address"}],
+            "name": "ChangeTransitFees",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousTransit",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newTransit", "type": "address"}],
+            "name": "ChangeTransitSwap",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousExecutor",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newExecutor", "type": "address"}],
+            "name": "ExecutorshipTransferStarted",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousExecutor",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newExecutor", "type": "address"}],
+            "name": "ExecutorshipTransferred",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousOwner",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newOwner", "type": "address"}],
+            "name": "OwnershipTransferStarted",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousOwner",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "newOwner", "type": "address"}],
+            "name": "OwnershipTransferred",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{"indexed": false, "internalType": "address", "name": "account", "type": "address"}],
+            "name": "Paused",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": false,
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            }, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+            "name": "Receipt",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "srcToken",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "dstToken", "type": "address"}, {
+                "indexed": true,
+                "internalType": "address",
+                "name": "dstReceiver",
+                "type": "address"
+            }, {"indexed": false, "internalType": "address", "name": "trader", "type": "address"}, {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "feeMode",
+                "type": "bool"
+            }, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}, {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "returnAmount",
+                "type": "uint256"
+            }, {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "minReturnAmount",
+                "type": "uint256"
+            }, {"indexed": false, "internalType": "uint256", "name": "fee", "type": "uint256"}, {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "toChainID",
+                "type": "uint256"
+            }, {"indexed": false, "internalType": "string", "name": "channel", "type": "string"}, {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "time",
+                "type": "uint256"
+            }],
+            "name": "TransitSwapped",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{"indexed": false, "internalType": "address", "name": "account", "type": "address"}],
+            "name": "Unpaused",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{
+                "indexed": true,
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+            }, {"indexed": true, "internalType": "address", "name": "executor", "type": "address"}, {
+                "indexed": true,
+                "internalType": "address",
+                "name": "recipient",
+                "type": "address"
+            }, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}],
+            "name": "Withdraw",
+            "type": "event"
+        }, {
+            "inputs": [],
+            "name": "acceptExecutorship",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "acceptOwnership",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "bool", "name": "paused", "type": "bool"}],
+            "name": "changePause",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint8[]", "name": "swapTypes", "type": "uint8[]"}],
+            "name": "changeSwapTypeMode",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "newTransit", "type": "address"}],
+            "name": "changeTransitCross",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "newTransitFees", "type": "address"}],
+            "name": "changeTransitFees",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "newTransit", "type": "address"}],
+            "name": "changeTransitSwap",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{
+                "components": [{
+                    "internalType": "uint8",
+                    "name": "swapType",
+                    "type": "uint8"
+                }, {"internalType": "address", "name": "srcToken", "type": "address"}, {
+                    "internalType": "address",
+                    "name": "dstToken",
+                    "type": "address"
+                }, {"internalType": "address", "name": "srcReceiver", "type": "address"}, {
+                    "internalType": "address",
+                    "name": "dstReceiver",
+                    "type": "address"
+                }, {"internalType": "uint256", "name": "amount", "type": "uint256"}, {
+                    "internalType": "uint256",
+                    "name": "minReturnAmount",
+                    "type": "uint256"
+                }, {"internalType": "string", "name": "channel", "type": "string"}, {
+                    "internalType": "uint256",
+                    "name": "toChainID",
+                    "type": "uint256"
+                }, {"internalType": "address", "name": "wrappedNative", "type": "address"}],
+                "internalType": "struct TransitStructs.TransitSwapDescription",
+                "name": "desc",
+                "type": "tuple"
+            }, {
+                "components": [{"internalType": "uint8", "name": "flag", "type": "uint8"}, {
+                    "internalType": "address",
+                    "name": "srcToken",
+                    "type": "address"
+                }, {"internalType": "bytes", "name": "calldatas", "type": "bytes"}],
+                "internalType": "struct TransitStructs.CallbytesDescription",
+                "name": "callbytesDesc",
+                "type": "tuple"
+            }], "name": "cross", "outputs": [], "stateMutability": "payable", "type": "function"
+        }, {
+            "inputs": [],
+            "name": "executor",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "owner",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "paused",
+            "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "pendingExecutor",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "pendingOwner",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "renounceOwnership",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{
+                "components": [{
+                    "internalType": "uint8",
+                    "name": "swapType",
+                    "type": "uint8"
+                }, {"internalType": "address", "name": "srcToken", "type": "address"}, {
+                    "internalType": "address",
+                    "name": "dstToken",
+                    "type": "address"
+                }, {"internalType": "address", "name": "srcReceiver", "type": "address"}, {
+                    "internalType": "address",
+                    "name": "dstReceiver",
+                    "type": "address"
+                }, {"internalType": "uint256", "name": "amount", "type": "uint256"}, {
+                    "internalType": "uint256",
+                    "name": "minReturnAmount",
+                    "type": "uint256"
+                }, {"internalType": "string", "name": "channel", "type": "string"}, {
+                    "internalType": "uint256",
+                    "name": "toChainID",
+                    "type": "uint256"
+                }, {"internalType": "address", "name": "wrappedNative", "type": "address"}],
+                "internalType": "struct TransitStructs.TransitSwapDescription",
+                "name": "desc",
+                "type": "tuple"
+            }, {
+                "components": [{"internalType": "uint8", "name": "flag", "type": "uint8"}, {
+                    "internalType": "address",
+                    "name": "srcToken",
+                    "type": "address"
+                }, {"internalType": "bytes", "name": "calldatas", "type": "bytes"}],
+                "internalType": "struct TransitStructs.CallbytesDescription",
+                "name": "callbytesDesc",
+                "type": "tuple"
+            }], "name": "swap", "outputs": [], "stateMutability": "payable", "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint8", "name": "swapType", "type": "uint8"}],
+            "name": "swapTypeMode",
+            "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "newExecutor", "type": "address"}],
+            "name": "transferExecutorship",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "newOwner", "type": "address"}],
+            "name": "transferOwnership",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "transitCross",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "transitFees",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "transitSwap",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address[]", "name": "tokens", "type": "address[]"}, {
+                "internalType": "address",
+                "name": "recipient",
+                "type": "address"
+            }], "name": "withdrawTokens", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+        }, {"stateMutability": "payable", "type": "receive"}];
     }
-    public static getDexContract(): string{
-        return config.getCustomOption("LIQUIDITY_CONTRACT",true) as string;
+
+    public static getDexContract(): string {
+        return config.getCustomOption("LIQUIDITY_CONTRACT", true) as string;
     }
+
     //endregion
 
     //region HOT WALLET
-    public static getHotWalletAddress(): string{
-        return config.getCustomOption("HOT_WALLET_ADDRESS",true) as string;
+    public static getHotWalletAddress(): string {
+        return config.getCustomOption("HOT_WALLET_ADDRESS", true) as string;
     }
-    public static getHotWalletKey(): string{
-        return config.getCustomOption("HOT_WALLET_ADDRESS_KEY",true) as string;
+
+    public static getHotWalletKey(): string {
+        return config.getCustomOption("HOT_WALLET_ADDRESS_KEY", true) as string;
     }
+
     //endregion
 
     //region GAS SETTINGS
-    public static getGasMultiplier(): number{
+    public static getGasMultiplier(): number {
         return 7;
     }
-    public static getConfirmationNeeded(): number{
+
+    public static getConfirmationNeeded(): number {
         return 2;
     }
+
     //endregion
 
     //region RPC
-    public static getRPCUrl(): string{
-        let rpc_url = config.getCustomOption("RPC_URL",true);
-        if(typeof rpc_url !== "string") throw new Error("rpc_url is not retrieved");
-        if(rpc_url === "") throw new Error("rpc_url is empty");
+    public static getRPCUrl(): string {
+        let rpc_url = config.getCustomOption("RPC_URL", true);
+        if (typeof rpc_url !== "string") throw new Error("rpc_url is not retrieved");
+        if (rpc_url === "") throw new Error("rpc_url is empty");
         return rpc_url
     }
+
     //endregion
 
 }
