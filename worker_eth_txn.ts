@@ -31,7 +31,7 @@ async function run(){
                     calls[current_time] = 0;
                 }
                 calls[current_time]++;
-                let transactions = await eth_worker.getTxnByBlockNumber(current_block.blockNumber);
+                let transactions = await eth_worker.getTxnByBlockNumberWeb3(current_block.blockNumber);
                 console.log(`${transactions.transactions.length} transactions found in block:${current_block.blockNumber}`);
                 for(let i=0; i<transactions.transactions.length; i++){
                     let t = transactions.transactions[i];
