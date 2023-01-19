@@ -130,6 +130,8 @@ class connection {
     }
     static startTransaction() {
         return __awaiter(this, void 0, void 0, function* () {
+            if (this.inTransaction)
+                throw new Error(`already in transaction`);
             this.inTransaction = true;
             yield this.init();
             if (typeof this.singleConnection === "undefined") {
@@ -146,6 +148,7 @@ class connection {
                 throw new Error("singleConnection is undefined");
             // this.singleConnection = await this.initiateSingleConnection();
             yield this.singleConnection.commit();
+            this.inTransaction = false;
         });
     }
     static rollback() {
@@ -156,6 +159,7 @@ class connection {
                 throw new Error("singleConnection is undefined");
             // this.singleConnection = await this.initiateSingleConnection();
             yield this.singleConnection.rollback();
+            this.inTransaction = false;
         });
     }
     //#region PARSERS

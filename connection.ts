@@ -111,6 +111,7 @@ export class connection{
     }
 
     public static async startTransaction(){
+        if(this.inTransaction) throw new Error(`already in transaction`);
         this.inTransaction = true;
         await this.init();
         if(typeof this.singleConnection === "undefined"){
@@ -124,6 +125,7 @@ export class connection{
         if(typeof this.singleConnection === "undefined") throw new Error("singleConnection is undefined");
         // this.singleConnection = await this.initiateSingleConnection();
         await this.singleConnection.commit();
+        this.inTransaction = false;
     }
 
     public static async rollback(){
@@ -131,6 +133,7 @@ export class connection{
         if(typeof this.singleConnection === "undefined") throw new Error("singleConnection is undefined");
         // this.singleConnection = await this.initiateSingleConnection();
         await this.singleConnection.rollback();
+        this.inTransaction = false;
     }
 
 
