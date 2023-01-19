@@ -130,15 +130,36 @@ class eth_worker {
         }
         return false;
     }
-    static checkIfInvolved2({ from = null, to = null, input = null }) {
-        if ((from === null || from === void 0 ? void 0 : from.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+    static checkIfInvolved2({ fromAddress = null, toAddress = null, input = null, hash = null }) {
+        if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
             return true;
-        if ((to === null || to === void 0 ? void 0 : to.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if ((fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+            return true;
+        if ((toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
             return true;
         const striped_tracked_token = eth_config_1.eth_config.getTokenContract().toLowerCase().replace(/^(0x)/, "");
         if (input === null || input === void 0 ? void 0 : input.toLowerCase().includes(striped_tracked_token))
             return true;
         return false;
+    }
+    static isInvolved({ fromAddress = null, toAddress = null, input = null, hash = null }) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Token Creation
+            if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === eth_config_1.eth_config.getTokenGenesisHash().toLowerCase())
+                return true;
+            const fromMatch = (fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase();
+            const toMatch = (toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase();
+            const inputMatch = input === null || input === void 0 ? void 0 : input.toLowerCase().includes(eth_worker.stripBeginningZeroXFromString(eth_config_1.eth_config.getTokenContract().toLowerCase()));
+            if (fromMatch || toMatch || inputMatch) {
+                const decodedAbi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(input);
+                if (decodedAbi)
+                    return true;
+                else {
+                    return yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.findTokenInLogs(hash !== null && hash !== void 0 ? hash : "");
+                }
+            }
+            return false;
+        });
     }
     static importTransactionsFromFile(file_path, assert_involved = false) {
         var e_1, _a;
@@ -191,6 +212,9 @@ class eth_worker {
             }
         });
     }
+    static stripBeginningZeroXFromString(hash) {
+        return hash.replace(/^(0x)/, "");
+    }
     //endregion END OF UTILITIES
     //region GETTERS
     static getLatestBlock() {
@@ -203,7 +227,7 @@ class eth_worker {
             return yield Web3Client.eth.getBlock(blockNumber);
         });
     }
-    static getTxnByBlockNumber(_block_num) {
+    static getTxnByBlockNumberWeb3(_block_num) {
         return __awaiter(this, void 0, void 0, function* () {
             return yield Web3Client.eth.getBlock(_block_num, true);
         });
@@ -261,7 +285,7 @@ class eth_worker {
     static getReceiptByTxnHashWeb3(txn_hash) {
         return Web3Client.eth.getTransactionReceipt(txn_hash);
     }
-    static getReceiptByTxnHash(_txn_hash) {
+    static getReceiptByTxnHash(_txn_hash, strict = false) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 let receipt_db = new eth_receipt_1.eth_receipt();
@@ -289,6 +313,9 @@ class eth_worker {
                 return analyzeReceipt.receipt;
             }
             catch (e) {
+                if (strict) {
+                    throw e;
+                }
                 console.log("Error getting receipt from txn:%s", _txn_hash);
                 console.log(e);
                 return false;
@@ -440,7 +467,7 @@ class eth_worker {
             if (!decodedAbi)
                 return result;
             result.method = decodedAbi.abi.name;
-            if (eth_worker.checkIfInvolved2({ from: result.fromAddress, to: result.toAddress, input: tx.input })) {
+            if (eth_worker.checkIfInvolved2(tx)) {
                 result = yield this.processAddLiquidity(result, decodedAbi);
                 result = yield this.processApprovalEvent(tx, decodedAbi, result);
                 result = yield this.processTransferEvent(tx, decodedAbi, result);
@@ -464,7 +491,7 @@ class eth_worker {
             let result = eth_types_1.eth_types.getDefaultAnalysisResult(transaction);
             // result = await eth_worker.processContractCreationEvent(transaction,result);
             // if(result.method === "createContract") return result;
-            if (!eth_worker.checkIfInvolved2({ from: transaction.fromAddress, to: transaction.toAddress, input: transaction.input }))
+            if (!eth_worker.checkIfInvolved2(transaction))
                 return result;
             result.status = eth_types_1.RESULT_STATUS.INVOLVED;
             const decoded_abi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(transaction.input);
@@ -811,7 +838,7 @@ class eth_worker {
             tx = typeof tx === "string" ? yield eth_worker.getDbTxnByHash(tx) : tx;
             tx.toAddress = assert_1.assert.isString({ val: tx.toAddress, prop_name: "processGenericSwapEvents tx.toAddress", strict: true });
             tx.fromAddress = assert_1.assert.isString({ val: tx.fromAddress, prop_name: "processGenericSwapEvents tx.fromAddress", strict: true });
-            if (!eth_worker.checkIfInvolved2({ from: tx.fromAddress, to: tx.toAddress, input: tx.input })) {
+            if (!eth_worker.checkIfInvolved2(tx)) {
                 result.status = eth_types_1.RESULT_STATUS.NOT_INVOLVED;
                 return result;
             }

@@ -136,11 +136,28 @@ export class eth_worker{
         return false;
     }
 
-    static checkIfInvolved2({from=null,to=null,input=null}:{from:string|null,to:string|null,input:string|null}) : boolean{
-        if(from?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
-        if(to?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
+    static checkIfInvolved2({fromAddress=null,toAddress=null,input=null,hash=null}:{fromAddress:string|null,toAddress:string|null,input:string|null,hash:string|null}) : boolean{
+        if(hash?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
+        if(fromAddress?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
+        if(toAddress?.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
         const striped_tracked_token = eth_config.getTokenContract().toLowerCase().replace(/^(0x)/, "");
         if(input?.toLowerCase().includes(striped_tracked_token)) return true;
+        return false;
+    }
+
+    public static async isInvolved({fromAddress=null,toAddress=null,input=null,hash=null}:{fromAddress:string|null,toAddress:string|null,input:string|null,hash:string|null}) : Promise<boolean>{
+        // Token Creation
+        if(hash?.toLowerCase() === eth_config.getTokenGenesisHash().toLowerCase()) return true;
+        const fromMatch = fromAddress?.toLowerCase() === eth_config.getTokenContract().toLowerCase();
+        const toMatch = toAddress?.toLowerCase() === eth_config.getTokenContract().toLowerCase();
+        const inputMatch = input?.toLowerCase().includes(eth_worker.stripBeginningZeroXFromString(eth_config.getTokenContract().toLowerCase()));
+        if(fromMatch || toMatch || inputMatch){
+            const decodedAbi = eth_abi_decoder.decodeAbiObject(input);
+            if(decodedAbi) return true;
+            else{
+                return await eth_receipt_logs_tools.findTokenInLogs(hash ?? "");
+            }
+        }
         return false;
     }
 
@@ -183,6 +200,10 @@ export class eth_worker{
         }
     }
 
+    public static stripBeginningZeroXFromString(hash:string){
+        return hash.replace(/^(0x)/,"");
+    }
+
     //endregion END OF UTILITIES
 
 
@@ -196,7 +217,7 @@ export class eth_worker{
         return await Web3Client.eth.getBlock(blockNumber);
     }
 
-    static async getTxnByBlockNumber(_block_num: number) : Promise<BlockTransactionObject>{
+    static async getTxnByBlockNumberWeb3(_block_num: number) : Promise<BlockTransactionObject>{
         return await Web3Client.eth.getBlock(_block_num, true);
     }
 
@@ -248,7 +269,7 @@ export class eth_worker{
         return Web3Client.eth.getTransactionReceipt(txn_hash);
     }
 
-    static async getReceiptByTxnHash(_txn_hash: string) : Promise<TransactionReceipt | false> {
+    static async getReceiptByTxnHash(_txn_hash: string, strict:boolean = false) : Promise<TransactionReceipt | false> {
         try {
             let receipt_db = new eth_receipt();
             receipt_db.transactionHash = _txn_hash;
@@ -274,6 +295,9 @@ export class eth_worker{
             let analyzeReceipt = await eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
             return analyzeReceipt.receipt;
         } catch (e) {
+            if(strict){
+                throw e;
+            }
             console.log("Error getting receipt from txn:%s", _txn_hash);
             console.log(e);
             return false;
@@ -418,7 +442,7 @@ export class eth_worker{
         if(!decodedAbi) return result;
         result.method = decodedAbi.abi.name;
 
-        if(eth_worker.checkIfInvolved2({from:result.fromAddress,to:result.toAddress,input:tx.input})){
+        if(eth_worker.checkIfInvolved2(tx)){
             result = await this.processAddLiquidity(result,decodedAbi);
             result = await this.processApprovalEvent(tx,decodedAbi,result);
             result = await this.processTransferEvent(tx,decodedAbi,result);
@@ -446,7 +470,7 @@ export class eth_worker{
         // result = await eth_worker.processContractCreationEvent(transaction,result);
         // if(result.method === "createContract") return result;
 
-        if(!eth_worker.checkIfInvolved2({from:transaction.fromAddress,to:transaction.toAddress,input:transaction.input})) return result;
+        if(!eth_worker.checkIfInvolved2(transaction)) return result;
         result.status = RESULT_STATUS.INVOLVED;
         const decoded_abi = eth_abi_decoder.decodeAbiObject(transaction.input);
         if(!decoded_abi) {
@@ -822,7 +846,7 @@ export class eth_worker{
         tx = typeof tx === "string" ? await eth_worker.getDbTxnByHash(tx) : tx;
         tx.toAddress = assert.isString({val:tx.toAddress,prop_name:"processGenericSwapEvents tx.toAddress",strict:true});
         tx.fromAddress = assert.isString({val:tx.fromAddress,prop_name:"processGenericSwapEvents tx.fromAddress",strict:true});
-        if(!eth_worker.checkIfInvolved2({from:tx.fromAddress,to:tx.toAddress,input:tx.input})){
+        if(!eth_worker.checkIfInvolved2(tx)){
             result.status = RESULT_STATUS.NOT_INVOLVED;
             return result;
         }
