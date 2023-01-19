@@ -44,4 +44,29 @@ describe("tools spec",()=>{
         assert.equal(x.name,"jane");
         assert.equal((x as any)['address'],undefined);
     });
+
+    it('isNumeric should return true for numeric values', () => {
+        expect(tools.isNumeric(5)).to.be.true;
+        expect(tools.isNumeric(-3.14)).to.be.true;
+        expect(tools.isNumeric('5')).to.be.true;
+        expect(tools.isNumeric('123')).to.be.true;
+    });
+
+    it('isNumeric should return false for non-numeric values', () => {
+        expect(tools.isNumeric('hello')).to.be.false;
+        expect(tools.isNumeric('0x10e6d5099c5')).to.be.false;
+        expect(tools.isNumeric('0x')).to.be.false;
+        expect(tools.isNumeric([1, 2, 3])).to.be.false;
+        expect(tools.isNumeric({})).to.be.false;
+    });
+
+    it('stringFoundInStringOrArray should return true', () => {
+        expect(tools.stringFoundInStringOrArray('hello','HE')).to.be.true;
+        expect(tools.stringFoundInStringOrArray(['jane','doe'],'jan')).to.be.true;
+    });
+
+    it('stringFoundInStringOrArray should return false', () => {
+        expect(tools.stringFoundInStringOrArray('hello','HELLOTHERE')).to.be.false;
+        expect(tools.stringFoundInStringOrArray(['jane','doe'],'JANUARY')).to.be.false;
+    });
 });

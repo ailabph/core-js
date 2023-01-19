@@ -23,6 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const chai_1 = require("chai");
 const assert = __importStar(require("assert"));
 const tools_1 = require("./tools");
 const u = require("underscore");
@@ -66,5 +67,26 @@ describe("tools spec", () => {
         x = tools_1.tools.importObjectValuesInto(y, x);
         assert.equal(x.name, "jane");
         assert.equal(x['address'], undefined);
+    });
+    it('isNumeric should return true for numeric values', () => {
+        (0, chai_1.expect)(tools_1.tools.isNumeric(5)).to.be.true;
+        (0, chai_1.expect)(tools_1.tools.isNumeric(-3.14)).to.be.true;
+        (0, chai_1.expect)(tools_1.tools.isNumeric('5')).to.be.true;
+        (0, chai_1.expect)(tools_1.tools.isNumeric('123')).to.be.true;
+    });
+    it('isNumeric should return false for non-numeric values', () => {
+        (0, chai_1.expect)(tools_1.tools.isNumeric('hello')).to.be.false;
+        (0, chai_1.expect)(tools_1.tools.isNumeric('0x10e6d5099c5')).to.be.false;
+        (0, chai_1.expect)(tools_1.tools.isNumeric('0x')).to.be.false;
+        (0, chai_1.expect)(tools_1.tools.isNumeric([1, 2, 3])).to.be.false;
+        (0, chai_1.expect)(tools_1.tools.isNumeric({})).to.be.false;
+    });
+    it('stringFoundInStringOrArray should return true', () => {
+        (0, chai_1.expect)(tools_1.tools.stringFoundInStringOrArray('hello', 'HE')).to.be.true;
+        (0, chai_1.expect)(tools_1.tools.stringFoundInStringOrArray(['jane', 'doe'], 'jan')).to.be.true;
+    });
+    it('stringFoundInStringOrArray should return false', () => {
+        (0, chai_1.expect)(tools_1.tools.stringFoundInStringOrArray('hello', 'HELLOTHERE')).to.be.false;
+        (0, chai_1.expect)(tools_1.tools.stringFoundInStringOrArray(['jane', 'doe'], 'JANUARY')).to.be.false;
     });
 });

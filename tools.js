@@ -190,6 +190,26 @@ class tools {
         let bn = new bignumber_js_1.default(num);
         return bn.decimalPlaces(decimal).toString();
     }
+    static isNumeric(value) {
+        if (typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value))
+            return false;
+        return !isNaN(value - parseFloat(value));
+    }
+    static stringFoundInStringOrArray(target, find) {
+        if (typeof target === "string") {
+            return target.toLowerCase().indexOf(find.toLowerCase()) !== -1;
+        }
+        if (Array.isArray(target)) {
+            for (const value of target) {
+                if (typeof value !== "string")
+                    continue;
+                if (value.toLowerCase().indexOf(find.toLowerCase()) !== -1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";
