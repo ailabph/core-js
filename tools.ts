@@ -145,4 +145,24 @@ export class tools{
         return bn.decimalPlaces(decimal).toString();
     }
 
+    public static isNumeric(value: any): boolean {
+        if(typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value)) return false;
+        return !isNaN(value - parseFloat(value));
+    }
+
+    public static stringFoundInStringOrArray(target:string|any[], find:string): boolean{
+        if(typeof target === "string"){
+            return target.toLowerCase().indexOf(find.toLowerCase()) !== -1;
+        }
+        if(Array.isArray(target)){
+            for(const value of target){
+                if(typeof value !== "string") continue;
+                if(value.toLowerCase().indexOf(find.toLowerCase()) !== -1){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }
