@@ -161,6 +161,23 @@ class eth_worker {
             return false;
         });
     }
+    static identifyInvolvement(txn) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (yield eth_worker.isInvolved(txn)) {
+                txn.token_found = "y";
+                txn.method_name = "unknown";
+                const receipt = yield eth_worker.getReceiptByTxnHash(txn.hash);
+                if (receipt)
+                    txn.send_status = receipt.status ? 1 : 0;
+                const abi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(txn.input);
+                if (abi)
+                    txn.method_name = abi.abi.name;
+                const swaps = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLogsByMethod(txn.hash, "swap");
+                txn.is_swap = swaps.length > 0 ? 1 : 0;
+                yield txn.save();
+            }
+        });
+    }
     static importTransactionsFromFile(file_path, assert_involved = false) {
         var e_1, _a;
         return __awaiter(this, void 0, void 0, function* () {

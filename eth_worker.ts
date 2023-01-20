@@ -18,7 +18,7 @@ import {eth_config} from "./eth_config";
 
 import {eth_tools} from "./eth_tools";
 
-import {DepositLog, SwapLog, TransferLog, WithdrawalLog} from "./eth_log_decoder";
+import {DepositLog, eth_log_decoder, SwapLog, TransferLog, WithdrawalLog} from "./eth_log_decoder";
 
 import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_data} from "./build/eth_contract_data";
@@ -29,6 +29,8 @@ import {assert_eth} from "./assert_eth";
 import fsPromise from "fs/promises";
 import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
 import {eth_receipt} from "./build/eth_receipt";
+import {eth_transaction_tools} from "./eth_transaction_tools";
+import {eth_transaction_known} from "./build/eth_transaction_known";
 
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
@@ -159,6 +161,23 @@ export class eth_worker{
             }
         }
         return false;
+    }
+
+    public static async identifyInvolvement(txn:eth_transaction):Promise<eth_transaction>{
+        if(txn.token_found === null){
+            if(await eth_worker.isInvolved(txn)){
+                txn.token_found = "y";
+                txn.method_name = "unknown";
+                const receipt = await eth_worker.getReceiptByTxnHash(txn.hash);
+                if(receipt) txn.send_status = receipt.status?1:0;
+                const abi = eth_abi_decoder.decodeAbiObject(txn.input);
+                if(abi) txn.method_name = abi.abi.name;
+                const swaps = await eth_receipt_logs_tools.getLogsByMethod<SwapLog>(txn.hash,"swap");
+                txn.is_swap = swaps.length > 0 ? 1 : 0;
+                await txn.save();
+            }
+        }
+        return txn;
     }
 
     public static async importTransactionsFromFile(file_path:string, assert_involved:boolean = false){
@@ -492,6 +511,116 @@ export class eth_worker{
         // result = await eth_worker.processResultChecks(result,decoded_abi);
         // result = await eth_worker.processResultBlockTime(result);
 
+        return result;
+    }
+
+    static async analyzeTokenTransaction(txn:string|eth_transaction):Promise<AnalysisResult>{
+        txn = await eth_transaction_tools.get(txn);
+        txn = await eth_worker.identifyInvolvement(txn);
+        let result = eth_types.getDefaultAnalysisResult(txn);
+
+        result.status = txn.token_found === "y" ? RESULT_STATUS.INVOLVED : RESULT_STATUS.NOT_INVOLVED;
+        result.sendStatus = txn.send_status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
+        if(result.status !== RESULT_STATUS.INVOLVED) return result;
+
+        const abi = eth_abi_decoder.decodeAbiObject(txn.input);
+        result.method = abi ? abi.abi.name : "unknown";
+
+        if(result.sendStatus !== RESULT_SEND_STATUS.SUCCESS) return result;
+        if(result.method.toLowerCase() === "transfer") result.type = "transfer";
+        if(result.method.toLowerCase() === "approve") result.type = "approve";
+        if(result.hash.toLowerCase() === eth_config.getTokenGenesisHash().toLowerCase()) result.type = "creation";
+
+        if(txn.is_swap && txn.toAddress?.toLowerCase() === eth_config.getDexContract().toLowerCase()){
+            result.toAddress = txn.fromAddress ?? "";
+
+            const logsResult = await eth_receipt_logs_tools.getReceiptLogs(txn.hash);
+            const firstLog = await eth_log_decoder.decodeLog(logsResult.receipt.logs[0]);
+            const lastLog = await eth_log_decoder.decodeLog( logsResult.receipt.logs[logsResult.receipt.logs.length-1] );
+            const firstTransfer1 = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
+            const lastTransfer1 = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
+            const lastSwap = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(txn.hash,"swap") as SwapLog;
+            const firstTransferFrom = await eth_receipt_logs_tools.getFirstTransferFrom(txn.hash,txn.fromAddress??"");
+            let trade_type = lastTransfer1.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
+
+            result.fromAmount = "0";
+            result.toAmount = "0";
+            result.taxAmount = "0";
+            result.taxPerc = "0";
+            result.fromContract = firstTransfer1.ContractInfo.address;
+            result.fromSymbol = firstTransfer1.ContractInfo.symbol;
+            result.fromDecimal = firstTransfer1.ContractInfo.decimals;
+            result.toContract = lastTransfer1.ContractInfo.address;
+            result.toSymbol = lastTransfer1.ContractInfo.symbol;
+            result.toDecimal = lastTransfer1.ContractInfo.decimals;
+
+            if(firstLog.method_name.toLowerCase() === "deposit"){
+                const deposit = await eth_receipt_logs_tools.getFirstLogByMethod<DepositLog>(txn.hash,"deposit") as DepositLog;
+                result.fromValue = deposit.amount.toString();
+            }
+            if(lastLog.method_name.toLowerCase() === "withdrawal"){
+                const withdrawal = await eth_receipt_logs_tools.getLastLogByMethod<WithdrawalLog>(txn.hash,"withdrawal") as WithdrawalLog;
+                result.toValue = withdrawal.wad.toString();
+            }
+
+            if(result.toAmount === "0"){
+                result.toValue = lastTransfer1.value.toString();
+            }
+            if(result.fromAmount === "0"){
+                if(firstTransferFrom){
+                    result.fromValue = firstTransferFrom.value.toString();
+                }
+            }
+
+            result.fromAmount = eth_worker.convertValueToAmount(result.fromValue,result.fromDecimal);
+            result.fromAmountGross = result.fromAmount;
+            result.toAmount = eth_worker.convertValueToAmount(result.toValue,result.toDecimal);
+            result.toAmountGross = result.toAmount;
+
+            const token_amount = result.type === "buy" ? result.toAmount : result.fromAmount;
+
+            let gross_token_amount:string = "0";
+            if(result.type === "buy"){
+                const swapExactETHForTokensAbi = eth_abi_decoder.getSwapExactETHForTokens(abi);
+                if(swapExactETHForTokensAbi){
+                    gross_token_amount = swapExactETHForTokensAbi.amountOutMin > lastSwap.amount1Out ? swapExactETHForTokensAbi.amountOutMin.toString() : lastSwap.amount1Out.toString();
+                }
+
+                if(gross_token_amount === "0" || result.toAmount > gross_token_amount){
+                    gross_token_amount = lastSwap.amount1Out.toString();
+                }
+
+                result.toAmountGross = eth_worker.convertValueToAmount(gross_token_amount, result.toDecimal);
+            }
+            if(result.type === "sell"){
+                if(abi){
+                    const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abi);
+                    if(swapExactTokensForETHSupportingFeeOnTransferTokensAbi){
+                        gross_token_amount = swapExactTokensForETHSupportingFeeOnTransferTokensAbi.amountIn.toString();
+
+                    }
+
+                    const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
+                    if(swapExactTokensForTokensSupportingFeeOnTransferTokensAbi){
+                        gross_token_amount = swapExactTokensForTokensSupportingFeeOnTransferTokensAbi.amountIn.toString();
+                    }
+
+                    const swapTokensForExactETHAbi = eth_abi_decoder.getSwapTokensForExactETH(abi);
+                    if(swapTokensForExactETHAbi){
+                        gross_token_amount = swapTokensForExactETHAbi.amountInMax.toString();
+                    }
+
+                    result.fromAmountGross = eth_worker.convertValueToAmount(gross_token_amount,result.fromDecimal);
+                }
+
+            }
+            gross_token_amount = eth_worker.convertValueToAmount( gross_token_amount, eth_config.getTokenDecimal());
+            result.taxAmount = tools.toBn(gross_token_amount).minus(tools.toBn(token_amount)).toString();
+
+            if(parseFloat(result.taxAmount) > 0){
+                result.taxPerc = tools.toBn(result.taxAmount).dividedBy(tools.toBn(token_amount)).toString();
+            }
+        }
         return result;
     }
 
