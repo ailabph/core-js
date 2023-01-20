@@ -130,6 +130,22 @@ class eth_receipt_logs_tools {
             return false;
         });
     }
+    static getFirstUserTransferInLogs(txn_hash, from) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transferLogs = yield eth_receipt_logs_tools.getLogsByMethod(txn_hash, "transfer");
+            let to_return;
+            for (const transfer of transferLogs) {
+                if (from.toLowerCase() === transfer.from.toLowerCase()) {
+                    to_return = transfer;
+                    break;
+                }
+            }
+            if (typeof to_return === "undefined") {
+                throw new Error(`unable to retrieve transfer from:${from}`);
+            }
+            return to_return;
+        });
+    }
     static getLastLogByMethod(txn_hash, method_name, strict = false) {
         return __awaiter(this, void 0, void 0, function* () {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
@@ -189,6 +205,28 @@ class eth_receipt_logs_tools {
         return __awaiter(this, void 0, void 0, function* () {
             const findTokenContract = eth_worker_1.eth_worker.stripBeginningZeroXFromString(eth_config_1.eth_config.getTokenContract());
             return yield eth_receipt_logs_tools.findValueInLogs(txn_hash, findTokenContract);
+        });
+    }
+    static getTransferTokenFrom(txn_hash, from) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transfers = yield eth_receipt_logs_tools.getLogsByMethod(txn_hash, "transfer");
+            let foundTransfers = [];
+            for (const transfer of transfers) {
+                if (transfer.from.toLowerCase() === from.toLowerCase() && transfer.ContractInfo.address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                    foundTransfers.push(transfer);
+                }
+            }
+            return foundTransfers;
+        });
+    }
+    static getFirstTransferFrom(txn_hash, from) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transfers = yield eth_receipt_logs_tools.getLogsByMethod(txn_hash, "transfer");
+            for (const transfer of transfers) {
+                if (transfer.from.toLowerCase() === from.toLowerCase())
+                    return transfer;
+            }
+            return false;
         });
     }
 }

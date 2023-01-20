@@ -5,7 +5,7 @@ import {eth_receipt} from "./build/eth_receipt";
 import {eth_worker} from "./eth_worker";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {Log} from "web3-core";
-import {BaseType, eth_log_decoder} from "./eth_log_decoder";
+import {BaseType, eth_log_decoder, TransferLog} from "./eth_log_decoder";
 import {tools} from "./tools";
 import {eth_config} from "./eth_config";
 
@@ -116,6 +116,21 @@ export class eth_receipt_logs_tools{
         return false;
     }
 
+    public static async getFirstUserTransferInLogs(txn_hash:string|AnalyzeLogsResult,from:string): Promise<TransferLog>{
+        const transferLogs = await eth_receipt_logs_tools.getLogsByMethod<TransferLog>(txn_hash,"transfer");
+        let to_return:TransferLog|undefined;
+        for(const transfer of transferLogs){
+            if(from.toLowerCase() === transfer.from.toLowerCase()){
+                to_return = transfer;
+                break;
+            }
+        }
+        if(typeof to_return === "undefined"){
+            throw new Error(`unable to retrieve transfer from:${from}`);
+        }
+        return to_return;
+    }
+
     public static async getLastLogByMethod<T>(txn_hash:string|AnalyzeLogsResult,method_name:string,strict:boolean = false): Promise<T|false>{
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
         if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
@@ -171,6 +186,25 @@ export class eth_receipt_logs_tools{
     public static async findTokenInLogs(txn_hash:string|AnalyzeLogsResult):Promise<boolean>{
         const findTokenContract = eth_worker.stripBeginningZeroXFromString(eth_config.getTokenContract());
         return await eth_receipt_logs_tools.findValueInLogs(txn_hash,findTokenContract);
+    }
+
+    public static async getTransferTokenFrom(txn_hash:string|AnalyzeLogsResult,from:string):Promise<TransferLog[]>{
+        const transfers = await eth_receipt_logs_tools.getLogsByMethod<TransferLog>(txn_hash,"transfer");
+        let foundTransfers:TransferLog[] = [];
+        for(const transfer of transfers){
+            if(transfer.from.toLowerCase() === from.toLowerCase() && transfer.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase()){
+                foundTransfers.push(transfer);
+            }
+        }
+        return foundTransfers;
+    }
+
+    public static async getFirstTransferFrom(txn_hash:string|AnalyzeLogsResult,from:string):Promise<TransferLog|false>{
+        const transfers = await eth_receipt_logs_tools.getLogsByMethod<TransferLog>(txn_hash,"transfer");
+        for(const transfer of transfers){
+            if(transfer.from.toLowerCase() === from.toLowerCase()) return transfer;
+        }
+        return false;
     }
 
 }
