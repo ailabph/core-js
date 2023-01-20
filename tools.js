@@ -210,6 +210,9 @@ class tools {
         }
         return false;
     }
+    static toBn(value) {
+        return new bignumber_js_1.default(value);
+    }
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";

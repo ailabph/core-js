@@ -165,4 +165,8 @@ export class tools{
         return false;
     }
 
+    public static toBn(value:string|number):BigNumber{
+        return new BigNumber(value);
+    }
+
 }
