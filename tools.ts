@@ -160,6 +160,27 @@ export class tools{
         return new BigNumber(value);
     }
 
+    //region CHECKER
+    public static isNull(val:any):boolean{
+        return val === null || val === undefined;
+    }
+    //endregion
+
+    //region GETTER
+    public static parseInt(val:unknown,name:string="",strict:boolean=false):number{
+        if(tools.isNull(val)) throw new Error(`${name} must not be null or undefined`);
+        let to_return:number = -123456789;
+        if(typeof val === "number"){
+            to_return = Math.floor(val);
+        }
+        else if(typeof val === "string"){
+            to_return = parseInt(val);
+        }
+        if(to_return === -123456789) throw new Error(`unable to parse int of ${name}:${val}`);
+        return to_return;
+    }
+    //endregion END GETTER
+
     //region FILE
     public static async writeIntoFileArrayOfStrings(filePath: string, lines: string[]): Promise<void> {
         if (assert.fileExists(filePath,false)) {

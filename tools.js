@@ -200,6 +200,27 @@ class tools {
     static toBn(value) {
         return new bignumber_js_1.default(value);
     }
+    //region CHECKER
+    static isNull(val) {
+        return val === null || val === undefined;
+    }
+    //endregion
+    //region GETTER
+    static parseInt(val, name = "", strict = false) {
+        if (tools.isNull(val))
+            throw new Error(`${name} must not be null or undefined`);
+        let to_return = -123456789;
+        if (typeof val === "number") {
+            to_return = Math.floor(val);
+        }
+        else if (typeof val === "string") {
+            to_return = parseInt(val);
+        }
+        if (to_return === -123456789)
+            throw new Error(`unable to parse int of ${name}:${val}`);
+        return to_return;
+    }
+    //endregion END GETTER
     //region FILE
     static writeIntoFileArrayOfStrings(filePath, lines) {
         return __awaiter(this, void 0, void 0, function* () {
