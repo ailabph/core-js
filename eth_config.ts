@@ -1453,4 +1453,9 @@ export class eth_config {
 
     //endregion
 
+    //region WORKER
+    public static default_worker_wait_ms:number = 250;
+    public static default_worker_batch:number = 100;
+    //endregion END WORKER
+
 }

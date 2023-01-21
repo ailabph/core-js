@@ -1431,3 +1431,7 @@ class eth_config {
     }
 }
 exports.eth_config = eth_config;
+//endregion
+//region WORKER
+eth_config.default_worker_wait_ms = 250;
+eth_config.default_worker_batch = 100;
