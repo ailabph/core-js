@@ -72,21 +72,27 @@ export class eth_worker_block{
                 const latest_block_number = await eth_worker.getLatestBlockWeb3();
                 const last_block_number = latestBlock.count() > 0 ? latestBlock.getItem().blockNumber : 0;
                 const diff = latest_block_number - last_block_number;
-                const limit = diff > eth_worker_block.getBatchLimit() ? eth_worker_block.getBatchLimit() : diff;
-                let block_number_to_add = last_block_number;
-                for(let count1 = 0; count1 < limit; count1++,++block_number_to_add){
-                    let newBlock = new eth_block();
-                    newBlock.blockNumber = block_number_to_add;
-                    await newBlock.fetch();
-                    if(newBlock.recordExists()){ console.log(`block:${block_number_to_add} already on db, skipping...`); continue; }
-                    const web3BlockInfo = await eth_worker.getBlockByNumberWeb3(block_number_to_add);
-                    newBlock.blockNumber = web3BlockInfo.number;
-                    newBlock.blockHash = web3BlockInfo.hash;
-                    newBlock.time_added = typeof web3BlockInfo.timestamp === "string" ? parseInt(web3BlockInfo.timestamp) : web3BlockInfo.timestamp;
-                    await newBlock.save();
-                    console.log(`added new block:${newBlock.blockNumber} on db`);
+                if(diff > 0){
+                    const limit = diff > eth_worker_block.getBatchLimit() ? eth_worker_block.getBatchLimit() : diff;
+                    let block_number_to_add = last_block_number;
+                    for(let count1 = 0; count1 < limit; count1++,++block_number_to_add){
+                        let newBlock = new eth_block();
+                        newBlock.blockNumber = block_number_to_add;
+                        await newBlock.fetch();
+                        if(newBlock.recordExists()){
+                            // console.log(`block:${block_number_to_add} already on db, skipping...`);
+                            continue;
+                        }
+                        const web3BlockInfo = await eth_worker.getBlockByNumberWeb3(block_number_to_add);
+                        newBlock.blockNumber = web3BlockInfo.number;
+                        newBlock.blockHash = web3BlockInfo.hash;
+                        newBlock.time_added = typeof web3BlockInfo.timestamp === "string" ? parseInt(web3BlockInfo.timestamp) : web3BlockInfo.timestamp;
+                        await newBlock.save();
+                        console.log(`added new block:${newBlock.blockNumber} on db`);
+                    }
                 }
             }
+            await connection.commit();
         }catch (e){
             await connection.rollback();
             console.log(e);
