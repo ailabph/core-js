@@ -101,8 +101,7 @@ class eth_receipt_logs_tools {
     static getFirstTopicLog(txn_hash) {
         return __awaiter(this, void 0, void 0, function* () {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-            if (analyzeLogsResult.receipt.logs.length === 0)
-                throw new Error(`transaction(${txn_hash}) has no log topics`);
+            // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
             return yield eth_log_decoder_1.eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[0]);
         });
     }
@@ -117,8 +116,7 @@ class eth_receipt_logs_tools {
     static getFirstLogByMethod(txn_hash, method_name, strict = false) {
         return __awaiter(this, void 0, void 0, function* () {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-            if (analyzeLogsResult.receipt.logs.length === 0)
-                throw new Error(`transaction(${txn_hash}) has no log topics`);
+            // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
             for (const log of analyzeLogsResult.receipt.logs) {
                 const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
                 if (decodedLog.method_name.toLowerCase() === method_name.toLowerCase()) {
@@ -149,8 +147,7 @@ class eth_receipt_logs_tools {
     static getLastLogByMethod(txn_hash, method_name, strict = false) {
         return __awaiter(this, void 0, void 0, function* () {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-            if (analyzeLogsResult.receipt.logs.length === 0)
-                throw new Error(`transaction(${txn_hash}) has no log topics`);
+            // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
             let to_return = false;
             for (const log of analyzeLogsResult.receipt.logs) {
                 const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
@@ -169,8 +166,7 @@ class eth_receipt_logs_tools {
             if (analyzeLogsResult.receipt.status
                 && analyzeLogsResult.receipt.logs.length === 0) {
                 const error_msg = `transaction(${txn_hash}) has no log topics`;
-                if (strict)
-                    throw new Error(error_msg);
+                // if(strict) throw new Error(error_msg);
                 console.warn(error_msg);
             }
             let collection = [];

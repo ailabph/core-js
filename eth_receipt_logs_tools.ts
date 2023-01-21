@@ -4,7 +4,6 @@ import {assert} from "./assert";
 import {eth_receipt} from "./build/eth_receipt";
 import {eth_worker} from "./eth_worker";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
-import {Log} from "web3-core";
 import {BaseType, eth_log_decoder, TransferLog} from "./eth_log_decoder";
 import {tools} from "./tools";
 import {eth_config} from "./eth_config";
@@ -75,7 +74,7 @@ export class eth_receipt_logs_tools{
             await logs.list(" WHERE receipt_id=:receipt_id ",{receipt_id:receipt_db.id});
             let log = new eth_receipt_logs();
             while(log = logs.getItem()){
-                let topic_log:Log = {
+                let topic_log = {
                     address: log.address ?? "",
                     blockHash: log.blockHash ?? "",
                     blockNumber: log.blockNumber ?? 0,
@@ -93,7 +92,7 @@ export class eth_receipt_logs_tools{
 
     public static async getFirstTopicLog(txn_hash:string|AnalyzeLogsResult): Promise<BaseType>{
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-        if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
+        // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
         return await eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[0]);
     }
 
@@ -105,7 +104,7 @@ export class eth_receipt_logs_tools{
 
     public static async getFirstLogByMethod<T>(txn_hash:string|AnalyzeLogsResult,method_name:string,strict:boolean = false): Promise<T|false>{
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-        if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
+        // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
         for(const log of analyzeLogsResult.receipt.logs){
             const decodedLog = await eth_log_decoder.decodeLog(log);
             if(decodedLog.method_name.toLowerCase() === method_name.toLowerCase()){
@@ -133,7 +132,7 @@ export class eth_receipt_logs_tools{
 
     public static async getLastLogByMethod<T>(txn_hash:string|AnalyzeLogsResult,method_name:string,strict:boolean = false): Promise<T|false>{
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-        if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
+        // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
         let to_return:T|boolean = false;
         for(const log of analyzeLogsResult.receipt.logs){
             const decodedLog = await eth_log_decoder.decodeLog(log);
@@ -152,7 +151,7 @@ export class eth_receipt_logs_tools{
             && analyzeLogsResult.receipt.logs.length === 0
         ) {
             const error_msg = `transaction(${txn_hash}) has no log topics`;
-            if(strict) throw new Error(error_msg);
+            // if(strict) throw new Error(error_msg);
             console.warn(error_msg);
         }
         let collection:T[] = [];
