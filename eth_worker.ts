@@ -527,9 +527,38 @@ export class eth_worker{
         result.method = abi ? abi.abi.name : "unknown";
 
         if(result.sendStatus !== RESULT_SEND_STATUS.SUCCESS) return result;
-        if(result.method.toLowerCase() === "transfer") result.type = "transfer";
+
+        const firstTransfer1 = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
+        const lastTransfer1 = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
+
         if(result.method.toLowerCase() === "approve") result.type = "approve";
         if(result.hash.toLowerCase() === eth_config.getTokenGenesisHash().toLowerCase()) result.type = "creation";
+        if(result.method.toLowerCase() === "transfer") {
+            result.type = "transfer";
+            result.fromContract = firstTransfer1.ContractInfo.address;
+            result.fromSymbol = firstTransfer1.ContractInfo.symbol;
+            result.fromDecimal = firstTransfer1.ContractInfo.decimals;
+            result.toContract = lastTransfer1.ContractInfo.address;
+            result.toSymbol = lastTransfer1.ContractInfo.symbol;
+            result.toDecimal = lastTransfer1.ContractInfo.decimals;
+            result.toAddress = lastTransfer1.to;
+
+            const transferAbi = eth_abi_decoder.getTransferAbi(abi);
+            if(transferAbi){
+                result.fromValue = transferAbi.amount.toString();
+            }
+            result.toValue = lastTransfer1.value.toString();
+
+            result.fromAmount = eth_worker.convertValueToAmount(result.fromValue,result.fromDecimal);
+            result.fromAmountGross = result.fromAmount;
+            result.toAmountGross = result.fromAmountGross;
+            result.toAmount = eth_worker.convertValueToAmount(result.toValue,result.toDecimal);
+
+            result.taxAmount = tools.toBn(result.toAmountGross).minus(tools.toBn(result.toAmount)).toString();
+            if(parseFloat(result.taxAmount) > 0){
+                result.taxPerc = tools.toBn(result.taxAmount).dividedBy(tools.toBn(result.toAmountGross)).toString();
+            }
+        }
 
         if(txn.is_swap && txn.toAddress?.toLowerCase() === eth_config.getDexContract().toLowerCase()){
             result.toAddress = txn.fromAddress ?? "";
@@ -537,11 +566,9 @@ export class eth_worker{
             const logsResult = await eth_receipt_logs_tools.getReceiptLogs(txn.hash);
             const firstLog = await eth_log_decoder.decodeLog(logsResult.receipt.logs[0]);
             const lastLog = await eth_log_decoder.decodeLog( logsResult.receipt.logs[logsResult.receipt.logs.length-1] );
-            const firstTransfer1 = await eth_receipt_logs_tools.getFirstLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
-            const lastTransfer1 = await eth_receipt_logs_tools.getLastLogByMethod<TransferLog>(txn.hash,"transfer") as TransferLog;
             const lastSwap = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(txn.hash,"swap") as SwapLog;
             const firstTransferFrom = await eth_receipt_logs_tools.getFirstTransferFrom(txn.hash,txn.fromAddress??"");
-            let trade_type = lastTransfer1.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
+            result.type = lastTransfer1.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
 
             result.fromAmount = "0";
             result.toAmount = "0";
