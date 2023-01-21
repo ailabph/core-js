@@ -228,11 +228,11 @@ export class eth_worker{
 
     //region GETTERS
 
-    static async getLatestBlock(): Promise<number> {
+    static async getLatestBlockWeb3(): Promise<number> {
         return await Web3Client.eth.getBlockNumber();
     }
 
-    static async getBlockByNumber(blockNumber:number): Promise<BlockTransactionString>{
+    static async getBlockByNumberWeb3(blockNumber:number): Promise<BlockTransactionString>{
         return await Web3Client.eth.getBlock(blockNumber);
     }
 
@@ -1476,7 +1476,7 @@ export class eth_worker{
                 });
             }
             currentCheckCount++;
-            currentBlock = await this.getLatestBlock();
+            currentBlock = await this.getLatestBlockWeb3();
             height = currentBlock - _txn.blockNumber;
             console.log("current block:%s transaction block:%s height:%s", currentBlock, _txn.blockNumber, height);
             if (currentCheckCount >= confirmationCheckLimit) {

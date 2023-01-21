@@ -239,12 +239,12 @@ class eth_worker {
     }
     //endregion END OF UTILITIES
     //region GETTERS
-    static getLatestBlock() {
+    static getLatestBlockWeb3() {
         return __awaiter(this, void 0, void 0, function* () {
             return yield Web3Client.eth.getBlockNumber();
         });
     }
-    static getBlockByNumber(blockNumber) {
+    static getBlockByNumberWeb3(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             return yield Web3Client.eth.getBlock(blockNumber);
         });
@@ -1413,7 +1413,7 @@ class eth_worker {
                     });
                 }
                 currentCheckCount++;
-                currentBlock = yield this.getLatestBlock();
+                currentBlock = yield this.getLatestBlockWeb3();
                 height = currentBlock - _txn.blockNumber;
                 console.log("current block:%s transaction block:%s height:%s", currentBlock, _txn.blockNumber, height);
                 if (currentCheckCount >= confirmationCheckLimit) {
