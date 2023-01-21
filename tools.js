@@ -141,19 +141,6 @@ class tools {
             return new Promise(resolve => setTimeout(resolve, ms));
         });
     }
-    static writeIntoFileArrayOfStrings(filePath, lines) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (assert_1.assert.fileExists(filePath, false)) {
-                yield fs.promises.writeFile(filePath, '');
-            }
-            else {
-                yield fs.promises.writeFile(filePath, '');
-            }
-            for (const line of lines) {
-                yield fs.promises.appendFile(filePath, line + '\n');
-            }
-        });
-    }
     static restructureDataFile(sourceFilePath, targetFilePath, separator, targetIndex) {
         var e_1, _a;
         return __awaiter(this, void 0, void 0, function* () {
@@ -212,6 +199,32 @@ class tools {
     }
     static toBn(value) {
         return new bignumber_js_1.default(value);
+    }
+    //region FILE
+    static writeIntoFileArrayOfStrings(filePath, lines) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (assert_1.assert.fileExists(filePath, false)) {
+                yield fs.promises.writeFile(filePath, '');
+            }
+            else {
+                yield fs.promises.writeFile(filePath, '');
+            }
+            for (const line of lines) {
+                yield fs.promises.appendFile(filePath, line + '\n');
+            }
+        });
+    }
+    static writeJsonToFile(data, fileName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const jsonData = JSON.stringify(data, null, 4);
+                yield fs.promises.writeFile(fileName, jsonData);
+                console.log(`Data written to ${fileName}`);
+            }
+            catch (err) {
+                console.error(err);
+            }
+        });
     }
 }
 exports.tools = tools;

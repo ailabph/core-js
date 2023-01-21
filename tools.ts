@@ -108,16 +108,7 @@ export class tools{
         return new Promise( resolve => setTimeout(resolve, ms) );
     }
 
-    public static async writeIntoFileArrayOfStrings(filePath: string, lines: string[]): Promise<void> {
-        if (assert.fileExists(filePath,false)) {
-            await fs.promises.writeFile(filePath, '');
-        } else {
-            await fs.promises.writeFile(filePath, '');
-        }
-        for (const line of lines) {
-            await fs.promises.appendFile(filePath, line + '\n');
-        }
-    }
+
 
     public static async restructureDataFile(sourceFilePath:string, targetFilePath:string, separator:string, targetIndex:number){
         assert.fileExists(sourceFilePath);
@@ -168,5 +159,28 @@ export class tools{
     public static toBn(value:string|number):BigNumber{
         return new BigNumber(value);
     }
+
+    //region FILE
+    public static async writeIntoFileArrayOfStrings(filePath: string, lines: string[]): Promise<void> {
+        if (assert.fileExists(filePath,false)) {
+            await fs.promises.writeFile(filePath, '');
+        } else {
+            await fs.promises.writeFile(filePath, '');
+        }
+        for (const line of lines) {
+            await fs.promises.appendFile(filePath, line + '\n');
+        }
+    }
+
+    public static async writeJsonToFile(data: object | any[], fileName: string) {
+        try {
+            const jsonData = JSON.stringify(data,null,4);
+            await fs.promises.writeFile(fileName, jsonData);
+            console.log(`Data written to ${fileName}`);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    //endregion
 
 }
