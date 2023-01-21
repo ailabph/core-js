@@ -26,14 +26,18 @@ class eth_worker_txn {
             }
             yield connection_1.connection.startTransaction();
             try {
+                let lastBlockProcessed = -1;
+                const latestBlock = yield eth_worker_1.eth_worker.getLatestBlock();
                 // get unprocessed block
                 let unprocessedBlock = new eth_block_1.eth_block();
                 yield unprocessedBlock.list(" WHERE time_txn_retrieved IS NULL ", {}, ` ORDER BY blockNumber ASC LIMIT ${eth_worker_txn.getBatchLimit()} `);
-                console.log(`${unprocessedBlock.count()} blocks to process found`);
+                if (unprocessedBlock.count() > 0)
+                    console.log(`${unprocessedBlock.count()} blocks to process found`);
+                let totalTxnAddedUpdated = 0;
                 for (const block of unprocessedBlock._dataList) {
-                    console.log(`retrieving transactions of block:${block.blockNumber} from rpc`);
+                    // console.log(`retrieving transactions of block:${block.blockNumber} from rpc`);
                     const transactions = yield eth_worker_1.eth_worker.getTxnByBlockNumberWeb3(block.blockNumber);
-                    console.log(`${transactions.transactions.length} transactions found`);
+                    // console.log(`${transactions.transactions.length} transactions found`);
                     for (const transaction of transactions.transactions) {
                         const newTxn = new eth_transaction_1.eth_transaction();
                         newTxn.hash = transaction.hash;
@@ -47,11 +51,17 @@ class eth_worker_txn {
                         }
                         // tag txn if involved
                         yield eth_worker_1.eth_worker.identifyInvolvement(newTxn);
-                        console.log(`${block.blockNumber} ${transaction.hash} updated on db. token_found:${newTxn.token_found === "y" ? "yes" : "no"} is_swap:${newTxn.is_swap ? "yes" : "no"} method_name:${newTxn.method_name}`);
+                        totalTxnAddedUpdated++;
+                        // console.log(`${block.blockNumber} ${transaction.hash} updated on db. token_found:${newTxn.token_found === "y"? "yes":"no"} is_swap:${newTxn.is_swap?"yes":"no"} method_name:${newTxn.method_name}`);
                     }
                     block.time_txn_retrieved = tools_1.tools.getCurrentTimeStamp();
                     yield block.save();
+                    lastBlockProcessed = block.blockNumber;
                 }
+                lastBlockProcessed = lastBlockProcessed > 0 ? lastBlockProcessed : latestBlock;
+                const height = latestBlock - lastBlockProcessed;
+                if (totalTxnAddedUpdated > 0)
+                    console.log(`${totalTxnAddedUpdated} transactions processed. last block:${lastBlockProcessed} latest block:${latestBlock} height:${height}`);
                 yield connection_1.connection.commit();
             }
             catch (e) {
