@@ -102,8 +102,10 @@ const MintLogCodec = t.type({
 class eth_log_decoder {
     static decodeLog(log) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (typeof log.topics === "undefined")
+                throw new Error(`topics is not defined`);
             if (log.topics.length === 0)
-                throw new Error("log has no topics");
+                throw new Error(`there is no topics`);
             // extract signature
             let signature = log.topics[0];
             signature = signature.replace(/^(0x)/, "");

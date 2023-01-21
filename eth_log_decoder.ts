@@ -102,7 +102,8 @@ export { MintLog }
 export class eth_log_decoder{
 
     public static async decodeLog(log: Log): Promise<BaseType> {
-        if (log.topics.length === 0) throw new Error("log has no topics");
+        if(typeof log.topics === "undefined") throw new Error(`topics is not defined`);
+        if(log.topics.length === 0) throw new Error(`there is no topics`);
 
         // extract signature
         let signature = log.topics[0];
