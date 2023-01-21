@@ -18,7 +18,7 @@ console.log("starting worker to track blocks");
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         let from = 0;
-        let to = yield eth_worker_1.eth_worker.getLatestBlock();
+        let to = yield eth_worker_1.eth_worker.getLatestBlockWeb3();
         let updateNeeded = false;
         if (lastBlock !== to) {
             console.log("Latest Block:%s", to);

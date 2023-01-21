@@ -8,7 +8,7 @@ let startBlock:number = config.getCustomOption("STARTING_BLOCK",true) as number;
 console.log("starting worker to track blocks");
 async function run(){
     let from = 0;
-    let to = await eth_worker.getLatestBlock();
+    let to = await eth_worker.getLatestBlockWeb3();
     let updateNeeded = false;
     if(lastBlock !== to){
         console.log("Latest Block:%s",to);
