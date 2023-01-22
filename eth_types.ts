@@ -160,4 +160,16 @@ type WalletInfo = {
 }
 export { WalletInfo };
 
+type BnbUsdReserve = {
+    bnb:bigint,
+    usd:bigint
+}
+export { BnbUsdReserve };
+
+type TokenBnbReserve = {
+    bnb:bigint,
+    token:bigint
+}
+export { TokenBnbReserve };
+
 // export { GasInfo, ContractInfo, DecodedAbi, LogData, LogSigArgs, AnalyzeLogsResult, WalletInfo }

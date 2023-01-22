@@ -36,6 +36,8 @@ const promises_1 = __importDefault(require("fs/promises"));
 const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
 const eth_receipt_1 = require("./build/eth_receipt");
 const eth_transaction_tools_1 = require("./eth_transaction_tools");
+const eth_block_1 = require("./build/eth_block");
+const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config_1.eth_config.getRPCUrl());
 const Web3Client = new Web3(Web3Provider);
@@ -239,9 +241,35 @@ class eth_worker {
     }
     //endregion END OF UTILITIES
     //region GETTERS
+    static getLatestBlock() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let latestBlock = -1;
+            const lastBlock = new eth_block_1.eth_block();
+            yield lastBlock.list(" WHERE 1 ", {}, " ORDER BY id DESC, blockNumber DESC LIMIT 1 ");
+            if (lastBlock.count() > 0) {
+                latestBlock = lastBlock.getItem().blockNumber;
+            }
+            // fallback
+            if (latestBlock < 0) {
+                latestBlock = yield eth_worker.getLatestBlockWeb3();
+            }
+            return latestBlock;
+        });
+    }
     static getLatestBlockWeb3() {
         return __awaiter(this, void 0, void 0, function* () {
             return yield Web3Client.eth.getBlockNumber();
+        });
+    }
+    static getBlockByNumber(blockNumber, strict = false) {
+        return __awaiter(this, void 0, void 0, function* () {
+            assert_1.assert.isNumber(blockNumber, "blockNumber", 0);
+            const block = new eth_block_1.eth_block();
+            block.blockNumber = blockNumber;
+            yield block.fetch();
+            if (strict && block.isNew())
+                throw new Error(`unable to retrieve block:${blockNumber} from db`);
+            return block;
         });
     }
     static getBlockByNumberWeb3(blockNumber) {
@@ -295,7 +323,7 @@ class eth_worker {
             txn_db.hash = txn_hash;
             yield txn_db.fetch();
             if (txn_db.isNew()) {
-                yield this.getTxnByHash(txn_hash);
+                yield eth_worker.getTxnByHash(txn_hash);
                 txn_db.hash = txn_hash;
                 yield txn_db.fetch();
             }
@@ -1183,6 +1211,8 @@ class eth_worker {
         });
     }
     //endregion
+    //region API
+    //endregion END OF API
     static importResultFromValuesFromLog(result, ContractInfo, value) {
         result.fromContract = ContractInfo.address;
         result.fromDecimal = ContractInfo.decimals;
@@ -1421,6 +1451,177 @@ class eth_worker {
                 }
             } while (height < eth_config_1.eth_config.getConfirmationNeeded());
             return true;
+        });
+    }
+    static getTokenPriceInBUSD(tokenAddress, timestamp) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const logs = yield Web3Client.eth.getPastLogs({ address: "0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16", fromBlock: 23989415, toBlock: 23989415, topics: ["0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1"] });
+            console.log(logs);
+            // get token symbol
+            // const symbol = await Web3Client.eth.call({
+            //     to: tokenAddress,
+            //     data: '0x95d89b41'
+            // });
+            // let contract = new Web3Client.eth.Contract(eth_config.getPancakePairAbi(), "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73");
+            // console.log(contract);
+            // const pairData = await Web3Client.eth.call({
+            //     to: "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
+            //     data: '0x6c3f8b37',
+            //     blockNumber: 16052476
+            // });
+            // console.log(pairData);
+            // const result = await contract.methods.symbol().call();
+            // console.log(result);
+            // console.log(symbol);
+            // const symbolHex = symbol.slice(2);
+            // const symbolDec = Web3Client.utils.hexToString(symbolHex);
+            // console.log(symbolDec);
+            // if (symbolDec === 'BUSD') return 1;
+            // // get token symbol
+            // const decimals = await Web3Client.eth.call({
+            //     to: tokenAddress,
+            //     data: '0x313ce567'
+            // });
+            // const decimalsHex = decimals.slice(2, 66);
+            // const decimalsDec = Web3Client.utils.hexToNumber(decimalsHex);
+            // // get pair address
+            // const pairAddress = await Web3Client.eth.call({
+            //     to: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+            //     data: '0x0357d2f2' + tokenAddress.slice(2) + '0x4fabb145d64652a948d72533023f6e7a623c7c53'
+            // });
+            //
+            // // get pair data
+            // const pairData = await Web3Client.eth.call({
+            //     to: pairAddress,
+            //     data: '0x6c3f8b37'
+            // });
+            // const pairDataArray = pairData.slice(2).match(/.{1,64}/g);
+            // const token0Reserve = parseInt(pairDataArray[0], 16);
+            // const token1Reserve = parseInt(pairDataArray[1], 16);
+            // const liquidity = parseInt(pairDataArray[2], 16);
+            //
+            // // get trade history
+            // const tradeHistory = await Web3Client.eth.call({
+            //     to: pairAddress,
+            //     data: '0x38a13df2'
+            // });
+            // const tradeHistoryArray = tradeHistory.slice(2).match(/.{1,64}/g);
+            // let totalBuy = new Web3Client.utils.BN(0);
+            // let totalSell = new Web3Client.utils.BN(0);
+            // for (let i = 0; i < tradeHistoryArray.length; i++) {
+            //     const trade = tradeHistoryArray[i];
+            //     const timestampTrade = parseInt(trade.slice(24, 64), 16);
+            //     if (timestampTrade <= timestamp) {
+            //         const buyAmount = new Web3Client.utils.BN(trade.slice(0, 24), 16);
+            //         const sellAmount = new Web3Client.utils.BN(trade.slice(64, 88), 16);
+            //         totalBuy = totalBuy.add(buyAmount);
+            //         totalSell = totalSell.add(sellAmount);
+            //     }
+            // }
+        });
+    }
+    //region RESERVE
+    static getPairAddress(token_1, token_2) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getPancakeFactoryAbi(), eth_config_1.eth_config.getPancakeFactoryContract());
+            return contract.methods.getPair(token_1, token_2).call();
+        });
+    }
+    static getReserveByBlockNumber(blockNumber, pairContract) {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        return __awaiter(this, void 0, void 0, function* () {
+            let sync_log = false;
+            const logDb = new eth_receipt_logs_1.eth_receipt_logs();
+            console.log(`attempting to search sync log of contract:${pairContract} in db`);
+            yield logDb.list(" WHERE blockNumber=:blockNumber AND address=:address ", { blockNumber: blockNumber, address: pairContract });
+            if (logDb.count() > 0) {
+                console.log(`sync log found`);
+                for (const log of logDb._dataList) {
+                    let check_sync_log = yield eth_log_decoder_1.eth_log_decoder.getSyncLog({
+                        address: (_a = log.address) !== null && _a !== void 0 ? _a : "",
+                        blockHash: (_b = log.blockHash) !== null && _b !== void 0 ? _b : "",
+                        blockNumber: (_c = log.blockNumber) !== null && _c !== void 0 ? _c : 0,
+                        data: (_d = log.data) !== null && _d !== void 0 ? _d : "",
+                        logIndex: (_e = log.logIndex) !== null && _e !== void 0 ? _e : 0,
+                        topics: JSON.parse((_f = log.topics) !== null && _f !== void 0 ? _f : "[]"),
+                        transactionHash: (_g = log.transactionHash) !== null && _g !== void 0 ? _g : "",
+                        transactionIndex: (_h = log.transactionIndex) !== null && _h !== void 0 ? _h : 0
+                    });
+                    if (check_sync_log) {
+                        sync_log = check_sync_log;
+                    }
+                }
+            }
+            // fallback web3
+            else {
+                console.log(`not found in db, attempting to search sync log pair:${pairContract} in rpc`);
+                const logs = yield Web3Client.eth.getPastLogs({ address: pairContract, fromBlock: blockNumber, toBlock: blockNumber, topics: [eth_config_1.eth_config.getSyncTopicSig()] });
+                if (logs.length === 0) {
+                    console.log(`not found for current block:${blockNumber}, trying on block:${--blockNumber}`);
+                    return eth_worker.getReserveByBlockNumber(blockNumber, pairContract);
+                }
+                for (const log of logs) {
+                    sync_log = yield eth_log_decoder_1.eth_log_decoder.getSyncLog(log);
+                    if (sync_log) {
+                        console.log(`sync log found, adding on db`);
+                        yield eth_worker.getDbTxnByHash(log.transactionHash);
+                        yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(log.transactionHash);
+                    }
+                }
+            }
+            if (!sync_log)
+                throw new Error(`unable to retrieve reserve of ${pairContract} in block:${blockNumber}`);
+            return sync_log;
+        });
+    }
+    static getBnbUsdReserveByBlockNumber(blockNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getBnbUsdPairContract());
+            return { bnb: syncLog.reserve0, usd: syncLog.reserve1 };
+        });
+    }
+    static getBnbUsdPriceByBlockNumber(blockNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const reserve = yield eth_worker.getBnbUsdReserveByBlockNumber(blockNumber);
+            return tools_1.tools.toBn(reserve.usd.toString()).dividedBy(tools_1.tools.toBn(reserve.bnb.toString()));
+        });
+    }
+    static getBnbUsdPriceByTime(timeStamp) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log(`attempting to retrieve closest block on db for time:${timeStamp}`);
+            const blockDb = new eth_block_1.eth_block();
+            yield blockDb.list(" WHERE time_added <= :timeStamp ", { timeStamp: timeStamp }, " ORDER BY time_added DESC LIMIT 1 ");
+            if (blockDb.count() === 0)
+                throw new Error(`no block information retrieved on db`);
+            const block = blockDb.getItem();
+            const diff = timeStamp - block.time_added;
+            let blockNumber = block.blockNumber;
+            if (diff > (60 * 3)) { // 3 minutes
+                console.log(`retrieved block:${block.blockNumber} time_added:${block.time_added} is too far from query time:${timeStamp} difference of ${diff} seconds`);
+                let factor = Math.floor(diff / 3);
+                blockNumber = (blockNumber + factor) - 31;
+                console.log(`adjusting block from ${block.blockNumber} to ${blockNumber}`);
+            }
+            return eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
+        });
+    }
+    static getTokenBnbReserveByBlockNumber(blockNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getTokenBnbPairContract());
+            return { bnb: syncLog.reserve0, token: syncLog.reserve1 };
+        });
+    }
+    static getTokenBnbPriceByBlockNumber(blockNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const reserve = yield eth_worker.getTokenBnbReserveByBlockNumber(blockNumber);
+            return tools_1.tools.toBn(reserve.bnb.toString()).dividedBy(tools_1.tools.toBn(reserve.token.toString()));
+        });
+    }
+    static getTokenUsdPriceByBlockNumber(blockNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const bnb_usd = yield eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
+            const bnb_token = yield eth_worker.getTokenBnbPriceByBlockNumber(blockNumber);
+            return tools_1.tools.toBn(bnb_token.toString()).multipliedBy(tools_1.tools.toBn(bnb_usd.toString()));
         });
     }
 }
