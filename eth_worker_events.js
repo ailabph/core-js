@@ -17,9 +17,9 @@ const connection_1 = require("./connection");
 const eth_transaction_1 = require("./build/eth_transaction");
 const eth_worker_1 = require("./eth_worker");
 const eth_contract_events_1 = require("./build/eth_contract_events");
-const eth_block_1 = require("./build/eth_block");
 class eth_worker_events {
     static run() {
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             if (!eth_worker_events.hasRun) {
                 console.log(`running events worker on env:${config_1.config.getEnv()} rpc:${eth_config_1.eth_config.getRPCUrl()}`);
@@ -45,10 +45,10 @@ class eth_worker_events {
                     console.log(`analyzing ${transaction.hash} is_swap:${transaction.is_swap ? "yes" : "n"}`);
                     const result = yield eth_worker_1.eth_worker.analyzeTokenTransaction(transaction);
                     event.loadValues(result, true);
-                    const block = new eth_block_1.eth_block();
-                    // block.blockNumber = transaction.blockNumber;
-                    yield block.fetch();
-                    event.block_time = block.recordExists() ? block.time_added : 0;
+                    const block = yield eth_worker_1.eth_worker.getBlockByNumber((_a = transaction.blockNumber) !== null && _a !== void 0 ? _a : 0, true);
+                    if (!((_b = block.time_added) !== null && _b !== void 0 ? _b : 0 > 0))
+                        throw new Error(`no time_added information on block ${block.blockNumber}`);
+                    event.block_time = block.time_added;
                     yield event.save();
                     console.log(`${event.txn_hash} event added. method:${event.method} type:${event.type}`);
                     transaction.time_processed = tools_1.tools.getCurrentTimeStamp();

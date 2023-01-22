@@ -34,13 +34,9 @@ export class eth_worker_events{
                 console.log(`analyzing ${transaction.hash} is_swap:${transaction.is_swap?"yes":"n"}`);
                 const result = await eth_worker.analyzeTokenTransaction(transaction);
                 event.loadValues(result,true);
-                const block = new eth_block();
-                // block.blockNumber = transaction.blockNumber;
-
-
-                await block.fetch();
-
-                event.block_time = block.recordExists() ? block.time_added : 0;
+                const block = await eth_worker.getBlockByNumber(transaction.blockNumber??0,true);
+                if(!(block.time_added??0 > 0)) throw new Error(`no time_added information on block ${block.blockNumber}`);
+                event.block_time = block.time_added;
                 await event.save();
                 console.log(`${event.txn_hash} event added. method:${event.method} type:${event.type}`);
                 transaction.time_processed = tools.getCurrentTimeStamp();
