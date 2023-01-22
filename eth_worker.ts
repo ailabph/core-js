@@ -1,14 +1,14 @@
 import {BlockTransactionObject, BlockTransactionString, Transaction, TransactionReceipt} from "web3-eth/types"
 import {
     AnalysisResult,
-    AnalyzeLogsResult,
+    AnalyzeLogsResult, BnbUsdReserve,
     ContractInfo,
     eth_types,
     GasInfo,
     LogData,
     LogSigArgs,
     RESULT_SEND_STATUS,
-    RESULT_STATUS,
+    RESULT_STATUS, TokenBnbReserve,
     WalletInfo
 } from "./eth_types";
 import {DecodedAbiObject, eth_abi_decoder} from "./eth_abi_decoder";
@@ -18,7 +18,7 @@ import {eth_config} from "./eth_config";
 
 import {eth_tools} from "./eth_tools";
 
-import {DepositLog, eth_log_decoder, SwapLog, TransferLog, WithdrawalLog} from "./eth_log_decoder";
+import {DepositLog, eth_log_decoder, SwapLog, SyncLog, TransferLog, WithdrawalLog} from "./eth_log_decoder";
 
 import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_data} from "./build/eth_contract_data";
@@ -31,6 +31,8 @@ import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
 import {eth_receipt} from "./build/eth_receipt";
 import {eth_transaction_tools} from "./eth_transaction_tools";
 import {eth_transaction_known} from "./build/eth_transaction_known";
+import {eth_block} from "./build/eth_block";
+import {eth_receipt_logs} from "./build/eth_receipt_logs";
 
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
@@ -225,13 +227,34 @@ export class eth_worker{
 
     //endregion END OF UTILITIES
 
-
     //region GETTERS
+
+    public static async getLatestBlock():Promise<number>{
+        let latestBlock = -1;
+        const lastBlock = new eth_block();
+        await lastBlock.list(" WHERE 1 ",{}," ORDER BY id DESC, blockNumber DESC LIMIT 1 ");
+        if(lastBlock.count() > 0){
+            latestBlock = lastBlock.getItem().blockNumber;
+        }
+        // fallback
+        if(latestBlock < 0){
+            latestBlock = await eth_worker.getLatestBlockWeb3();
+        }
+        return latestBlock;
+    }
 
     static async getLatestBlockWeb3(): Promise<number> {
         return await Web3Client.eth.getBlockNumber();
     }
 
+    public static async getBlockByNumber(blockNumber:number,strict:boolean = false):Promise<eth_block>{
+        assert.isNumber(blockNumber,"blockNumber",0);
+        const block = new eth_block();
+        block.blockNumber = blockNumber;
+        await block.fetch();
+        if(strict && block.isNew()) throw new Error(`unable to retrieve block:${blockNumber} from db`);
+        return block;
+    }
     static async getBlockByNumberWeb3(blockNumber:number): Promise<BlockTransactionString>{
         return await Web3Client.eth.getBlock(blockNumber);
     }
@@ -276,7 +299,7 @@ export class eth_worker{
         txn_db.hash = txn_hash;
         await txn_db.fetch();
         if(txn_db.isNew()){
-            await this.getTxnByHash(txn_hash);
+            await eth_worker.getTxnByHash(txn_hash);
             txn_db.hash = txn_hash;
             await txn_db.fetch();
         }
@@ -1231,6 +1254,10 @@ export class eth_worker{
 
     //endregion
 
+    //region API
+
+    //endregion END OF API
+
     static importResultFromValuesFromLog(result: AnalysisResult, ContractInfo: ContractInfo,value: string): AnalysisResult{
         result.fromContract = ContractInfo.address;
         result.fromDecimal = ContractInfo.decimals;
@@ -1485,5 +1512,169 @@ export class eth_worker{
         } while (height < eth_config.getConfirmationNeeded());
         return true;
     }
+
+
+    public static async getTokenPriceInBUSD(tokenAddress: string, timestamp: number){
+        const logs = await Web3Client.eth.getPastLogs({address:"0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16",fromBlock:23989415,toBlock:23989415,topics:["0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1"]});
+        console.log(logs);
+        // get token symbol
+        // const symbol = await Web3Client.eth.call({
+        //     to: tokenAddress,
+        //     data: '0x95d89b41'
+        // });
+        // let contract = new Web3Client.eth.Contract(eth_config.getPancakePairAbi(), "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73");
+        // console.log(contract);
+
+        // const pairData = await Web3Client.eth.call({
+        //     to: "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
+        //     data: '0x6c3f8b37',
+        //     blockNumber: 16052476
+        // });
+        // console.log(pairData);
+
+        // const result = await contract.methods.symbol().call();
+        // console.log(result);
+        // console.log(symbol);
+        // const symbolHex = symbol.slice(2);
+        // const symbolDec = Web3Client.utils.hexToString(symbolHex);
+        // console.log(symbolDec);
+        // if (symbolDec === 'BUSD') return 1;
+        // // get token symbol
+        // const decimals = await Web3Client.eth.call({
+        //     to: tokenAddress,
+        //     data: '0x313ce567'
+        // });
+        // const decimalsHex = decimals.slice(2, 66);
+        // const decimalsDec = Web3Client.utils.hexToNumber(decimalsHex);
+        // // get pair address
+        // const pairAddress = await Web3Client.eth.call({
+        //     to: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+        //     data: '0x0357d2f2' + tokenAddress.slice(2) + '0x4fabb145d64652a948d72533023f6e7a623c7c53'
+        // });
+        //
+        // // get pair data
+        // const pairData = await Web3Client.eth.call({
+        //     to: pairAddress,
+        //     data: '0x6c3f8b37'
+        // });
+        // const pairDataArray = pairData.slice(2).match(/.{1,64}/g);
+        // const token0Reserve = parseInt(pairDataArray[0], 16);
+        // const token1Reserve = parseInt(pairDataArray[1], 16);
+        // const liquidity = parseInt(pairDataArray[2], 16);
+        //
+        // // get trade history
+        // const tradeHistory = await Web3Client.eth.call({
+        //     to: pairAddress,
+        //     data: '0x38a13df2'
+        // });
+        // const tradeHistoryArray = tradeHistory.slice(2).match(/.{1,64}/g);
+        // let totalBuy = new Web3Client.utils.BN(0);
+        // let totalSell = new Web3Client.utils.BN(0);
+        // for (let i = 0; i < tradeHistoryArray.length; i++) {
+        //     const trade = tradeHistoryArray[i];
+        //     const timestampTrade = parseInt(trade.slice(24, 64), 16);
+        //     if (timestampTrade <= timestamp) {
+        //         const buyAmount = new Web3Client.utils.BN(trade.slice(0, 24), 16);
+        //         const sellAmount = new Web3Client.utils.BN(trade.slice(64, 88), 16);
+        //         totalBuy = totalBuy.add(buyAmount);
+        //         totalSell = totalSell.add(sellAmount);
+        //     }
+        // }
+    }
+
+    //region RESERVE
+    public static async getPairAddress(token_1:string,token_2:string):Promise<string>{
+        const contract = new Web3Client.eth.Contract(eth_config.getPancakeFactoryAbi(), eth_config.getPancakeFactoryContract());
+        return contract.methods.getPair(token_1,token_2).call();
+    }
+
+    public static async getReserveByBlockNumber(blockNumber:number,pairContract:string):Promise<SyncLog>{
+        let sync_log:SyncLog|false = false;
+        const logDb = new eth_receipt_logs();
+        console.log(`attempting to search sync log of contract:${pairContract} in db`);
+        await logDb.list(" WHERE blockNumber=:blockNumber AND address=:address ",{blockNumber:blockNumber,address:pairContract});
+        if(logDb.count() > 0){
+            console.log(`sync log found`);
+            for(const log of logDb._dataList as eth_receipt_logs[]){
+                let check_sync_log = await eth_log_decoder.getSyncLog({
+                    address: log.address ?? "",
+                    blockHash: log.blockHash ?? "",
+                    blockNumber: log.blockNumber ?? 0,
+                    data: log.data ?? "",
+                    logIndex: log.logIndex ?? 0,
+                    topics: JSON.parse(log.topics ?? "[]"),
+                    transactionHash: log.transactionHash ?? "",
+                    transactionIndex: log.transactionIndex ?? 0
+                });
+                if(check_sync_log){
+                    sync_log = check_sync_log;
+                }
+            }
+        }
+        // fallback web3
+        else{
+            console.log(`not found in db, attempting to search sync log pair:${pairContract} in rpc`);
+            const logs = await Web3Client.eth.getPastLogs({address:pairContract,fromBlock:blockNumber,toBlock:blockNumber,topics:[eth_config.getSyncTopicSig()]});
+            if(logs.length === 0){
+                console.log(`not found for current block:${blockNumber}, trying on block:${--blockNumber}`);
+                return eth_worker.getReserveByBlockNumber(blockNumber,pairContract);
+            }
+            for(const log of logs){
+                sync_log = await eth_log_decoder.getSyncLog(log);
+                if(sync_log){
+                    console.log(`sync log found, adding on db`);
+                    await eth_worker.getDbTxnByHash(log.transactionHash);
+                    await eth_receipt_logs_tools.getReceiptLogs(log.transactionHash);
+                }
+            }
+        }
+        if(!sync_log) throw new Error(`unable to retrieve reserve of ${pairContract} in block:${blockNumber}`);
+        return sync_log;
+    }
+
+    public static async getBnbUsdReserveByBlockNumber(blockNumber:number):Promise<BnbUsdReserve>{
+        const syncLog = await eth_worker.getReserveByBlockNumber(blockNumber,eth_config.getBnbUsdPairContract());
+        return {bnb:syncLog.reserve0,usd:syncLog.reserve1};
+    }
+
+    public static async getBnbUsdPriceByBlockNumber(blockNumber:number):Promise<BigNumber>{
+        const reserve = await eth_worker.getBnbUsdReserveByBlockNumber(blockNumber);
+        return tools.toBn(reserve.usd.toString()).dividedBy(tools.toBn(reserve.bnb.toString()));
+    }
+
+    public static async getBnbUsdPriceByTime(timeStamp:number):Promise<BigNumber>{
+        console.log(`attempting to retrieve closest block on db for time:${timeStamp}`);
+        const blockDb = new eth_block();
+        await blockDb.list(" WHERE time_added <= :timeStamp ",{timeStamp:timeStamp}," ORDER BY time_added DESC LIMIT 1 ");
+        if(blockDb.count() === 0) throw new Error(`no block information retrieved on db`);
+        const block = blockDb.getItem();
+        const diff = timeStamp - block.time_added;
+        let blockNumber = block.blockNumber;
+        if(diff > (60 * 3)){ // 3 minutes
+            console.log(`retrieved block:${block.blockNumber} time_added:${block.time_added} is too far from query time:${timeStamp} difference of ${diff} seconds`);
+            let factor = Math.floor(diff / 3);
+            blockNumber = (blockNumber + factor) - 31;
+            console.log(`adjusting block from ${block.blockNumber} to ${blockNumber}`);
+        }
+        return eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
+    }
+
+    public static async getTokenBnbReserveByBlockNumber(blockNumber:number):Promise<TokenBnbReserve>{
+        const syncLog = await eth_worker.getReserveByBlockNumber(blockNumber,eth_config.getTokenBnbPairContract());
+        return {bnb:syncLog.reserve0,token:syncLog.reserve1};
+    }
+
+    public static async getTokenBnbPriceByBlockNumber(blockNumber:number):Promise<BigNumber>{
+        const reserve = await eth_worker.getTokenBnbReserveByBlockNumber(blockNumber);
+        return tools.toBn(reserve.bnb.toString()).dividedBy(tools.toBn(reserve.token.toString()));
+    }
+
+    public static async getTokenUsdPriceByBlockNumber(blockNumber:number):Promise<BigNumber>{
+        const bnb_usd = await eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
+        const bnb_token = await eth_worker.getTokenBnbPriceByBlockNumber(blockNumber);
+        return tools.toBn(bnb_token.toString()).multipliedBy(tools.toBn(bnb_usd.toString()));
+    }
+
+    //endregion
 
 }
