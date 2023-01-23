@@ -19,7 +19,7 @@ const eth_worker_1 = require("./eth_worker");
 const eth_contract_events_1 = require("./build/eth_contract_events");
 class eth_worker_events {
     static run() {
-        var _a, _b;
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             if (!eth_worker_events.hasRun) {
                 console.log(`running events worker on env:${config_1.config.getEnv()} rpc:${eth_config_1.eth_config.getRPCUrl()}`);
@@ -49,6 +49,25 @@ class eth_worker_events {
                     if (!((_b = block.time_added) !== null && _b !== void 0 ? _b : 0 > 0))
                         throw new Error(`no time_added information on block ${block.blockNumber}`);
                     event.block_time = block.time_added;
+                    event.blockNumber = block.blockNumber;
+                    event.tax_amount = result.taxAmount;
+                    event.tax_percentage = parseFloat(result.taxPerc);
+                    // set price context
+                    let token_amount = -1;
+                    if (event.type === "buy") {
+                        token_amount = (_c = event.toAmount) !== null && _c !== void 0 ? _c : -1;
+                    }
+                    else if (event.type === "sell" || event.type === "transfer") {
+                        token_amount = (_d = event.fromAmountGross) !== null && _d !== void 0 ? _d : -1;
+                    }
+                    if (token_amount < 0)
+                        throw new Error(`token_amount not established`);
+                    let bnb_usdBn = yield eth_worker_1.eth_worker.getBnbUsdPriceByBlockNumber(event.blockNumber);
+                    event.bnb_usd = bnb_usdBn.toFixed(18);
+                    let token_bnbBn = yield eth_worker_1.eth_worker.getTokenBnbPriceByBlockNumber(event.blockNumber);
+                    event.token_usd = token_bnbBn.toFixed(18);
+                    event.token_bnb_value = tools_1.tools.toBn(token_amount).multipliedBy(token_bnbBn).toFixed(18);
+                    event.token_usd_value = null;
                     yield event.save();
                     console.log(`${event.txn_hash} event added. method:${event.method} type:${event.type}`);
                     transaction.time_processed = tools_1.tools.getCurrentTimeStamp();

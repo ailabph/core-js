@@ -37,6 +37,27 @@ export class eth_worker_events{
                 const block = await eth_worker.getBlockByNumber(transaction.blockNumber??0,true);
                 if(!(block.time_added??0 > 0)) throw new Error(`no time_added information on block ${block.blockNumber}`);
                 event.block_time = block.time_added;
+                event.blockNumber = block.blockNumber;
+                event.tax_amount = result.taxAmount;
+                event.tax_percentage = parseFloat(result.taxPerc);
+
+                // set price context
+                let token_amount:number|string = -1;
+                if(event.type === "buy"){
+                    token_amount = event.toAmount??-1;
+                }
+                else if(event.type === "sell" || event.type === "transfer"){
+                    token_amount = event.fromAmountGross??-1;
+                }
+                if(token_amount < 0) throw new Error(`token_amount not established`);
+
+                let bnb_usdBn = await eth_worker.getBnbUsdPriceByBlockNumber(event.blockNumber);
+                event.bnb_usd = bnb_usdBn.toFixed(18);
+                let token_bnbBn = await eth_worker.getTokenBnbPriceByBlockNumber(event.blockNumber);
+                event.token_usd = token_bnbBn.toFixed(18);
+                event.token_bnb_value = tools.toBn(token_amount).multipliedBy(token_bnbBn).toFixed(18);
+                event.token_usd_value = null;
+
                 await event.save();
                 console.log(`${event.txn_hash} event added. method:${event.method} type:${event.type}`);
                 transaction.time_processed = tools.getCurrentTimeStamp();
