@@ -24,6 +24,7 @@ export class eth_worker_txn{
             if(unprocessedBlock.count() > 0) console.log(`${unprocessedBlock.count()} blocks to process found`);
             let totalTxnAddedUpdated = 0;
             for(const block of unprocessedBlock._dataList as eth_block[]){
+                if(!(block.time_added > 0)) throw new Error(`block time not available`);
                 // console.log(`retrieving transactions of block:${block.blockNumber} from rpc`);
                 const transactions = await eth_worker.getTxnByBlockNumberWeb3(block.blockNumber);
                 // console.log(`${transactions.transactions.length} transactions found`);
@@ -37,6 +38,7 @@ export class eth_worker_txn{
                         newTxn.loadValues(transaction,true);
                         newTxn.fromAddress = transaction.from;
                         newTxn.toAddress = transaction.to;
+                        newTxn.blockTime = block.time_added;
                         await newTxn.save();
                     }
                     // tag txn if involved
