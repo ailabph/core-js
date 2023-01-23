@@ -47,10 +47,60 @@ const fs = __importStar(require("fs"));
 const assert_1 = require("./assert");
 const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
+const dayjs_1 = __importDefault(require("dayjs"));
+const timezone_1 = __importDefault(require("dayjs/plugin/timezone"));
+const utc_1 = __importDefault(require("dayjs/plugin/utc"));
+const config_1 = require("./config");
 class tools {
-    static getCurrentTimeStamp() {
-        return new Date() / 1000 | 0;
+    static timeInit() {
+        if (tools.hasTimeInit)
+            return;
+        dayjs_1.default.extend(utc_1.default);
+        dayjs_1.default.extend(timezone_1.default);
+        tools.hasTimeInit = true;
     }
+    static getTimeZone() {
+        const timezone = config_1.config.getCustomOption("timezone");
+        if (!tools.isEmpty(timezone))
+            return timezone;
+        return "Asia/Manila";
+    }
+    static getTime(time = null) {
+        tools.timeInit();
+        let to_return = undefined;
+        if (time === null) {
+            to_return = (0, dayjs_1.default)();
+        }
+        else if (typeof time === "number" || typeof time === "string") {
+            if (tools.isUnixTimestamp(time)) {
+                to_return = dayjs_1.default.unix(assert_1.assert.isNumber(time, "time", 0));
+            }
+            else if (tools.isMilliseconds(time)) {
+                to_return = dayjs_1.default.unix(assert_1.assert.isNumber(time, "time", 0));
+            }
+            else {
+                to_return = (0, dayjs_1.default)(time);
+            }
+            if (to_return === undefined)
+                throw new Error(`unable to create time object from passed argument:${time}`);
+        }
+        else {
+            to_return = time;
+        }
+        to_return.tz(tools.getTimeZone());
+        return to_return;
+    }
+    static isUnixTimestamp(timestamp) {
+        return Number.isInteger(timestamp) && timestamp >= 0;
+    }
+    static isMilliseconds(timestamp) {
+        return Number.isInteger(timestamp) && timestamp >= 0 && timestamp % 1000 === 0;
+    }
+    static getCurrentTimeStamp() {
+        return tools.getTime().unix();
+        // return (new Date() as unknown as number) / 1000 | 0;
+    }
+    //region END TIME
     static isset(obj, prop) {
         return obj.hasOwnProperty(prop) && typeof obj[prop] !== "undefined" && obj[prop] != null;
     }
@@ -250,6 +300,8 @@ class tools {
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";
+//region TIME
+tools.hasTimeInit = false;
 tools.STRING = "string";
 tools.NUMBER = "number";
 tools.BOOLEAN = "boolean";

@@ -2,14 +2,63 @@ import * as fs from "fs";
 import {assert} from "./assert";
 import fsPromise from "fs/promises";
 import BigNumber from "bignumber.js";
+import dayjs, {Dayjs} from "dayjs";
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+import {config} from "./config";
 
 export class tools{
 
     public static BASE_DIR = "..";
 
-    public static getCurrentTimeStamp():number{
-        return (new Date() as unknown as number) / 1000 | 0;
+    //region TIME
+    private static hasTimeInit:boolean = false;
+    private static timeInit(){
+        if(tools.hasTimeInit) return;
+        dayjs.extend(utc);
+        dayjs.extend(timezone);
+        tools.hasTimeInit = true;
     }
+    private static getTimeZone():string{
+        const timezone = config.getCustomOption("timezone") as string;
+        if(!tools.isEmpty(timezone)) return timezone;
+        return "Asia/Manila";
+    }
+    public static getTime(time:number|string|Dayjs|null = null):Dayjs{
+        tools.timeInit();
+        let to_return:Dayjs|undefined = undefined;
+        if(time === null){
+            to_return = dayjs();
+        }
+        else if(typeof time === "number" || typeof time === "string"){
+            if(tools.isUnixTimestamp(time)){
+                to_return = dayjs.unix(assert.isNumber( time,"time",0));
+            }
+            else if(tools.isMilliseconds(time)){
+                to_return = dayjs.unix(assert.isNumber(time,"time",0));
+            }
+            else{
+                to_return = dayjs(time);
+            }
+            if(to_return === undefined) throw new Error(`unable to create time object from passed argument:${time}`);
+        }
+        else{
+            to_return = time;
+        }
+        to_return.tz(tools.getTimeZone());
+        return to_return;
+    }
+    public static isUnixTimestamp(timestamp: any): boolean {
+        return Number.isInteger(timestamp) && timestamp >= 0;
+    }
+    public static isMilliseconds(timestamp: any): boolean {
+        return Number.isInteger(timestamp) && timestamp >= 0 && timestamp % 1000 === 0;
+    }
+    public static getCurrentTimeStamp():number{
+        return tools.getTime().unix();
+        // return (new Date() as unknown as number) / 1000 | 0;
+    }
+    //region END TIME
 
     public static isset(obj:{[key:string]:any}, prop:string): boolean{
         return obj.hasOwnProperty(prop) && typeof obj[prop] !== "undefined" && obj[prop] != null;
