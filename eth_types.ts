@@ -36,7 +36,12 @@ export class eth_types{
             toValue: "",
             taxPerc:"0",
             taxAmount:"0",
-            type: ""
+            type: "",
+            bnb_usd:"0",
+            token_bnb:"0",
+            token_usd:"0",
+            token_bnb_value:"0",
+            token_usd_value:"0",
         };
         if(eth){
             result = tools.importObjectValuesInto<eth_transaction,AnalysisResult>(eth,result);
@@ -96,6 +101,11 @@ type AnalysisResult = {
     taxAmount: string,
     abiDecodeStatus: string,
     sendStatus: RESULT_SEND_STATUS,
+    bnb_usd:string,
+    token_bnb:string,
+    token_usd:string,
+    token_bnb_value:string,
+    token_usd_value:string,
 }
 export { AnalysisResult };
 

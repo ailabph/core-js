@@ -35,7 +35,12 @@ class eth_types {
             toValue: "",
             taxPerc: "0",
             taxAmount: "0",
-            type: ""
+            type: "",
+            bnb_usd: "0",
+            token_bnb: "0",
+            token_usd: "0",
+            token_bnb_value: "0",
+            token_usd_value: "0",
         };
         if (eth) {
             result = tools_1.tools.importObjectValuesInto(eth, result);
