@@ -494,6 +494,12 @@ class eth_worker {
             return yield Web3Client.eth.getTransactionCount(eth_config_1.eth_config.getHotWalletAddress());
         });
     }
+    static getPairAddress(token_1, token_2) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getPancakeFactoryAbi(), eth_config_1.eth_config.getPancakeFactoryContract());
+            return contract.methods.getPair(token_1, token_2).call();
+        });
+    }
     //endregion
     //region ANALYZE TOOL
     static analyzeTransaction2(_txn_hash) {
@@ -583,6 +589,12 @@ class eth_worker {
             result.method = abi ? abi.abi.name : "unknown";
             if (result.sendStatus !== eth_types_1.RESULT_SEND_STATUS.SUCCESS)
                 return result;
+            if (typeof txn.blockTime !== "number" || !(txn.blockTime > 0)) {
+                const block = yield eth_worker.getBlockByNumber(assert_1.assert.isNumber(txn.blockNumber, "txn.blockNumber", 0));
+                txn.blockTime = assert_1.assert.isNumber(block.time_added, "block.time_added", 0);
+                yield txn.save();
+            }
+            result.block_time = txn.blockTime;
             const firstTransfer1 = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(txn.hash, "transfer");
             const lastTransfer1 = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "transfer");
             if (result.method.toLowerCase() === "approve")
@@ -685,6 +697,13 @@ class eth_worker {
                     result.taxPerc = tools_1.tools.toBn(result.taxAmount).dividedBy(tools_1.tools.toBn(token_amount)).toString();
                 }
             }
+            // set price info
+            const token_amount = result.type === "buy" ? result.toAmount : result.fromAmount;
+            result.bnb_usd = (yield eth_worker.getBnbUsdPriceByBlockNumber(result.blockNumber)).toFixed(18);
+            result.token_bnb = (yield eth_worker.getTokenBnbPriceByBlockNumber(result.blockNumber)).toFixed(18);
+            result.token_usd = (yield eth_worker.getTokenUsdPriceByBlockNumber(result.blockNumber)).toFixed(18);
+            result.token_bnb_value = tools_1.tools.toBn(token_amount).multipliedBy(tools_1.tools.toBn(result.token_bnb)).toFixed(18);
+            result.token_usd_value = tools_1.tools.toBn(token_amount).multipliedBy(tools_1.tools.toBn(result.token_usd)).toFixed(18);
             return result;
         });
     }
@@ -1520,13 +1539,7 @@ class eth_worker {
             // }
         });
     }
-    //region RESERVE
-    static getPairAddress(token_1, token_2) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getPancakeFactoryAbi(), eth_config_1.eth_config.getPancakeFactoryContract());
-            return contract.methods.getPair(token_1, token_2).call();
-        });
-    }
+    //region PRICE
     static getReserveByBlockNumber(blockNumber, pairContract) {
         var _a, _b, _c, _d, _e, _f, _g, _h;
         return __awaiter(this, void 0, void 0, function* () {
@@ -1574,6 +1587,7 @@ class eth_worker {
             return sync_log;
         });
     }
+    // BNB USD PAIR
     static getBnbUsdReserveByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getBnbUsdPairContract());
@@ -1605,6 +1619,22 @@ class eth_worker {
             return eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
         });
     }
+    static getBnbUsdValueByTime(amount, timeStamp) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getBnbUsdPriceByHash(txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getBnbUsdValueByHash(amount, txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    // BNB TOKEN PAIR
     static getTokenBnbReserveByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getTokenBnbPairContract());
@@ -1622,6 +1652,36 @@ class eth_worker {
             const bnb_usd = yield eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
             const bnb_token = yield eth_worker.getTokenBnbPriceByBlockNumber(blockNumber);
             return tools_1.tools.toBn(bnb_token.toString()).multipliedBy(tools_1.tools.toBn(bnb_usd.toString()));
+        });
+    }
+    static getTokenBnbValueByTime(amount, timeStamp) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getTokenUsdValueByTime(amount, timeStamp) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getTokenBnbPriceByHash(txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getTokenUsdPriceByHash(txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getTokenBnbValueByHash(amount, txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
+        });
+    }
+    static getTokenUsdValueByHash(amount, txn_hash) {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error(`for implementation`);
         });
     }
 }
