@@ -19,6 +19,8 @@ enum TRADE_BUY_SELL_STATUS {
     FAILED = "failed",
 }
 
+export { TRADE_BUY_SELL_STATUS }
+
 export class eth_worker_trade_strategy{
 
     private static start_time:number = -1;
@@ -142,7 +144,7 @@ export class eth_worker_trade_strategy{
     }
 
     //region GETTERS
-    public static async getBuyTax():Promise<number>{
+    private static async getBuyTax():Promise<number>{
         let buy_tax = 0;
         const recentBuy = new eth_contract_events();
         await recentBuy.list(" WHERE type=:buy ",{buy:"buy"}," ORDER BY blockNumber DESC, id DESC LIMIT 1 ");
@@ -152,7 +154,7 @@ export class eth_worker_trade_strategy{
         return buy_tax;
     }
 
-    public static async getSellTax():Promise<number>{
+    private static async getSellTax():Promise<number>{
         let sell_tax = 0;
         const recentSell = new eth_contract_events();
         await recentSell.list(" WHERE type=:sell ",{sell:"sell"}," ORDER BY blockNumber DESC, id DESC LIMIT 1 ");
@@ -162,33 +164,33 @@ export class eth_worker_trade_strategy{
         return sell_tax;
     }
 
-    public static async getOpenTrades():Promise<eth_trade>{
+    private static async getOpenTrades():Promise<eth_trade>{
         const openTrades = new eth_trade();
         await openTrades.list(" WHERE status=:open ",{open:TRADE_STATUS.OPEN}," ORDER BY id ASC ");
         return openTrades;
     }
 
-    public static getTargetProfit():number{
+    private static getTargetProfit():number{
         return 0.1; // 10%
     }
 
-    public static getStopLoss():number{
+    private static getStopLoss():number{
         return -0.2; // -20%
     }
 
-    public static getMinimumBuyUsd():number{
+    private static getMinimumBuyUsd():number{
         return 30;
     }
 
-    public static getMaximumBuyUsd():number{
+    private static getMaximumBuyUsd():number{
         return 50;
     }
 
-    public static generateRandomBuyAmount():number{
+    private static generateRandomBuyAmount():number{
         return tools.generateRandomNumber(eth_worker_trade_strategy.getMinimumBuyUsd(),eth_worker_trade_strategy.getMaximumBuyUsd());
     }
 
-    public static getRandomMinutesInSeconds(from_min:number = 3,to_min:number = 5):number{
+    private static getRandomMinutesInSeconds(from_min:number = 3,to_min:number = 5):number{
         const min = from_min * 60;
         const max = to_min * 60;
         return Math.abs(tools.generateRandomNumber(min,max));

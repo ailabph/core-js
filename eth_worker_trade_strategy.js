@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.eth_worker_trade_strategy = exports.TRADE_STATUS = void 0;
+exports.eth_worker_trade_strategy = exports.TRADE_BUY_SELL_STATUS = exports.TRADE_STATUS = void 0;
 const eth_contract_events_1 = require("./build/eth_contract_events");
 const assert_1 = require("./assert");
 const eth_trade_1 = require("./build/eth_trade");
@@ -30,6 +30,7 @@ var TRADE_BUY_SELL_STATUS;
     TRADE_BUY_SELL_STATUS["DONE"] = "done";
     TRADE_BUY_SELL_STATUS["FAILED"] = "failed";
 })(TRADE_BUY_SELL_STATUS || (TRADE_BUY_SELL_STATUS = {}));
+exports.TRADE_BUY_SELL_STATUS = TRADE_BUY_SELL_STATUS;
 class eth_worker_trade_strategy {
     // note: no web3 implementation in this class
     static run() {
