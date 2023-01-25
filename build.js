@@ -33,12 +33,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.build = void 0;
-const connection_1 = require("./connection");
-const config_1 = require("./config");
+const ailab_core_1 = require("./ailab-core");
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
-const tools_1 = require("./tools");
-const dataObject_1 = require("./dataObject");
 const fs = __importStar(require("fs"));
 const handlebars = __importStar(require("handlebars"));
 const TableDataPropertyCodec = t.type({
@@ -52,17 +49,17 @@ const TableDataPropertyCodec = t.type({
 class build {
     static run(target_dir, target_dataObject = "./dataObject", restrict_to_local = true) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (restrict_to_local && config_1.config.getEnv() != config_1.config.ENV.local) {
+            if (restrict_to_local && ailab_core_1.config.getEnv() != ailab_core_1.config.ENV.local) {
                 throw new Error("unable to run orm build on a non-local environment");
             }
             if (typeof target_dir === "undefined")
-                target_dir = config_1.config.getBaseDirectory();
-            if (config_1.config.getConfig().verbose_log)
+                target_dir = ailab_core_1.config.getBaseDirectory();
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log(`running orm build on ${target_dir}`);
             let tables = yield build.getTablesInfo();
             for (let index in tables) {
                 let table = tables[index];
-                if (config_1.config.getConfig().verbose_log)
+                if (ailab_core_1.config.getConfig().verbose_log)
                     console.log("creating db orm class for " + table.table_name);
                 let tpl = yield fs.promises.readFile(__dirname + "/dataObject_template.hbs", "utf-8");
                 let template = handlebars.compile(tpl);
@@ -76,70 +73,70 @@ class build {
     }
     static getTablesInfo() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (config_1.config.getConfig().verbose_log)
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log("retrieving tables information");
-            build.connection = (yield connection_1.connection.getConnection());
+            build.connection = (yield ailab_core_1.connection.getConnection());
             let tables = yield build.initiateAndRetrieveTableNames();
-            if (config_1.config.getConfig().verbose_log)
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log(`found table:${tables.length}`);
             for (let i = 0; i < tables.length; i++) {
-                if (config_1.config.getConfig().verbose_log)
+                if (ailab_core_1.config.getConfig().verbose_log)
                     console.log(`processing table properties of ${tables[i].table_name}`);
                 let table = yield build.retrieveTableProperties(tables[i]);
-                if (config_1.config.getConfig().verbose_log)
+                if (ailab_core_1.config.getConfig().verbose_log)
                     console.log(`properties retrieved`);
                 for (let tableProperty of table.properties) {
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`populating data_properties`);
                     table.data_properties.push(tableProperty.Field);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`populating data_property_types`);
                     table.data_property_types[tableProperty.Field] = tableProperty.Type;
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting keys`);
                     build.parseAndCollectKeys(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting primary keys`);
                     build.parseAndCollectPrimaryKeys(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting unique keys`);
                     build.parseAndCollectUniqueKeys(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting auto increment`);
                     build.parseAndCollectAutoIncrement(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting required properties`);
                     build.parseAndCollectRequiredProperties(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`parse and collecting property index`);
                     build.parseAndCollectPropertiesIndex(table, tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`setting object types`);
                     build.setObjectType(tableProperty);
-                    if (config_1.config.getConfig().verbose_log)
+                    if (ailab_core_1.config.getConfig().verbose_log)
                         console.log(`setting default values`);
                     build.setDefaultValues(tableProperty);
                 }
-                table.data_propertiesString = tools_1.tools.convertArrayOfStringToString(table.data_properties, ",", "'");
-                table.data_property_typesString = tools_1.tools.convertArrayOfStringToString(table.data_property_types, ",", "", true);
-                table.dataKeysString = tools_1.tools.convertArrayOfStringToString(table.dataKeys, ",", "'");
-                table.dataKeysPrimaryString = tools_1.tools.convertArrayOfStringToString(table.dataKeysPrimary, ",", "'");
-                table.dataKeysUniqueString = tools_1.tools.convertArrayOfStringToString(table.dataKeysUnique, ",", "'");
-                table.dataKeysAutoIncString = tools_1.tools.convertArrayOfStringToString(table.dataKeysAutoInc, ",", "'");
-                table.requiredString = tools_1.tools.convertArrayOfStringToString(table.required, ",", "'");
-                table.data_properties_indexString = tools_1.tools.convertArrayOfStringToString(table.data_properties_index, ",", "'");
+                table.data_propertiesString = ailab_core_1.tools.convertArrayOfStringToString(table.data_properties, ",", "'");
+                table.data_property_typesString = ailab_core_1.tools.convertArrayOfStringToString(table.data_property_types, ",", "", true);
+                table.dataKeysString = ailab_core_1.tools.convertArrayOfStringToString(table.dataKeys, ",", "'");
+                table.dataKeysPrimaryString = ailab_core_1.tools.convertArrayOfStringToString(table.dataKeysPrimary, ",", "'");
+                table.dataKeysUniqueString = ailab_core_1.tools.convertArrayOfStringToString(table.dataKeysUnique, ",", "'");
+                table.dataKeysAutoIncString = ailab_core_1.tools.convertArrayOfStringToString(table.dataKeysAutoInc, ",", "'");
+                table.requiredString = ailab_core_1.tools.convertArrayOfStringToString(table.required, ",", "'");
+                table.data_properties_indexString = ailab_core_1.tools.convertArrayOfStringToString(table.data_properties_index, ",", "'");
             }
             return tables;
         });
     }
     static initiateAndRetrieveTableNames() {
         return __awaiter(this, void 0, void 0, function* () {
-            let result = yield connection_1.connection.execute({ sql: "SHOW TABLES" });
+            let result = yield ailab_core_1.connection.execute({ sql: "SHOW TABLES" });
             let tablesData = [];
             for (let i = 0; i < result.length; i++) {
                 let table = result[i];
                 let tableHeader = {
-                    table_name: table[`Tables_in_${config_1.config.getConfig().db_name}`],
+                    table_name: table[`Tables_in_${ailab_core_1.config.getConfig().db_name}`],
                     dataKeys: [],
                     dataKeysAutoInc: [],
                     dataKeysAutoIncString: "",
@@ -165,7 +162,7 @@ class build {
     }
     static retrieveTableProperties(dataHeader) {
         return __awaiter(this, void 0, void 0, function* () {
-            let result = yield connection_1.connection.execute({ sql: `DESCRIBE ${dataHeader.table_name}` });
+            let result = yield ailab_core_1.connection.execute({ sql: `DESCRIBE ${dataHeader.table_name}` });
             for (let i = 0; i < result.length; i++) {
                 let prop = result[i];
                 let propCodec = TableDataPropertyCodec.decode(prop);
@@ -213,7 +210,7 @@ class build {
         }
     }
     static setObjectType(property) {
-        property.object_types = tools_1.tools.getTypeFromSqlType(property.Type);
+        property.object_types = ailab_core_1.tools.getTypeFromSqlType(property.Type);
         if (property.Null === "YES" || property.Extra === "auto_increment") {
             property.object_types += "|null";
         }
@@ -223,11 +220,11 @@ class build {
             property.default_value = "null";
         }
         else {
-            if (property.object_types === tools_1.tools.NUMBER) {
-                property.default_value = property.Default === null ? dataObject_1.dataObject.UNDEFINED_NUMBER : property.Default;
+            if (property.object_types === ailab_core_1.tools.NUMBER) {
+                property.default_value = property.Default === null ? ailab_core_1.dataObject.UNDEFINED_NUMBER : property.Default;
             }
-            else if (property.object_types === tools_1.tools.STRING) {
-                property.default_value = property.Default === null ? `'${dataObject_1.dataObject.UNDEFINED_STRING}'` : `'${property.Default}'`;
+            else if (property.object_types === ailab_core_1.tools.STRING) {
+                property.default_value = property.Default === null ? `'${ailab_core_1.dataObject.UNDEFINED_STRING}'` : `'${property.Default}'`;
             }
         }
     }

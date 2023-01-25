@@ -9,16 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const build_1 = require("./build");
-const connection_1 = require("./connection");
+const ailab_core_1 = require("./ailab-core");
 describe("build spec", () => {
     beforeEach(() => __awaiter(void 0, void 0, void 0, function* () {
-        yield connection_1.connection.startTransaction();
+        yield ailab_core_1.connection.startTransaction();
     }));
     afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
-        yield connection_1.connection.rollback();
+        yield ailab_core_1.connection.rollback();
     }));
     it("test tables info", () => __awaiter(void 0, void 0, void 0, function* () {
-        yield build_1.build.run("build", "../dataObject");
+        yield ailab_core_1.build.run("build", "../dataObject");
     }));
 });

@@ -1,11 +1,8 @@
 
-import {connection} from "./connection";
-import {PoolConnection} from "mysql2/promise";
-import {config} from "./config";
+import { connection, config, dataObject, tools } from "./ailab-core";
+import { PoolConnection } from "mysql2/promise";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
-import {tools} from "./tools";
-import {dataObject} from "./dataObject";
 import * as fs from "fs";
 import * as handlebars from "handlebars";
 

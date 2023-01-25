@@ -1,9 +1,4 @@
-import * as assert from "assert";
-import {expect} from "chai";
-import {config} from "./config";
-import {build} from "./build";
-import {connection} from "./connection";
-import {tools} from "./tools";
+import {build, connection} from "./ailab-core";
 
 describe("build spec",()=>{
 
