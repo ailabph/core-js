@@ -43,14 +43,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tools = void 0;
+const ailab_core_1 = require("./ailab-core");
 const fs = __importStar(require("fs"));
-const assert_1 = require("./assert");
 const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
 const dayjs_1 = __importDefault(require("dayjs"));
 const timezone_1 = __importDefault(require("dayjs/plugin/timezone"));
 const utc_1 = __importDefault(require("dayjs/plugin/utc"));
-const config_1 = require("./config");
 class tools {
     static timeInit() {
         if (tools.hasTimeInit)
@@ -60,7 +59,7 @@ class tools {
         tools.hasTimeInit = true;
     }
     static getTimeZone() {
-        const timezone = config_1.config.getCustomOption("timezone");
+        const timezone = ailab_core_1.config.getCustomOption("timezone");
         if (!tools.isEmpty(timezone))
             return timezone;
         return "Asia/Manila";
@@ -73,10 +72,10 @@ class tools {
         }
         else if (typeof time === "number" || typeof time === "string") {
             if (tools.isUnixTimestamp(time)) {
-                to_return = dayjs_1.default.unix(assert_1.assert.isNumber(time, "time", 0));
+                to_return = dayjs_1.default.unix(ailab_core_1.assert.isNumber(time, "time", 0));
             }
             else if (tools.isMilliseconds(time)) {
-                to_return = dayjs_1.default.unix(assert_1.assert.isNumber(time, "time", 0));
+                to_return = dayjs_1.default.unix(ailab_core_1.assert.isNumber(time, "time", 0));
             }
             else {
                 to_return = (0, dayjs_1.default)(time);
@@ -192,22 +191,29 @@ class tools {
         });
     }
     static restructureDataFile(sourceFilePath, targetFilePath, separator, targetIndex) {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.fileExists(sourceFilePath);
+            ailab_core_1.assert.fileExists(sourceFilePath);
             const file = yield promises_1.default.open(sourceFilePath, 'r');
             let data = [];
             try {
-                for (var _b = __asyncValues(file.readLines()), _c; _c = yield _b.next(), !_c.done;) {
-                    const line = _c.value;
-                    const parts = line.split(separator);
-                    data.push(parts[targetIndex]);
+                for (var _d = true, _e = __asyncValues(file.readLines()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                    _c = _f.value;
+                    _d = false;
+                    try {
+                        const line = _c;
+                        const parts = line.split(separator);
+                        data.push(parts[targetIndex]);
+                    }
+                    finally {
+                        _d = true;
+                    }
                 }
             }
             catch (e_1_1) { e_1 = { error: e_1_1 }; }
             finally {
                 try {
-                    if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
                 }
                 finally { if (e_1) throw e_1.error; }
             }
@@ -274,7 +280,7 @@ class tools {
     //region FILE
     static writeIntoFileArrayOfStrings(filePath, lines) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (assert_1.assert.fileExists(filePath, false)) {
+            if (ailab_core_1.assert.fileExists(filePath, false)) {
                 yield fs.promises.writeFile(filePath, '');
             }
             else {
