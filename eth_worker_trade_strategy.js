@@ -10,12 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_worker_trade_strategy = exports.TRADE_BUY_SELL_STATUS = exports.TRADE_STATUS = void 0;
+const ailab_core_1 = require("./ailab-core");
 const eth_contract_events_1 = require("./build/eth_contract_events");
-const assert_1 = require("./assert");
 const eth_trade_1 = require("./build/eth_trade");
-const tools_1 = require("./tools");
-const connection_1 = require("./connection");
-const eth_config_1 = require("./eth_config");
 var TRADE_STATUS;
 (function (TRADE_STATUS) {
     TRADE_STATUS["OPEN"] = "open";
@@ -36,7 +33,7 @@ class eth_worker_trade_strategy {
     static run() {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.start_time < 0) {
-                const currentTime = tools_1.tools.getTime();
+                const currentTime = ailab_core_1.tools.getTime();
                 this.log(`running strategy worker | ${currentTime.format()}`);
                 this.start_time = currentTime.unix();
                 this.buy_tax = yield eth_worker_trade_strategy.getBuyTax();
@@ -48,22 +45,22 @@ class eth_worker_trade_strategy {
                 this.log(`target_profit:${this.target_profit_percentage}`);
                 this.log(`stop_loss:${this.stop_loss}`);
             }
-            yield connection_1.connection.startTransaction();
+            yield ailab_core_1.connection.startTransaction();
             try {
                 // get last trade event unprocessed
                 const unprocessed_trade_event = new eth_contract_events_1.eth_contract_events();
                 yield unprocessed_trade_event.list(" WHERE time_strategy_processed IS NULL AND block_time > :from  ", { from: this.start_time }, " ORDER BY blockNumber ASC, id ASC LIMIT 1 ");
                 if (unprocessed_trade_event.count() > 0) {
                     for (const event of unprocessed_trade_event._dataList) {
-                        const current_bnb_usd = assert_1.assert.isNumber(event.bnb_usd, "bnb_usd", 0);
-                        const current_bnb_token = assert_1.assert.isNumber(event.token_bnb, "token_bnb", 0);
+                        const current_bnb_usd = ailab_core_1.assert.isNumber(event.bnb_usd, "bnb_usd", 0);
+                        const current_bnb_token = ailab_core_1.assert.isNumber(event.token_bnb, "token_bnb", 0);
                         if (event.type === "sell") {
                             let buy_remarks = [];
                             buy_remarks.push(this.log(`sell trade detected from ${event.txn_hash}`));
-                            let sell_value = assert_1.assert.isNumber(event.token_usd_value, "token_usd_value", 0);
+                            let sell_value = ailab_core_1.assert.isNumber(event.token_usd_value, "token_usd_value", 0);
                             buy_remarks.push(this.log(`sold ${event.fromAmountGross} ${event.fromSymbol} USD value ${event.token_usd_value}`));
                             let total_base_buy_usd_value = 0;
-                            let target_buy_time = tools_1.tools.getCurrentTimeStamp();
+                            let target_buy_time = ailab_core_1.tools.getCurrentTimeStamp();
                             while (total_base_buy_usd_value < sell_value) {
                                 buy_remarks.push(this.log(`bnb_usd:${current_bnb_usd}`));
                                 const target_buy_usd_value = eth_worker_trade_strategy.generateRandomBuyAmount();
@@ -71,19 +68,19 @@ class eth_worker_trade_strategy {
                                 total_base_buy_usd_value += target_buy_usd_value;
                                 const base_amount = target_buy_usd_value / current_bnb_usd;
                                 buy_remarks.push(this.log(`estimated bnb buy amount:${base_amount}`));
-                                buy_remarks.push(this.log(`adding buy order of token ${eth_config_1.eth_config.getTokenSymbol()} for bnb:${base_amount} to be executed on ${tools_1.tools.getTime(target_buy_time).format()})`));
+                                buy_remarks.push(this.log(`adding buy order of token ${ailab_core_1.eth_config.getTokenSymbol()} for bnb:${base_amount} to be executed on ${ailab_core_1.tools.getTime(target_buy_time).format()})`));
                                 const newTrade = new eth_trade_1.eth_trade();
-                                newTrade.pair = `${eth_config_1.eth_config.getEthSymbol()}${eth_config_1.eth_config.getTokenSymbol()}`;
-                                newTrade.base_contract = eth_config_1.eth_config.getEthContract();
-                                newTrade.base_symbol = eth_config_1.eth_config.getEthSymbol();
-                                newTrade.base_decimal = eth_config_1.eth_config.getEthDecimal();
-                                newTrade.quote_contract = eth_config_1.eth_config.getTokenContract();
-                                newTrade.quote_symbol = eth_config_1.eth_config.getTokenSymbol();
-                                newTrade.quote_decimal = eth_config_1.eth_config.getTokenDecimal();
-                                newTrade.open_time_added = tools_1.tools.getCurrentTimeStamp();
+                                newTrade.pair = `${ailab_core_1.eth_config.getEthSymbol()}${ailab_core_1.eth_config.getTokenSymbol()}`;
+                                newTrade.base_contract = ailab_core_1.eth_config.getEthContract();
+                                newTrade.base_symbol = ailab_core_1.eth_config.getEthSymbol();
+                                newTrade.base_decimal = ailab_core_1.eth_config.getEthDecimal();
+                                newTrade.quote_contract = ailab_core_1.eth_config.getTokenContract();
+                                newTrade.quote_symbol = ailab_core_1.eth_config.getTokenSymbol();
+                                newTrade.quote_decimal = ailab_core_1.eth_config.getTokenDecimal();
+                                newTrade.open_time_added = ailab_core_1.tools.getCurrentTimeStamp();
                                 newTrade.open_time_executed = target_buy_time;
-                                newTrade.open_base_amount = tools_1.tools.toBn(base_amount).toFixed(18);
-                                newTrade.open_desired_usd_value = tools_1.tools.toBn(target_buy_usd_value).toFixed(18);
+                                newTrade.open_base_amount = ailab_core_1.tools.toBn(base_amount).toFixed(18);
+                                newTrade.open_desired_usd_value = ailab_core_1.tools.toBn(target_buy_usd_value).toFixed(18);
                                 newTrade.open_remarks = JSON.stringify(buy_remarks);
                                 newTrade.open_status = TRADE_BUY_SELL_STATUS.PENDING;
                                 newTrade.status = TRADE_STATUS.OPEN;
@@ -94,41 +91,41 @@ class eth_worker_trade_strategy {
                         const openTrades = yield eth_worker_trade_strategy.getOpenTrades();
                         for (const open_trade of openTrades._dataList) {
                             let sell_remarks = [];
-                            const open_bnb_token = assert_1.assert.isNumber(open_trade.open_bnb_token, "open_bnb_token", 0);
-                            const diff = tools_1.tools.toBn(current_bnb_token).minus(tools_1.tools.toBn(open_bnb_token));
-                            const diff_percentage = diff.dividedBy(tools_1.tools.toBn(open_bnb_token));
+                            const open_bnb_token = ailab_core_1.assert.isNumber(open_trade.open_bnb_token, "open_bnb_token", 0);
+                            const diff = ailab_core_1.tools.toBn(current_bnb_token).minus(ailab_core_1.tools.toBn(open_bnb_token));
+                            const diff_percentage = diff.dividedBy(ailab_core_1.tools.toBn(open_bnb_token));
                             let close_trade = false;
                             sell_remarks.push(this.log(`checking open trade id:${open_trade.id}`));
                             sell_remarks.push(this.log(`open_bnb_token:${open_bnb_token}`));
                             sell_remarks.push(this.log(`current_bnb_token:${current_bnb_token}`));
                             sell_remarks.push(this.log(`diff_percentage:${diff_percentage.toFixed(18)}`));
                             // target reached
-                            if (diff_percentage.comparedTo(tools_1.tools.toBn(this.target_profit_percentage)) === 1) {
+                            if (diff_percentage.comparedTo(ailab_core_1.tools.toBn(this.target_profit_percentage)) === 1) {
                                 close_trade = true;
                                 sell_remarks.push(this.log(`target reached, closing trade`));
                             }
                             // if not yet closed and stop loss
-                            if (open_trade.status === TRADE_STATUS.OPEN && diff_percentage.comparedTo(tools_1.tools.toBn(this.stop_loss)) === -1) {
+                            if (open_trade.status === TRADE_STATUS.OPEN && diff_percentage.comparedTo(ailab_core_1.tools.toBn(this.stop_loss)) === -1) {
                                 close_trade = true;
                                 sell_remarks.push(this.log(`stop loss reached, closing trade`));
                             }
                             if (close_trade) {
                                 open_trade.close_quote_amount = open_trade.open_quote_amount;
                                 open_trade.close_status = TRADE_BUY_SELL_STATUS.PENDING;
-                                open_trade.close_time_added = tools_1.tools.getCurrentTimeStamp();
-                                open_trade.close_time_executed = tools_1.tools.getCurrentTimeStamp();
+                                open_trade.close_time_added = ailab_core_1.tools.getCurrentTimeStamp();
+                                open_trade.close_time_executed = ailab_core_1.tools.getCurrentTimeStamp();
                                 open_trade.close_remarks = JSON.stringify(sell_remarks);
                                 yield open_trade.save();
                             }
                         }
-                        event.time_strategy_processed = tools_1.tools.getCurrentTimeStamp();
+                        event.time_strategy_processed = ailab_core_1.tools.getCurrentTimeStamp();
                         yield event.save();
                     }
                 }
-                yield connection_1.connection.commit();
+                yield ailab_core_1.connection.commit();
             }
             catch (e) {
-                yield connection_1.connection.rollback();
+                yield ailab_core_1.connection.rollback();
                 console.log(e);
             }
             yield run();
@@ -145,7 +142,7 @@ class eth_worker_trade_strategy {
             const recentBuy = new eth_contract_events_1.eth_contract_events();
             yield recentBuy.list(" WHERE type=:buy ", { buy: "buy" }, " ORDER BY blockNumber DESC, id DESC LIMIT 1 ");
             if (recentBuy.count() > 0) {
-                buy_tax = assert_1.assert.isNumber(recentBuy.getItem().tax_percentage, "tax_percentage", undefined);
+                buy_tax = ailab_core_1.assert.isNumber(recentBuy.getItem().tax_percentage, "tax_percentage", undefined);
             }
             return buy_tax;
         });
@@ -156,7 +153,7 @@ class eth_worker_trade_strategy {
             const recentSell = new eth_contract_events_1.eth_contract_events();
             yield recentSell.list(" WHERE type=:sell ", { sell: "sell" }, " ORDER BY blockNumber DESC, id DESC LIMIT 1 ");
             if (recentSell.count() > 0) {
-                sell_tax = assert_1.assert.isNumber(recentSell.getItem().tax_percentage, "tax_percentage", undefined);
+                sell_tax = ailab_core_1.assert.isNumber(recentSell.getItem().tax_percentage, "tax_percentage", undefined);
             }
             return sell_tax;
         });
@@ -181,12 +178,12 @@ class eth_worker_trade_strategy {
         return 50;
     }
     static generateRandomBuyAmount() {
-        return tools_1.tools.generateRandomNumber(eth_worker_trade_strategy.getMinimumBuyUsd(), eth_worker_trade_strategy.getMaximumBuyUsd());
+        return ailab_core_1.tools.generateRandomNumber(eth_worker_trade_strategy.getMinimumBuyUsd(), eth_worker_trade_strategy.getMaximumBuyUsd());
     }
     static getRandomMinutesInSeconds(from_min = 3, to_min = 5) {
         const min = from_min * 60;
         const max = to_min * 60;
-        return Math.abs(tools_1.tools.generateRandomNumber(min, max));
+        return Math.abs(ailab_core_1.tools.generateRandomNumber(min, max));
     }
 }
 exports.eth_worker_trade_strategy = eth_worker_trade_strategy;

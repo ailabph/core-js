@@ -1,9 +1,6 @@
+import {assert,tools,connection,eth_config} from "./ailab-core";
 import {eth_contract_events} from "./build/eth_contract_events";
-import {assert} from "./assert";
 import {eth_trade} from "./build/eth_trade";
-import {tools} from "./tools";
-import {connection} from "./connection";
-import {eth_config} from "./eth_config";
 
 enum TRADE_STATUS {
     OPEN = "open",
