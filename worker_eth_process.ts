@@ -1,9 +1,8 @@
-import {config, connection, tools} from "./ailab-core";
-import {eth_worker} from "./eth_worker";
+import {config, connection, tools,eth_worker,AnalysisResult} from "./ailab-core";
+
 import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_events} from "./build/eth_contract_events";
 import {generic_data} from "./build/generic_data";
-import {AnalysisResult} from "./eth_types";
 
 let batchLimit = 4000;
 

@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const ailab_core_1 = require("./ailab-core");
-const eth_worker_1 = require("./eth_worker");
 const eth_transaction_1 = require("./build/eth_transaction");
 const eth_contract_events_1 = require("./build/eth_contract_events");
 const generic_data_1 = require("./build/generic_data");
@@ -38,7 +37,7 @@ function run() {
             while (newT = transactions.getItem()) {
                 if (ailab_core_1.config.getConfig().verbose_log)
                     console.log(`processing ${newT.hash}`);
-                let result = yield eth_worker_1.eth_worker.analyzeTransaction2(newT);
+                let result = yield ailab_core_1.eth_worker.analyzeTransaction2(newT);
                 let status = "not_involved";
                 if (result.status === "involved" && result.sendStatus === "success") {
                     console.log(`hash:${result.hash} method:${result.method}`);
