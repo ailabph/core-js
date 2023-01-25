@@ -10,21 +10,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_transaction_tools = void 0;
-const assert_1 = require("./assert");
-const eth_worker_1 = require("./eth_worker");
+const ailab_core_1 = require("./ailab-core");
 const eth_transaction_1 = require("./build/eth_transaction");
-const tools_1 = require("./tools");
 class eth_transaction_tools {
     static get(transaction) {
         return __awaiter(this, void 0, void 0, function* () {
             let to_return = new eth_transaction_1.eth_transaction();
             let method = "";
-            if (tools_1.tools.isNumeric(transaction)) {
+            if (ailab_core_1.tools.isNumeric(transaction)) {
                 method = `,via id:${transaction}`;
                 to_return.id = transaction;
                 yield to_return.fetch();
             }
-            if (!tools_1.tools.isNumeric(transaction) && typeof transaction === "string") {
+            if (!ailab_core_1.tools.isNumeric(transaction) && typeof transaction === "string") {
                 method = `,via hash:${transaction}`;
                 to_return.hash = transaction;
                 yield to_return.fetch();
@@ -40,11 +38,11 @@ class eth_transaction_tools {
     }
     static importWeb3TransactionsToDbByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.inTransaction();
+            ailab_core_1.assert.inTransaction();
             if (!(blockNumber > 0))
                 throw new Error("blockNumber must be greater than 0");
             let result = new eth_transaction_1.eth_transaction();
-            const transactions = yield eth_worker_1.eth_worker.getTxnByBlockNumberWeb3(blockNumber);
+            const transactions = yield ailab_core_1.eth_worker.getTxnByBlockNumberWeb3(blockNumber);
             for (const transaction of transactions.transactions) {
                 let txn_db = new eth_transaction_1.eth_transaction();
                 txn_db.hash = transaction.hash;
