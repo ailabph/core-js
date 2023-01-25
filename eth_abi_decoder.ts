@@ -1,8 +1,7 @@
-import {eth_config} from "./eth_config";
+import { eth_config, tools } from "./ailab-core";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 import {Codec} from "io-ts/Codec";
-import {tools} from "./tools";
 
 const abiDecoder = require("abi-decoder");
 
@@ -14,6 +13,7 @@ const DecodedMethodArgumentsCodec = t.type({
     type: t.string,
 });
 type DecodedMethodArguments = t.TypeOf<typeof DecodedMethodArgumentsCodec>;
+export { DecodedMethodArguments }
 
 
 const DecodedAbiCodec = t.type({
@@ -21,6 +21,8 @@ const DecodedAbiCodec = t.type({
     params: t.array(DecodedMethodArgumentsCodec),
 });
 type DecodedAbi = t.TypeOf<typeof DecodedAbiCodec>;
+export { DecodedAbi }
+
 function isValidDecodedAbi(data: unknown): boolean{
     if(typeof data === undefined) return false;
     return d.isRight(DecodedAbiCodec.decode(data));
@@ -33,19 +35,7 @@ const DecodedAbiObjectCodec = t.type({
     argument_key_value: StringDictionary,
 });
 type DecodedAbiObject = t.TypeOf<typeof DecodedAbiObjectCodec>;
-
-
-
-
-
-
-
-type AddLiquidityETH = {
-    token: string,
-    amountTokenDesired: string,
-    amountTokenMin: string,
-    amountETHMin: string,
-};
+export { DecodedAbiObject }
 
 //endregion
 
@@ -55,6 +45,7 @@ const transferCodec = t.type({
     amount: t.bigint,
 });
 type transfer = t.TypeOf<typeof transferCodec>;
+export { transfer }
 
 
 const approveCodec = t.type({
@@ -62,6 +53,7 @@ const approveCodec = t.type({
     amount: t.bigint,
 });
 type approve = t.TypeOf<typeof approveCodec>;
+export { approve }
 
 
 const addLiquidityETHCodec = t.type({
@@ -73,6 +65,7 @@ const addLiquidityETHCodec = t.type({
     deadline: t.bigint,
 });
 type addLiquidityETH = t.TypeOf<typeof addLiquidityETHCodec>;
+export { addLiquidityETH }
 
 const swapETHForExactTokensCodec = t.type({
     amountOut: t.bigint,
@@ -81,7 +74,7 @@ const swapETHForExactTokensCodec = t.type({
     deadline: t.bigint,
 });
 type swapETHForExactTokens = t.TypeOf<typeof swapETHForExactTokensCodec>;
-
+export { swapETHForExactTokens }
 
 const swapExactETHForTokensCodec = t.type({
     amountOutMin: t.bigint,
@@ -90,13 +83,13 @@ const swapExactETHForTokensCodec = t.type({
     deadline: t.bigint
 });
 type swapExactETHForTokens = t.TypeOf<typeof swapExactETHForTokensCodec>;
-
+export { swapExactETHForTokens }
 
 const excludeFromFeeCodec = t.type({
     account: t.string,
 });
 type excludeFromFee = t.TypeOf<typeof excludeFromFeeCodec>;
-
+export { excludeFromFee }
 
 const swapExactTokensForTokensCodec = t.type({
     amountIn:t.bigint,
@@ -106,20 +99,20 @@ const swapExactTokensForTokensCodec = t.type({
     deadline:t.bigint,
 });
 type swapExactTokensForTokens = t.TypeOf<typeof swapExactTokensForTokensCodec>;
-
+export { swapExactTokensForTokens }
 
 const setNumTokensSellToAddToLiquidityCodec = t.type({
     numTokensSellToAddToLiquidity:t.bigint,
 });
 type setNumTokensSellToAddToLiquidity = t.TypeOf<typeof setNumTokensSellToAddToLiquidityCodec>;
-
+export { setNumTokensSellToAddToLiquidity }
 
 const clearStuckBNBBalanceCodec = t.type({
     to:t.string,
     amount:t.bigint,
 });
 type clearStuckBNBBalance = t.TypeOf<typeof clearStuckBNBBalanceCodec>;
-
+export { clearStuckBNBBalance }
 
 const swapTokensForExactETHCodec = t.type({
     amountOut:t.bigint,
@@ -129,25 +122,25 @@ const swapTokensForExactETHCodec = t.type({
     deadline:t.bigint,
 });
 type swapTokensForExactETH = t.TypeOf<typeof swapTokensForExactETHCodec>;
-
+export { swapTokensForExactETH }
 
 const setMarketFeeCodec = t.type({
     marketFee:t.bigint,
 });
 type setMarketFee = t.TypeOf<typeof setMarketFeeCodec>;
-
+export { setMarketFee }
 
 const setSellFeeMultiplierCodec = t.type({
     newSellFeeMultiplier:t.bigint,
 });
 type setSellFeeMultiplier = t.TypeOf<typeof setSellFeeMultiplierCodec>;
-
+export { setSellFeeMultiplier }
 
 const setLiquidityFeeCodec = t.type({
     liquidityFee: t.bigint,
 });
 type setLiquidityFee = t.TypeOf<typeof setLiquidityFeeCodec>;
-
+export { setLiquidityFee }
 
 const swapExactTokensForETHSupportingFeeOnTransferTokensCodec = t.type({
     amountIn: t.bigint,
@@ -157,6 +150,7 @@ const swapExactTokensForETHSupportingFeeOnTransferTokensCodec = t.type({
     deadline: t.bigint,
 });
 type swapExactTokensForETHSupportingFeeOnTransferTokens = t.TypeOf<typeof swapExactTokensForETHSupportingFeeOnTransferTokensCodec>;
+export { swapExactTokensForETHSupportingFeeOnTransferTokens }
 
 const swapExactETHForTokensSupportingFeeOnTransferTokensCodec = t.type({
     amountOutMin: t.bigint,
@@ -165,7 +159,7 @@ const swapExactETHForTokensSupportingFeeOnTransferTokensCodec = t.type({
     deadline:t.bigint,
 });
 type swapExactETHForTokensSupportingFeeOnTransferTokens = t.TypeOf<typeof swapExactETHForTokensSupportingFeeOnTransferTokensCodec>;
-
+export { swapExactETHForTokensSupportingFeeOnTransferTokens }
 
 const swapExactTokensForTokensSupportingFeeOnTransferTokensCodec = t.type({
     amountIn:t.bigint,
@@ -175,8 +169,7 @@ const swapExactTokensForTokensSupportingFeeOnTransferTokensCodec = t.type({
     deadline:t.bigint,
 });
 type swapExactTokensForTokensSupportingFeeOnTransferTokens = t.TypeOf<typeof swapExactTokensForTokensSupportingFeeOnTransferTokensCodec>;
-
-
+export { swapExactTokensForTokensSupportingFeeOnTransferTokens }
 
 const swapCodec = t.type({
     swapType:t.string,
@@ -191,9 +184,9 @@ const swapCodec = t.type({
     wrappedNative:t.string,
 });
 type swap = t.TypeOf<typeof swapCodec>;
-//endregion
+export { swap }
 
-export { DecodedAbi,DecodedAbiObject,AddLiquidityETH };
+//endregion
 
 // LOAD ABI
 abiDecoder.addABI(eth_config.getDexAbi());

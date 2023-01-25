@@ -24,10 +24,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_abi_decoder = void 0;
-const eth_config_1 = require("./eth_config");
+const ailab_core_1 = require("./ailab-core");
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
-const tools_1 = require("./tools");
 const abiDecoder = require("abi-decoder");
 //region TYPES
 const DecodedMethodArgumentsCodec = t.type({
@@ -145,11 +144,12 @@ const swapCodec = t.type({
     toChainID: t.string,
     wrappedNative: t.string,
 });
+//endregion
 // LOAD ABI
-abiDecoder.addABI(eth_config_1.eth_config.getDexAbi());
-abiDecoder.addABI(eth_config_1.eth_config.getSwapRouterAbi());
-abiDecoder.addABI(eth_config_1.eth_config.getEthAbi());
-abiDecoder.addABI(eth_config_1.eth_config.getTokenAbi());
+abiDecoder.addABI(ailab_core_1.eth_config.getDexAbi());
+abiDecoder.addABI(ailab_core_1.eth_config.getSwapRouterAbi());
+abiDecoder.addABI(ailab_core_1.eth_config.getEthAbi());
+abiDecoder.addABI(ailab_core_1.eth_config.getTokenAbi());
 class eth_abi_decoder {
     static decodeAbiPure(input) {
         if (typeof input !== "string")
@@ -197,7 +197,7 @@ class eth_abi_decoder {
         return obj;
     }
     static decodeAbiObject(input) {
-        if (typeof input !== "string" || tools_1.tools.isEmpty(input))
+        if (typeof input !== "string" || ailab_core_1.tools.isEmpty(input))
             throw new Error("invalid input type, string expected");
         let abi = this.decodeAbi(input);
         if (!abi)
