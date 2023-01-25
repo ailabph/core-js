@@ -1,7 +1,6 @@
 import {eth_block} from "./build/eth_block";
-import {eth_worker} from "./eth_worker";
 import {eth_transaction} from "./build/eth_transaction";
-import {config, connection, tools} from "./ailab-core";
+import {config, connection, tools,eth_worker} from "./ailab-core";
 
 let batchLimit = 50;
 let callLimit = 50;

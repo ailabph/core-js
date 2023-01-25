@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const eth_block_1 = require("./build/eth_block");
-const eth_worker_1 = require("./eth_worker");
 const eth_transaction_1 = require("./build/eth_transaction");
 const ailab_core_1 = require("./ailab-core");
 let batchLimit = 50;
@@ -39,7 +38,7 @@ function run() {
                         calls[current_time] = 0;
                     }
                     calls[current_time]++;
-                    let transactions = yield eth_worker_1.eth_worker.getTxnByBlockNumberWeb3(current_block.blockNumber);
+                    let transactions = yield ailab_core_1.eth_worker.getTxnByBlockNumberWeb3(current_block.blockNumber);
                     console.log(`${transactions.transactions.length} transactions found in block:${current_block.blockNumber}`);
                     for (let i = 0; i < transactions.transactions.length; i++) {
                         let t = transactions.transactions[i];
@@ -50,7 +49,7 @@ function run() {
                             new_t.blockHash = t.blockHash;
                             new_t.blockNumber = t.blockNumber;
                             new_t.fromAddress = t.from;
-                            new_t.gas = eth_worker_1.eth_worker.convertValueToAmount(t.gas, 18);
+                            new_t.gas = ailab_core_1.eth_worker.convertValueToAmount(t.gas, 18);
                             new_t.gasPrice = t.gasPrice;
                             new_t.input = t.input;
                             new_t.nonce = t.nonce;
