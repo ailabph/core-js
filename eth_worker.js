@@ -20,52 +20,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_worker = void 0;
-const eth_types_1 = require("./eth_types");
-const eth_abi_decoder_1 = require("./eth_abi_decoder");
+const ailab_core_1 = require("./ailab-core");
+const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
-const eth_config_1 = require("./eth_config");
-const eth_tools_1 = require("./eth_tools");
-const eth_log_decoder_1 = require("./eth_log_decoder");
 const eth_transaction_1 = require("./build/eth_transaction");
 const eth_contract_data_1 = require("./build/eth_contract_data");
 const eth_log_sig_1 = require("./build/eth_log_sig");
-const tools_1 = require("./tools");
-const assert_1 = require("./assert");
-const assert_eth_1 = require("./assert_eth");
-const promises_1 = __importDefault(require("fs/promises"));
-const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
 const eth_receipt_1 = require("./build/eth_receipt");
-const eth_transaction_tools_1 = require("./eth_transaction_tools");
 const eth_block_1 = require("./build/eth_block");
 const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
 const Web3 = require("web3");
-const Web3Provider = new Web3.providers.HttpProvider(eth_config_1.eth_config.getRPCUrl());
+const Web3Provider = new Web3.providers.HttpProvider(ailab_core_1.eth_config.getRPCUrl());
 const Web3Client = new Web3(Web3Provider);
 class eth_worker {
     //region EVENT TAGS
     static getTagSwapEthToToken() {
-        return "swap_" + eth_config_1.eth_config.getEthSymbol() + "_to_" + eth_config_1.eth_config.getTokenSymbol();
+        return "swap_" + ailab_core_1.eth_config.getEthSymbol() + "_to_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     static getTagSwapTokenToEth() {
-        return "swap_" + eth_config_1.eth_config.getTokenSymbol() + "_to_" + eth_config_1.eth_config.getEthSymbol();
+        return "swap_" + ailab_core_1.eth_config.getTokenSymbol() + "_to_" + ailab_core_1.eth_config.getEthSymbol();
     }
     static getTagSwapTokenToOtherToken() {
-        return "swap_" + eth_config_1.eth_config.getTokenSymbol() + "_to_OTHER_TOKEN";
+        return "swap_" + ailab_core_1.eth_config.getTokenSymbol() + "_to_OTHER_TOKEN";
     }
     static getTagSwapOtherTokenToToken() {
-        return "swap_OTHER_TOKEN_to_" + eth_config_1.eth_config.getTokenSymbol();
+        return "swap_OTHER_TOKEN_to_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     static getTagTransferTokenToOther() {
-        return "transfer_" + eth_config_1.eth_config.getTokenSymbol();
+        return "transfer_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     static getTagContractCreated() {
-        return "contract_created_for_" + eth_config_1.eth_config.getTokenSymbol();
+        return "contract_created_for_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     static getTagAddLiquidityToToken() {
-        return "add_liquidity_to_" + eth_config_1.eth_config.getTokenSymbol();
+        return "add_liquidity_to_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     static getTagOtherContractEvents() {
-        return "other_event_" + eth_config_1.eth_config.getTokenSymbol();
+        return "other_event_" + ailab_core_1.eth_config.getTokenSymbol();
     }
     //endregion
     //region ASSERTS
@@ -102,31 +93,31 @@ class eth_worker {
         return toReturn.toString();
     }
     static convertValueToETH(_value) {
-        return this.convertValueToAmount(_value, eth_config_1.eth_config.getEthDecimal());
+        return this.convertValueToAmount(_value, ailab_core_1.eth_config.getEthDecimal());
     }
     static convertEthToValue(_amount) {
-        return this.convertAmountToValue(_amount, eth_config_1.eth_config.getEthDecimal());
+        return this.convertAmountToValue(_amount, ailab_core_1.eth_config.getEthDecimal());
     }
     static convertValueToToken(_value) {
-        return this.convertValueToAmount(_value, eth_config_1.eth_config.getTokenDecimal());
+        return this.convertValueToAmount(_value, ailab_core_1.eth_config.getTokenDecimal());
     }
     static convertTokenToValue(_token_amount) {
-        return this.convertAmountToValue(_token_amount, eth_config_1.eth_config.getTokenDecimal());
+        return this.convertAmountToValue(_token_amount, ailab_core_1.eth_config.getTokenDecimal());
     }
     static checkIfInvolved({ from = "", to = null, abi = false }) {
-        if (from.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if (from.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
             return true;
-        if (typeof to === "string" && to.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if (typeof to === "string" && to.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
             return true;
         if (abi) {
             for (let prop in abi.argument_key_value) {
                 let value = abi.argument_key_value[prop];
-                if (typeof value === "string" && value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                if (typeof value === "string" && value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                     return true;
                 if (Array.isArray(value)) {
                     for (let array_index in value) {
                         let array_value = value[array_index];
-                        if (array_value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                        if (array_value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                             return true;
                     }
                 }
@@ -135,13 +126,13 @@ class eth_worker {
         return false;
     }
     static checkIfInvolved2({ fromAddress = null, toAddress = null, input = null, hash = null }) {
-        if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === ailab_core_1.eth_config.getTokenContract().toLowerCase())
             return true;
-        if ((fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if ((fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === ailab_core_1.eth_config.getTokenContract().toLowerCase())
             return true;
-        if ((toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase())
+        if ((toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === ailab_core_1.eth_config.getTokenContract().toLowerCase())
             return true;
-        const striped_tracked_token = eth_config_1.eth_config.getTokenContract().toLowerCase().replace(/^(0x)/, "");
+        const striped_tracked_token = ailab_core_1.eth_config.getTokenContract().toLowerCase().replace(/^(0x)/, "");
         if (input === null || input === void 0 ? void 0 : input.toLowerCase().includes(striped_tracked_token))
             return true;
         return false;
@@ -149,17 +140,17 @@ class eth_worker {
     static isInvolved({ fromAddress = null, toAddress = null, input = null, hash = null }) {
         return __awaiter(this, void 0, void 0, function* () {
             // Token Creation
-            if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === eth_config_1.eth_config.getTokenGenesisHash().toLowerCase())
+            if ((hash === null || hash === void 0 ? void 0 : hash.toLowerCase()) === ailab_core_1.eth_config.getTokenGenesisHash().toLowerCase())
                 return true;
-            const fromMatch = (fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase();
-            const toMatch = (toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === eth_config_1.eth_config.getTokenContract().toLowerCase();
-            const inputMatch = input === null || input === void 0 ? void 0 : input.toLowerCase().includes(eth_worker.stripBeginningZeroXFromString(eth_config_1.eth_config.getTokenContract().toLowerCase()));
+            const fromMatch = (fromAddress === null || fromAddress === void 0 ? void 0 : fromAddress.toLowerCase()) === ailab_core_1.eth_config.getTokenContract().toLowerCase();
+            const toMatch = (toAddress === null || toAddress === void 0 ? void 0 : toAddress.toLowerCase()) === ailab_core_1.eth_config.getTokenContract().toLowerCase();
+            const inputMatch = input === null || input === void 0 ? void 0 : input.toLowerCase().includes(eth_worker.stripBeginningZeroXFromString(ailab_core_1.eth_config.getTokenContract().toLowerCase()));
             if (fromMatch || toMatch || inputMatch) {
-                const decodedAbi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(input);
+                const decodedAbi = ailab_core_1.eth_abi_decoder.decodeAbiObject(input);
                 if (decodedAbi)
                     return true;
                 else {
-                    return yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.findTokenInLogs(hash !== null && hash !== void 0 ? hash : "");
+                    return yield ailab_core_1.eth_receipt_logs_tools.findTokenInLogs(hash !== null && hash !== void 0 ? hash : "");
                 }
             }
             return false;
@@ -174,10 +165,10 @@ class eth_worker {
                     const receipt = yield eth_worker.getReceiptByTxnHash(txn.hash);
                     if (receipt)
                         txn.send_status = receipt.status ? 1 : 0;
-                    const abi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(txn.input);
+                    const abi = ailab_core_1.eth_abi_decoder.decodeAbiObject(txn.input);
                     if (abi)
                         txn.method_name = abi.abi.name;
-                    const swaps = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLogsByMethod(txn.hash, "swap");
+                    const swaps = yield ailab_core_1.eth_receipt_logs_tools.getLogsByMethod(txn.hash, "swap");
                     txn.is_swap = swaps.length > 0 ? 1 : 0;
                     yield txn.save();
                 }
@@ -186,41 +177,48 @@ class eth_worker {
         });
     }
     static importTransactionsFromFile(file_path, assert_involved = false) {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.inTransaction();
-            assert_1.assert.fileExists(file_path);
+            ailab_core_1.assert.inTransaction();
+            ailab_core_1.assert.fileExists(file_path);
             const file = yield promises_1.default.open(file_path, 'r');
             try {
-                for (var _b = __asyncValues(file.readLines()), _c; _c = yield _b.next(), !_c.done;) {
-                    const line = _c.value;
-                    const txnHash = assert_1.assert.isString({ val: line, prop_name: "imported hash data" });
-                    assert_eth_1.assert_eth.isLikelyTransactionHash(txnHash);
-                    if (assert_involved) {
-                        const txn = yield eth_worker.getTxnByHash(txnHash);
-                        let newTransaction = new eth_transaction_1.eth_transaction();
-                        newTransaction.loadValues(txn, true);
-                        newTransaction.fromAddress = txn.from;
-                        newTransaction.toAddress = txn.to;
-                        const result = yield eth_worker.analyzeTransaction3(newTransaction);
-                        if (result.status === eth_types_1.RESULT_STATUS.NOT_INVOLVED) {
-                            console.error(txn);
-                            console.error(result);
-                            throw new Error(`${txnHash} is not involved`);
+                for (var _d = true, _e = __asyncValues(file.readLines()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                    _c = _f.value;
+                    _d = false;
+                    try {
+                        const line = _c;
+                        const txnHash = ailab_core_1.assert.isString({ val: line, prop_name: "imported hash data" });
+                        ailab_core_1.assert_eth.isLikelyTransactionHash(txnHash);
+                        if (assert_involved) {
+                            const txn = yield eth_worker.getTxnByHash(txnHash);
+                            let newTransaction = new eth_transaction_1.eth_transaction();
+                            newTransaction.loadValues(txn, true);
+                            newTransaction.fromAddress = txn.from;
+                            newTransaction.toAddress = txn.to;
+                            const result = yield eth_worker.analyzeTransaction3(newTransaction);
+                            if (result.status === ailab_core_1.RESULT_STATUS.NOT_INVOLVED) {
+                                console.error(txn);
+                                console.error(result);
+                                throw new Error(`${txnHash} is not involved`);
+                            }
+                            console.log(`involved:${txnHash}|method:${result.method}`);
                         }
-                        console.log(`involved:${txnHash}|method:${result.method}`);
+                    }
+                    finally {
+                        _d = true;
                     }
                 }
             }
             catch (e_1_1) { e_1 = { error: e_1_1 }; }
             finally {
                 try {
-                    if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
                 }
                 finally { if (e_1) throw e_1.error; }
             }
             if (assert_involved) {
-                console.log(`all transactions checked and are involved with ${eth_config_1.eth_config.getTokenSymbol()}`);
+                console.log(`all transactions checked and are involved with ${ailab_core_1.eth_config.getTokenSymbol()}`);
             }
         });
     }
@@ -263,7 +261,7 @@ class eth_worker {
     }
     static getBlockByNumber(blockNumber, strict = false) {
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.isNumber(blockNumber, "blockNumber", 0);
+            ailab_core_1.assert.isNumber(blockNumber, "blockNumber", 0);
             const block = new eth_block_1.eth_block();
             block.blockNumber = blockNumber;
             yield block.fetch();
@@ -295,7 +293,7 @@ class eth_worker {
             yield txn_db.fetch();
             if (txn_db.isNew()) {
                 const web3_txn = yield Web3Client.eth.getTransaction(_txn_hash);
-                if (tools_1.tools.isEmpty(web3_txn))
+                if (ailab_core_1.tools.isEmpty(web3_txn))
                     throw new Error(`unable to retrieve transaction hash:${_txn_hash} from web3`);
                 txn_db.loadValues(web3_txn, true);
                 txn_db.fromAddress = web3_txn.from;
@@ -342,7 +340,7 @@ class eth_worker {
                 receipt_db.transactionHash = _txn_hash;
                 yield receipt_db.fetch();
                 if (receipt_db.recordExists()) {
-                    let analyzeReceipt = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
+                    let analyzeReceipt = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
                     return analyzeReceipt.receipt;
                 }
                 let receipt;
@@ -359,7 +357,7 @@ class eth_worker {
                     });
                     receipt = yield eth_worker.getTxnByHash(_txn_hash);
                 }
-                let analyzeReceipt = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
+                let analyzeReceipt = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(_txn_hash);
                 return analyzeReceipt.receipt;
             }
             catch (e) {
@@ -374,7 +372,7 @@ class eth_worker {
     }
     static estimateGasContract(_from, _to, _amount, _contract_address) {
         return __awaiter(this, void 0, void 0, function* () {
-            let transfer_contract = yield new Web3Client.eth.Contract(eth_config_1.eth_config.getTransferAbi(), _contract_address);
+            let transfer_contract = yield new Web3Client.eth.Contract(ailab_core_1.eth_config.getTransferAbi(), _contract_address);
             //@ts-ignore
             return yield transfer_contract.methods.transfer(_to, Web3.utils.toWei((_amount + ""))).estimateGas({ from: _from });
         });
@@ -386,7 +384,7 @@ class eth_worker {
     }
     static getTokenTransferData(_from, _to, _amount) {
         console.log("creating contract web3 obj...");
-        let contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getTokenAbi(), eth_config_1.eth_config.getTokenContract(), { from: _from });
+        let contract = new Web3Client.eth.Contract(ailab_core_1.eth_config.getTokenAbi(), ailab_core_1.eth_config.getTokenContract(), { from: _from });
         console.log("converting token to value...");
         let value = this.convertTokenToValue(_amount);
         console.log("encoding transfer method ABI to:%s value:%s...", _to, value);
@@ -408,7 +406,7 @@ class eth_worker {
             console.log("...gas estimated, retrieving gas price");
             let _gas = yield Web3Client.eth.getGasPrice();
             console.log("...gas price retreived");
-            let gasLimit = Math.floor(estimateGas * eth_config_1.eth_config.getGasMultiplier());
+            let gasLimit = Math.floor(estimateGas * ailab_core_1.eth_config.getGasMultiplier());
             return {
                 gasPrice: _gas,
                 estimateGas: estimateGas,
@@ -431,7 +429,7 @@ class eth_worker {
                 contract_data.name = "";
                 contract_data.symbol = "";
                 contract_data.decimals = 0;
-                let contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getTokenAbi(), _contract_address);
+                let contract = new Web3Client.eth.Contract(ailab_core_1.eth_config.getTokenAbi(), _contract_address);
                 try {
                     contract_data.name = yield contract.methods.name().call();
                 }
@@ -460,7 +458,7 @@ class eth_worker {
     }
     static getTokenBalance(_address) {
         return __awaiter(this, void 0, void 0, function* () {
-            let contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getBalanceAbi(), eth_config_1.eth_config.getTokenContract());
+            let contract = new Web3Client.eth.Contract(ailab_core_1.eth_config.getBalanceAbi(), ailab_core_1.eth_config.getTokenContract());
             let result = 0;
             try {
                 result = yield contract.methods.balanceOf(_address).call();
@@ -491,12 +489,12 @@ class eth_worker {
     }
     static getHotWalletNonce() {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield Web3Client.eth.getTransactionCount(eth_config_1.eth_config.getHotWalletAddress());
+            return yield Web3Client.eth.getTransactionCount(ailab_core_1.eth_config.getHotWalletAddress());
         });
     }
     static getPairAddress(token_1, token_2) {
         return __awaiter(this, void 0, void 0, function* () {
-            const contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getPancakeFactoryAbi(), eth_config_1.eth_config.getPancakeFactoryContract());
+            const contract = new Web3Client.eth.Contract(ailab_core_1.eth_config.getPancakeFactoryAbi(), ailab_core_1.eth_config.getPancakeFactoryContract());
             return contract.methods.getPair(token_1, token_2).call();
         });
     }
@@ -511,15 +509,15 @@ class eth_worker {
             else {
                 tx = yield eth_worker.getDbTxnByHash(_txn_hash);
             }
-            if (tools_1.tools.isEmpty(tx.hash))
+            if (ailab_core_1.tools.isEmpty(tx.hash))
                 throw new Error("hash must not be empty");
-            if (tools_1.tools.isEmpty(tx.blockNumber))
+            if (ailab_core_1.tools.isEmpty(tx.blockNumber))
                 throw new Error("blockNumber must not be empty");
-            let result = eth_tools_1.eth_tools.getDefaultResult(tx);
+            let result = ailab_core_1.eth_tools.getDefaultResult(tx);
             result = yield this.processContractCreationEvent(tx, result);
             if (typeof tx.toAddress === "undefined" || tx.toAddress === null || tx.toAddress === "")
                 return result;
-            let decodedAbi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(tx.input);
+            let decodedAbi = ailab_core_1.eth_abi_decoder.decodeAbiObject(tx.input);
             if (!decodedAbi)
                 return result;
             result.method = decodedAbi.abi.name;
@@ -544,28 +542,28 @@ class eth_worker {
     static analyzeTransaction3(txn) {
         return __awaiter(this, void 0, void 0, function* () {
             const transaction = typeof txn === "string" ? yield eth_worker.getDbTxnByHash(txn) : txn;
-            let result = eth_types_1.eth_types.getDefaultAnalysisResult(transaction);
+            let result = ailab_core_1.eth_types.getDefaultAnalysisResult(transaction);
             // result = await eth_worker.processContractCreationEvent(transaction,result);
             // if(result.method === "createContract") return result;
             if (!eth_worker.checkIfInvolved2(transaction))
                 return result;
-            result.status = eth_types_1.RESULT_STATUS.INVOLVED;
-            const decoded_abi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(transaction.input);
+            result.status = ailab_core_1.RESULT_STATUS.INVOLVED;
+            const decoded_abi = ailab_core_1.eth_abi_decoder.decodeAbiObject(transaction.input);
             if (!decoded_abi) {
                 result.abiDecodeStatus = "failed";
                 return result;
             }
             result.abiDecodeStatus = "success";
             result.method = decoded_abi.abi.name;
-            if (result.sendStatus === eth_types_1.RESULT_SEND_STATUS.NOT_CHECKED)
+            if (result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.NOT_CHECKED)
                 result = yield eth_worker.processAddLiquidity(result, decoded_abi);
-            if (result.sendStatus === eth_types_1.RESULT_SEND_STATUS.NOT_CHECKED)
+            if (result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.NOT_CHECKED)
                 result = yield eth_worker.processApprovalEvent(transaction, decoded_abi, result);
-            if (result.sendStatus === eth_types_1.RESULT_SEND_STATUS.NOT_CHECKED)
+            if (result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.NOT_CHECKED)
                 result = yield eth_worker.processTransferEvent(transaction, decoded_abi, result);
-            if (result.sendStatus === eth_types_1.RESULT_SEND_STATUS.NOT_CHECKED)
+            if (result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.NOT_CHECKED)
                 result = yield eth_worker.processSwapEvents(transaction, decoded_abi, result);
-            if (result.sendStatus === eth_types_1.RESULT_SEND_STATUS.NOT_CHECKED)
+            if (result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.NOT_CHECKED)
                 result = yield eth_worker.processTransitSwap(transaction, decoded_abi, result);
             // if(result.sendStatus === RESULT_SEND_STATUS.NOT_CHECKED) result = await eth_worker.processOtherEventsOfContract(result,decoded_abi);
             result = eth_worker.processResultType(result);
@@ -578,28 +576,28 @@ class eth_worker {
     static analyzeTokenTransaction(txn) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            txn = yield eth_transaction_tools_1.eth_transaction_tools.get(txn);
+            txn = yield ailab_core_1.eth_transaction_tools.get(txn);
             txn = yield eth_worker.identifyInvolvement(txn);
-            let result = eth_types_1.eth_types.getDefaultAnalysisResult(txn);
-            result.status = txn.token_found === "y" ? eth_types_1.RESULT_STATUS.INVOLVED : eth_types_1.RESULT_STATUS.NOT_INVOLVED;
-            result.sendStatus = txn.send_status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
-            if (result.status !== eth_types_1.RESULT_STATUS.INVOLVED)
+            let result = ailab_core_1.eth_types.getDefaultAnalysisResult(txn);
+            result.status = txn.token_found === "y" ? ailab_core_1.RESULT_STATUS.INVOLVED : ailab_core_1.RESULT_STATUS.NOT_INVOLVED;
+            result.sendStatus = txn.send_status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
+            if (result.status !== ailab_core_1.RESULT_STATUS.INVOLVED)
                 return result;
-            const abi = eth_abi_decoder_1.eth_abi_decoder.decodeAbiObject(txn.input);
+            const abi = ailab_core_1.eth_abi_decoder.decodeAbiObject(txn.input);
             result.method = abi ? abi.abi.name : "unknown";
-            if (result.sendStatus !== eth_types_1.RESULT_SEND_STATUS.SUCCESS)
+            if (result.sendStatus !== ailab_core_1.RESULT_SEND_STATUS.SUCCESS)
                 return result;
             if (typeof txn.blockTime !== "number" || !(txn.blockTime > 0)) {
-                const block = yield eth_worker.getBlockByNumber(assert_1.assert.isNumber(txn.blockNumber, "txn.blockNumber", 0));
-                txn.blockTime = assert_1.assert.isNumber(block.time_added, "block.time_added", 0);
+                const block = yield eth_worker.getBlockByNumber(ailab_core_1.assert.isNumber(txn.blockNumber, "txn.blockNumber", 0));
+                txn.blockTime = ailab_core_1.assert.isNumber(block.time_added, "block.time_added", 0);
                 yield txn.save();
             }
             result.block_time = txn.blockTime;
-            const firstTransfer1 = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(txn.hash, "transfer");
-            const lastTransfer1 = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "transfer");
+            const firstTransfer1 = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(txn.hash, "transfer");
+            const lastTransfer1 = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "transfer");
             if (result.method.toLowerCase() === "approve")
                 result.type = "approve";
-            if (result.hash.toLowerCase() === eth_config_1.eth_config.getTokenGenesisHash().toLowerCase())
+            if (result.hash.toLowerCase() === ailab_core_1.eth_config.getTokenGenesisHash().toLowerCase())
                 result.type = "creation";
             if (result.method.toLowerCase() === "transfer") {
                 result.type = "transfer";
@@ -610,7 +608,7 @@ class eth_worker {
                 result.toSymbol = lastTransfer1.ContractInfo.symbol;
                 result.toDecimal = lastTransfer1.ContractInfo.decimals;
                 result.toAddress = lastTransfer1.to;
-                const transferAbi = eth_abi_decoder_1.eth_abi_decoder.getTransferAbi(abi);
+                const transferAbi = ailab_core_1.eth_abi_decoder.getTransferAbi(abi);
                 if (transferAbi) {
                     result.fromValue = transferAbi.amount.toString();
                 }
@@ -619,19 +617,19 @@ class eth_worker {
                 result.fromAmountGross = result.fromAmount;
                 result.toAmountGross = result.fromAmountGross;
                 result.toAmount = eth_worker.convertValueToAmount(result.toValue, result.toDecimal);
-                result.taxAmount = tools_1.tools.toBn(result.toAmountGross).minus(tools_1.tools.toBn(result.toAmount)).toString();
+                result.taxAmount = ailab_core_1.tools.toBn(result.toAmountGross).minus(ailab_core_1.tools.toBn(result.toAmount)).toString();
                 if (parseFloat(result.taxAmount) > 0) {
-                    result.taxPerc = tools_1.tools.toBn(result.taxAmount).dividedBy(tools_1.tools.toBn(result.toAmountGross)).toString();
+                    result.taxPerc = ailab_core_1.tools.toBn(result.taxAmount).dividedBy(ailab_core_1.tools.toBn(result.toAmountGross)).toString();
                 }
             }
-            if (txn.is_swap && ((_a = txn.toAddress) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === eth_config_1.eth_config.getDexContract().toLowerCase()) {
+            if (txn.is_swap && ((_a = txn.toAddress) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === ailab_core_1.eth_config.getDexContract().toLowerCase()) {
                 result.toAddress = (_b = txn.fromAddress) !== null && _b !== void 0 ? _b : "";
-                const logsResult = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(txn.hash);
-                const firstLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(logsResult.receipt.logs[0]);
-                const lastLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(logsResult.receipt.logs[logsResult.receipt.logs.length - 1]);
-                const lastSwap = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "swap");
-                const firstTransferFrom = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstTransferFrom(txn.hash, (_c = txn.fromAddress) !== null && _c !== void 0 ? _c : "");
-                result.type = lastTransfer1.ContractInfo.address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
+                const logsResult = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(txn.hash);
+                const firstLog = yield ailab_core_1.eth_log_decoder.decodeLog(logsResult.receipt.logs[0]);
+                const lastLog = yield ailab_core_1.eth_log_decoder.decodeLog(logsResult.receipt.logs[logsResult.receipt.logs.length - 1]);
+                const lastSwap = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "swap");
+                const firstTransferFrom = yield ailab_core_1.eth_receipt_logs_tools.getFirstTransferFrom(txn.hash, (_c = txn.fromAddress) !== null && _c !== void 0 ? _c : "");
+                result.type = lastTransfer1.ContractInfo.address.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
                 result.fromAmount = "0";
                 result.toAmount = "0";
                 result.taxAmount = "0";
@@ -643,11 +641,11 @@ class eth_worker {
                 result.toSymbol = lastTransfer1.ContractInfo.symbol;
                 result.toDecimal = lastTransfer1.ContractInfo.decimals;
                 if (firstLog.method_name.toLowerCase() === "deposit") {
-                    const deposit = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(txn.hash, "deposit");
+                    const deposit = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(txn.hash, "deposit");
                     result.fromValue = deposit.amount.toString();
                 }
                 if (lastLog.method_name.toLowerCase() === "withdrawal") {
-                    const withdrawal = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "withdrawal");
+                    const withdrawal = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(txn.hash, "withdrawal");
                     result.toValue = withdrawal.wad.toString();
                 }
                 if (result.toAmount === "0") {
@@ -665,7 +663,7 @@ class eth_worker {
                 const token_amount = result.type === "buy" ? result.toAmount : result.fromAmount;
                 let gross_token_amount = "0";
                 if (result.type === "buy") {
-                    const swapExactETHForTokensAbi = eth_abi_decoder_1.eth_abi_decoder.getSwapExactETHForTokens(abi);
+                    const swapExactETHForTokensAbi = ailab_core_1.eth_abi_decoder.getSwapExactETHForTokens(abi);
                     if (swapExactETHForTokensAbi) {
                         gross_token_amount = swapExactETHForTokensAbi.amountOutMin > lastSwap.amount1Out ? swapExactETHForTokensAbi.amountOutMin.toString() : lastSwap.amount1Out.toString();
                     }
@@ -676,25 +674,25 @@ class eth_worker {
                 }
                 if (result.type === "sell") {
                     if (abi) {
-                        const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = eth_abi_decoder_1.eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abi);
+                        const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = ailab_core_1.eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abi);
                         if (swapExactTokensForETHSupportingFeeOnTransferTokensAbi) {
                             gross_token_amount = swapExactTokensForETHSupportingFeeOnTransferTokensAbi.amountIn.toString();
                         }
-                        const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = eth_abi_decoder_1.eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
+                        const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = ailab_core_1.eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
                         if (swapExactTokensForTokensSupportingFeeOnTransferTokensAbi) {
                             gross_token_amount = swapExactTokensForTokensSupportingFeeOnTransferTokensAbi.amountIn.toString();
                         }
-                        const swapTokensForExactETHAbi = eth_abi_decoder_1.eth_abi_decoder.getSwapTokensForExactETH(abi);
+                        const swapTokensForExactETHAbi = ailab_core_1.eth_abi_decoder.getSwapTokensForExactETH(abi);
                         if (swapTokensForExactETHAbi) {
                             gross_token_amount = swapTokensForExactETHAbi.amountInMax.toString();
                         }
                         result.fromAmountGross = eth_worker.convertValueToAmount(gross_token_amount, result.fromDecimal);
                     }
                 }
-                gross_token_amount = eth_worker.convertValueToAmount(gross_token_amount, eth_config_1.eth_config.getTokenDecimal());
-                result.taxAmount = tools_1.tools.toBn(gross_token_amount).minus(tools_1.tools.toBn(token_amount)).toString();
+                gross_token_amount = eth_worker.convertValueToAmount(gross_token_amount, ailab_core_1.eth_config.getTokenDecimal());
+                result.taxAmount = ailab_core_1.tools.toBn(gross_token_amount).minus(ailab_core_1.tools.toBn(token_amount)).toString();
                 if (parseFloat(result.taxAmount) > 0) {
-                    result.taxPerc = tools_1.tools.toBn(result.taxAmount).dividedBy(tools_1.tools.toBn(token_amount)).toString();
+                    result.taxPerc = ailab_core_1.tools.toBn(result.taxAmount).dividedBy(ailab_core_1.tools.toBn(token_amount)).toString();
                 }
             }
             // set price info
@@ -702,8 +700,8 @@ class eth_worker {
             result.bnb_usd = (yield eth_worker.getBnbUsdPriceByBlockNumber(result.blockNumber)).toFixed(18);
             result.token_bnb = (yield eth_worker.getTokenBnbPriceByBlockNumber(result.blockNumber)).toFixed(18);
             result.token_usd = (yield eth_worker.getTokenUsdPriceByBlockNumber(result.blockNumber)).toFixed(18);
-            result.token_bnb_value = tools_1.tools.toBn(token_amount).multipliedBy(tools_1.tools.toBn(result.token_bnb)).toFixed(18);
-            result.token_usd_value = tools_1.tools.toBn(token_amount).multipliedBy(tools_1.tools.toBn(result.token_usd)).toFixed(18);
+            result.token_bnb_value = ailab_core_1.tools.toBn(token_amount).multipliedBy(ailab_core_1.tools.toBn(result.token_bnb)).toFixed(18);
+            result.token_usd_value = ailab_core_1.tools.toBn(token_amount).multipliedBy(ailab_core_1.tools.toBn(result.token_usd)).toFixed(18);
             return result;
         });
     }
@@ -732,9 +730,9 @@ class eth_worker {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             const action = "process contract creation event";
-            tx.hash = assert_1.assert.isString({ val: tx.hash, prop_name: `${action}:tx.hash`, strict: true });
-            if (tx.hash.toLowerCase() === eth_config_1.eth_config.getTokenGenesisHash().toLowerCase()) {
-                result.status = eth_types_1.RESULT_STATUS.INVOLVED;
+            tx.hash = ailab_core_1.assert.isString({ val: tx.hash, prop_name: `${action}:tx.hash`, strict: true });
+            if (tx.hash.toLowerCase() === ailab_core_1.eth_config.getTokenGenesisHash().toLowerCase()) {
+                result.status = ailab_core_1.RESULT_STATUS.INVOLVED;
                 const r = yield this.getReceiptByTxnHash(tx.hash);
                 if (!r)
                     throw new Error("cannot " + action + ", unable to retrieve receipt");
@@ -744,16 +742,16 @@ class eth_worker {
                 result.type = "transfer";
                 result.tag = this.getTagContractCreated();
                 result.method = "createContract";
-                result.fromSymbol = eth_config_1.eth_config.getEthSymbol();
-                result.fromDecimal = eth_config_1.eth_config.getEthDecimal();
+                result.fromSymbol = ailab_core_1.eth_config.getEthSymbol();
+                result.fromDecimal = ailab_core_1.eth_config.getEthDecimal();
                 result.fromValue = (_a = tx.value) !== null && _a !== void 0 ? _a : "";
                 result.fromAmount = this.convertValueToETH((_b = tx.value) !== null && _b !== void 0 ? _b : "");
                 result.toAddress = result.fromAddress;
-                result.toSymbol = eth_config_1.eth_config.getTokenSymbol();
-                result.toDecimal = eth_config_1.eth_config.getTokenDecimal();
+                result.toSymbol = ailab_core_1.eth_config.getTokenSymbol();
+                result.toDecimal = ailab_core_1.eth_config.getTokenDecimal();
                 result.toValue = value;
                 result.toAmount = tokenAmount;
-                result.sendStatus = eth_types_1.RESULT_SEND_STATUS.SUCCESS;
+                result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.SUCCESS;
                 return result;
             }
             return result;
@@ -763,24 +761,24 @@ class eth_worker {
     static processAddLiquidity(result, decodedAbi) {
         return __awaiter(this, void 0, void 0, function* () {
             let action = "process add liquidity";
-            let methodAbi = eth_abi_decoder_1.eth_abi_decoder.getAddLiquidityETH(decodedAbi);
+            let methodAbi = ailab_core_1.eth_abi_decoder.getAddLiquidityETH(decodedAbi);
             if (!methodAbi)
                 return result;
             result.tag = this.getTagAddLiquidityToToken();
             result.fromAmountGross = this.convertValueToToken(methodAbi.amountTokenDesired.toString());
             result.fromValue = methodAbi.amountTokenMin.toString();
             result.fromAmount = this.convertValueToToken(result.fromValue);
-            result.fromContract = eth_config_1.eth_config.getTokenContract();
-            result.fromSymbol = eth_config_1.eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config_1.eth_config.getTokenDecimal();
+            result.fromContract = ailab_core_1.eth_config.getTokenContract();
+            result.fromSymbol = ailab_core_1.eth_config.getTokenSymbol();
+            result.fromDecimal = ailab_core_1.eth_config.getTokenDecimal();
             result.toAmountGross = this.convertValueToETH(methodAbi.amountETHMin.toString());
             result.toValue = methodAbi.amountETHMin.toString();
             result.toAmount = result.toAmountGross;
-            result.toContract = eth_config_1.eth_config.getEthContract();
-            result.toDecimal = eth_config_1.eth_config.getEthDecimal();
-            result.toSymbol = eth_config_1.eth_config.getEthSymbol();
+            result.toContract = ailab_core_1.eth_config.getEthContract();
+            result.toDecimal = ailab_core_1.eth_config.getEthDecimal();
+            result.toSymbol = ailab_core_1.eth_config.getEthSymbol();
             const receipt = yield eth_worker.getReceiptByTxnHash(result.hash);
-            result.sendStatus = receipt && receipt.status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
+            result.sendStatus = receipt && receipt.status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
             return result;
         });
     }
@@ -788,18 +786,18 @@ class eth_worker {
     static processApprovalEvent(tx, decodedAbi, result) {
         return __awaiter(this, void 0, void 0, function* () {
             let action = "process approval event";
-            tx.toAddress = assert_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
-            if (tx.toAddress.toLowerCase() !== eth_config_1.eth_config.getTokenContract().toLowerCase())
+            tx.toAddress = ailab_core_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
+            if (tx.toAddress.toLowerCase() !== ailab_core_1.eth_config.getTokenContract().toLowerCase())
                 return result;
-            let methodAbi = yield eth_abi_decoder_1.eth_abi_decoder.getApproveAbi(decodedAbi);
+            let methodAbi = yield ailab_core_1.eth_abi_decoder.getApproveAbi(decodedAbi);
             if (!methodAbi)
                 return result;
-            result.fromContract = eth_config_1.eth_config.getTokenContract();
-            result.fromSymbol = eth_config_1.eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config_1.eth_config.getTokenDecimal();
+            result.fromContract = ailab_core_1.eth_config.getTokenContract();
+            result.fromSymbol = ailab_core_1.eth_config.getTokenSymbol();
+            result.fromDecimal = ailab_core_1.eth_config.getTokenDecimal();
             result.tag = "approval";
             let receipt = yield this.getReceiptByTxnHash(tx.hash);
-            result.sendStatus = receipt && receipt.status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
+            result.sendStatus = receipt && receipt.status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
             return result;
         });
     }
@@ -807,34 +805,34 @@ class eth_worker {
     static processTransferEvent(tx, decodedAbi, result) {
         return __awaiter(this, void 0, void 0, function* () {
             let action = "process transfer event";
-            tx.toAddress = assert_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
-            tx.hash = assert_1.assert.isString({ val: tx.hash, prop_name: "tx.hash", strict: true });
-            if (tx.toAddress.toLowerCase() !== eth_config_1.eth_config.getTokenContract().toLowerCase())
+            tx.toAddress = ailab_core_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
+            tx.hash = ailab_core_1.assert.isString({ val: tx.hash, prop_name: "tx.hash", strict: true });
+            if (tx.toAddress.toLowerCase() !== ailab_core_1.eth_config.getTokenContract().toLowerCase())
                 return result;
-            let methodAbi = yield eth_abi_decoder_1.eth_abi_decoder.getTransferAbi(decodedAbi);
+            let methodAbi = yield ailab_core_1.eth_abi_decoder.getTransferAbi(decodedAbi);
             if (!methodAbi)
                 return result;
-            result.fromContract = eth_config_1.eth_config.getTokenContract();
-            result.fromSymbol = eth_config_1.eth_config.getTokenSymbol();
-            result.fromDecimal = eth_config_1.eth_config.getTokenDecimal();
-            result.toContract = eth_config_1.eth_config.getTokenContract();
-            result.toSymbol = eth_config_1.eth_config.getTokenSymbol();
-            result.toDecimal = eth_config_1.eth_config.getTokenDecimal();
+            result.fromContract = ailab_core_1.eth_config.getTokenContract();
+            result.fromSymbol = ailab_core_1.eth_config.getTokenSymbol();
+            result.fromDecimal = ailab_core_1.eth_config.getTokenDecimal();
+            result.toContract = ailab_core_1.eth_config.getTokenContract();
+            result.toSymbol = ailab_core_1.eth_config.getTokenSymbol();
+            result.toDecimal = ailab_core_1.eth_config.getTokenDecimal();
             result.toAddress = methodAbi.recipient;
             result.tag = eth_worker.getTagTransferTokenToOther();
             /// GROSS FROM
             result.fromValue = methodAbi.amount.toString();
-            result.fromAmount = eth_worker.convertValueToAmount(result.fromValue.toString(), eth_config_1.eth_config.getTokenDecimal());
+            result.fromAmount = eth_worker.convertValueToAmount(result.fromValue.toString(), ailab_core_1.eth_config.getTokenDecimal());
             result.fromAmountGross = result.fromAmount;
             result.toValue = result.fromValue;
             result.toAmount = result.fromAmount;
             result.toAmountGross = result.fromAmountGross;
             let receipt = yield this.getReceiptByTxnHash(tx.hash);
-            result.sendStatus = receipt && receipt.status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
-            const transferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(tx.hash, "transfer");
+            result.sendStatus = receipt && receipt.status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
+            const transferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(tx.hash, "transfer");
             if (transferLog && transferLog.to.toLowerCase() === result.toAddress.toLowerCase()) {
                 result.toValue = transferLog.value.toString();
-                result.toAmount = eth_worker.convertValueToAmount(result.toValue, eth_config_1.eth_config.getTokenDecimal());
+                result.toAmount = eth_worker.convertValueToAmount(result.toValue, ailab_core_1.eth_config.getTokenDecimal());
             }
             return result;
         });
@@ -843,130 +841,130 @@ class eth_worker {
     static processSwapEvents(tx, decodedAbi, result) {
         return __awaiter(this, void 0, void 0, function* () {
             let action = "process swap events";
-            tx.toAddress = assert_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
-            tx.fromAddress = assert_1.assert.isString({ val: tx.fromAddress, prop_name: "tx.fromAddress", strict: true });
-            tx.hash = assert_1.assert.isString({ val: tx.hash, prop_name: "tx.hash", strict: true });
+            tx.toAddress = ailab_core_1.assert.isString({ val: tx.toAddress, prop_name: "tx.toAddress", strict: true });
+            tx.fromAddress = ailab_core_1.assert.isString({ val: tx.fromAddress, prop_name: "tx.fromAddress", strict: true });
+            tx.hash = ailab_core_1.assert.isString({ val: tx.hash, prop_name: "tx.hash", strict: true });
             // CHECK IF DEX
-            if (tx.toAddress.toLowerCase() !== eth_config_1.eth_config.getDexContract().toLowerCase())
+            if (tx.toAddress.toLowerCase() !== ailab_core_1.eth_config.getDexContract().toLowerCase())
                 return result;
             // set toAddress same with fromAddress because of swap
             result.toAddress = result.fromAddress;
             // CHECK IF SEND SUCCESS
             const receipt = yield this.getReceiptByTxnHash(tx.hash);
-            result.sendStatus = receipt && receipt.status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
+            result.sendStatus = receipt && receipt.status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
             // identify contract informations
-            const fromContract = assert_1.assert.isString({ val: decodedAbi.argument_key_value["path"][0], prop_name: "fromContract path", strict: true });
+            const fromContract = ailab_core_1.assert.isString({ val: decodedAbi.argument_key_value["path"][0], prop_name: "fromContract path", strict: true });
             const fromContractInfo = yield this.getContractMetaData(fromContract);
-            const toContract = assert_1.assert.isString({ val: decodedAbi.argument_key_value["path"][decodedAbi.argument_key_value["path"].length - 1], prop_name: "toContract", strict: true });
-            const analyzeResultLogs = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(tx.hash);
+            const toContract = ailab_core_1.assert.isString({ val: decodedAbi.argument_key_value["path"][decodedAbi.argument_key_value["path"].length - 1], prop_name: "toContract", strict: true });
+            const analyzeResultLogs = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(tx.hash);
             // BUY
-            const swapExactETHForTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapExactETHForTokens(decodedAbi);
+            const swapExactETHForTokens = yield ailab_core_1.eth_abi_decoder.getSwapExactETHForTokens(decodedAbi);
             if (swapExactETHForTokens) {
                 result.tag = eth_worker.getTagSwapEthToToken();
                 // FROM
-                const firstDepositLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
+                const firstDepositLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
                 result = this.importResultFromValuesFromLog(result, firstDepositLog.ContractInfo, firstDepositLog.amount.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // TO AMOUNT GROSS
-                const swapLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "swap", true);
+                const swapLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "swap", true);
                 result.toAmountGross = swapLog.amount1Out.toString();
                 result.toAmountGross = this.convertValueToETH(result.toAmountGross);
             }
-            const swapETHForExactTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapETHForExactTokens(decodedAbi);
+            const swapETHForExactTokens = yield ailab_core_1.eth_abi_decoder.getSwapETHForExactTokens(decodedAbi);
             if (swapETHForExactTokens) {
                 result.tag = this.getTagSwapEthToToken();
                 // FROM
-                const depositLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
+                const depositLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
                 result = this.importResultFromValuesFromLog(result, depositLog.ContractInfo, depositLog.amount.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // TO AMOUNT GROSS
-                const swapLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
+                const swapLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
                 result.toAmountGross = swapLog.amount1Out.toString();
                 result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
             }
-            const swapExactETHForTokensSupportingFeeOnTransferTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
+            const swapExactETHForTokensSupportingFeeOnTransferTokens = yield ailab_core_1.eth_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
             if (swapExactETHForTokensSupportingFeeOnTransferTokens) {
                 result.tag = this.getTagSwapEthToToken();
                 // FROM
-                const firstDepositLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
+                const firstDepositLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "deposit", true);
                 result = this.importResultFromValuesFromLog(result, firstDepositLog.ContractInfo, firstDepositLog.amount.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // TO AMOUNT GROSS
-                const lastSwapLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
+                const lastSwapLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
                 result.toAmountGross = lastSwapLog.amount1Out.toString();
                 result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
             }
             // SELL
-            const swapTokensForExactETH = yield eth_abi_decoder_1.eth_abi_decoder.getSwapTokensForExactETH(decodedAbi);
+            const swapTokensForExactETH = yield ailab_core_1.eth_abi_decoder.getSwapTokensForExactETH(decodedAbi);
             if (swapTokensForExactETH) {
                 result.tag = this.getTagSwapTokenToEth();
                 result.fromAmountGross = this.convertValueToAmount(swapTokensForExactETH.amountInMax.toString(), fromContractInfo.decimals);
                 // FROM
-                const firstTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
+                const firstTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // FROM GROSS AMOUNT
                 // const syncLog = await eth_receipt_logs_tools.getFirstLogByMethod<SyncLog>(analyzeResultLogs,"sync",true) as SyncLog;
                 // result.fromAmountGross = eth_worker.convertValueToAmount(syncLog.reserve1.toString(),firstTransferLog.ContractInfo.decimals);
             }
-            const swapExactTokensForETHSupportingFeeOnTransferTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
+            const swapExactTokensForETHSupportingFeeOnTransferTokens = yield ailab_core_1.eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
             if (swapExactTokensForETHSupportingFeeOnTransferTokens) {
                 result.tag = this.getTagSwapTokenToOtherToken();
                 // FROM AMOUNT GROSS
                 result.fromAmountGross = swapExactTokensForETHSupportingFeeOnTransferTokens.amountIn.toString();
                 result.fromAmountGross = this.convertValueToAmount(result.fromAmountGross, fromContractInfo.decimals);
                 // FROM
-                const firstTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
+                const firstTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
                 // TO
-                const withdrawalLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", true);
+                const withdrawalLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", true);
                 result = this.importResultToValuesFromLog(result, withdrawalLog.ContractInfo, withdrawalLog.wad.toString());
             }
-            const swapExactTokensForTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
+            const swapExactTokensForTokens = yield ailab_core_1.eth_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
             if (swapExactTokensForTokens) {
-                if (fromContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                if (fromContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                     result.tag = this.getTagSwapTokenToOtherToken();
-                if (toContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                if (toContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                     result.tag = this.getTagSwapOtherTokenToToken();
                 result.fromAmountGross = this.convertValueToAmount(swapExactTokensForTokens.amountIn.toString(), fromContractInfo.decimals);
                 // FROM
-                const firstTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
+                const firstTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // TO AMOUNT GROSS
-                const lastSwapLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
+                const lastSwapLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
                 result.toAmountGross = lastSwapLog.amount1Out.toString();
                 result.toAmountGross = this.convertValueToToken(result.toAmountGross);
             }
-            const swapExactTokensForTokensSupportingFeeOnTransferTokens = yield eth_abi_decoder_1.eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
+            const swapExactTokensForTokensSupportingFeeOnTransferTokens = yield ailab_core_1.eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
             if (swapExactTokensForTokensSupportingFeeOnTransferTokens) {
-                if (fromContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                if (fromContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                     result.tag = this.getTagSwapTokenToOtherToken();
-                if (toContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase())
+                if (toContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase())
                     result.tag = this.getTagSwapOtherTokenToToken();
                 // FROM
-                const firstTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
+                const firstTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultFromValuesFromLog(result, firstTransferLog.ContractInfo, firstTransferLog.value.toString());
                 // TO
-                const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                 result = this.importResultToValuesFromLog(result, lastTransferLog.ContractInfo, lastTransferLog.value.toString());
                 // TO AMOUNT GROSS
-                if (result.fromContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                if (result.fromContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                     result.fromAmountGross = swapExactTokensForTokensSupportingFeeOnTransferTokens.amountIn.toString();
-                    result.fromAmountGross = eth_worker.convertValueToAmount(result.fromAmountGross, eth_config_1.eth_config.getTokenDecimal());
+                    result.fromAmountGross = eth_worker.convertValueToAmount(result.fromAmountGross, ailab_core_1.eth_config.getTokenDecimal());
                 }
                 else {
-                    const lastSwapLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
+                    const lastSwapLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "swap", true);
                     result.toAmountGross = lastSwapLog.amount1Out.toString();
                     result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
                 }
@@ -977,11 +975,11 @@ class eth_worker {
     static processTransitSwap(tx, decodedAbi, result) {
         return __awaiter(this, void 0, void 0, function* () {
             let action = "process transit swap";
-            if (tools_1.tools.isEmpty(tx.hash))
+            if (ailab_core_1.tools.isEmpty(tx.hash))
                 throw new Error("cannot " + action + ", hash not set");
-            let swap = yield eth_abi_decoder_1.eth_abi_decoder.getSwap(decodedAbi);
+            let swap = yield ailab_core_1.eth_abi_decoder.getSwap(decodedAbi);
             if (swap) {
-                const analyzeResultLogs = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(tx.hash);
+                const analyzeResultLogs = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(tx.hash);
                 result.fromContract = swap.srcToken;
                 result.toContract = swap.dstToken;
                 if (result.fromContract === "0x0000000000000000000000000000000000000000") {
@@ -992,7 +990,7 @@ class eth_worker {
                 }
                 let fromContractInfo = yield eth_worker.getContractMetaData(result.fromContract);
                 let toContractInfo = yield eth_worker.getContractMetaData(result.toContract);
-                if (result.fromContract.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                if (result.fromContract.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                     result.tag = eth_worker.getTagSwapTokenToOtherToken();
                 }
                 else {
@@ -1001,18 +999,18 @@ class eth_worker {
                 result.toAddress = result.fromAddress;
                 result.method = decodedAbi.abi.name;
                 let receipt = yield eth_worker.getReceiptByTxnHash(tx.hash);
-                result.sendStatus = receipt && receipt.status ? eth_types_1.RESULT_SEND_STATUS.SUCCESS : eth_types_1.RESULT_SEND_STATUS.FAILED;
+                result.sendStatus = receipt && receipt.status ? ailab_core_1.RESULT_SEND_STATUS.SUCCESS : ailab_core_1.RESULT_SEND_STATUS.FAILED;
                 // FROM
-                const firstTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
+                const firstTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getFirstLogByMethod(analyzeResultLogs, "transfer", true);
                 result = yield eth_worker.importResultValues("from", result, fromContractInfo, firstTransferLog.value.toString());
                 // TO
-                const withdrawalLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", false);
+                const withdrawalLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", false);
                 if (withdrawalLog) {
-                    const withdrawalLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", true);
+                    const withdrawalLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "withdrawal", true);
                     result = yield eth_worker.importResultValues("to", result, toContractInfo, withdrawalLog.wad.toString());
                 }
                 else {
-                    const lastTransferLog = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
+                    const lastTransferLog = yield ailab_core_1.eth_receipt_logs_tools.getLastLogByMethod(analyzeResultLogs, "transfer", true);
                     result = yield eth_worker.importResultValues("to", result, toContractInfo, lastTransferLog.value.toString());
                 }
                 // FROM AMOUNT GROSS
@@ -1024,16 +1022,16 @@ class eth_worker {
     static processGenericSwapEvents(tx, result) {
         return __awaiter(this, void 0, void 0, function* () {
             tx = typeof tx === "string" ? yield eth_worker.getDbTxnByHash(tx) : tx;
-            tx.toAddress = assert_1.assert.isString({ val: tx.toAddress, prop_name: "processGenericSwapEvents tx.toAddress", strict: true });
-            tx.fromAddress = assert_1.assert.isString({ val: tx.fromAddress, prop_name: "processGenericSwapEvents tx.fromAddress", strict: true });
+            tx.toAddress = ailab_core_1.assert.isString({ val: tx.toAddress, prop_name: "processGenericSwapEvents tx.toAddress", strict: true });
+            tx.fromAddress = ailab_core_1.assert.isString({ val: tx.fromAddress, prop_name: "processGenericSwapEvents tx.fromAddress", strict: true });
             if (!eth_worker.checkIfInvolved2(tx)) {
-                result.status = eth_types_1.RESULT_STATUS.NOT_INVOLVED;
+                result.status = ailab_core_1.RESULT_STATUS.NOT_INVOLVED;
                 return result;
             }
-            result.status = eth_types_1.RESULT_STATUS.INVOLVED;
+            result.status = ailab_core_1.RESULT_STATUS.INVOLVED;
             const receipt = yield eth_worker.getReceiptByTxnHash(tx.hash);
             if (!receipt) {
-                result.sendStatus = eth_types_1.RESULT_SEND_STATUS.FAILED;
+                result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.FAILED;
                 return result;
             }
             return result;
@@ -1042,16 +1040,16 @@ class eth_worker {
     static processOtherEventsOfContract(result, decodedAbi) {
         return __awaiter(this, void 0, void 0, function* () {
             let foundContract = false;
-            if (result.status === "involved" && result.sendStatus === eth_types_1.RESULT_SEND_STATUS.SUCCESS) {
+            if (result.status === "involved" && result.sendStatus === ailab_core_1.RESULT_SEND_STATUS.SUCCESS) {
                 return result;
             }
             /// DEEP SEARCH PARAMETERS FOR TOKEN_TO_TRACK CONTRACT
-            if (result.fromAddress.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()
-                || result.toAddress.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
-                let analyzeLogsResult = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
+            if (result.fromAddress.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()
+                || result.toAddress.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
+                let analyzeLogsResult = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
                 if (analyzeLogsResult.receipt.status) {
-                    result.sendStatus = eth_types_1.RESULT_SEND_STATUS.SUCCESS;
-                    result.status = eth_types_1.RESULT_STATUS.INVOLVED;
+                    result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.SUCCESS;
+                    result.status = ailab_core_1.RESULT_STATUS.INVOLVED;
                 }
             }
             for (let x = 0; x < decodedAbi.abi.params.length; x++) {
@@ -1060,21 +1058,21 @@ class eth_worker {
                     for (let y = 0; y < param.value.length; y++) {
                         let param_arr_value = param.value[y];
                         if (typeof param_arr_value === "string"
-                            && param_arr_value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                            && param_arr_value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                             foundContract = true;
                         }
                     }
                 }
                 if (typeof param.value === "string"
-                    && param.value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                    && param.value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                     foundContract = true;
                 }
             }
             if (foundContract) {
-                let analyzeLogsResult = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
+                let analyzeLogsResult = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
                 if (analyzeLogsResult.receipt.status) {
-                    result.sendStatus = eth_types_1.RESULT_SEND_STATUS.SUCCESS;
-                    result.status = eth_types_1.RESULT_STATUS.INVOLVED;
+                    result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.SUCCESS;
+                    result.status = ailab_core_1.RESULT_STATUS.INVOLVED;
                 }
             }
             if (result.sendStatus === "success" && result.status === "involved") {
@@ -1086,16 +1084,16 @@ class eth_worker {
     /// SET TYPES
     static processResultType(result) {
         result.type = "generic_event";
-        if (result.fromContract === eth_config_1.eth_config.getTokenContract()
-            && result.toContract === eth_config_1.eth_config.getTokenContract()) {
+        if (result.fromContract === ailab_core_1.eth_config.getTokenContract()
+            && result.toContract === ailab_core_1.eth_config.getTokenContract()) {
             result.type = "transfer";
         }
-        if (result.fromContract === eth_config_1.eth_config.getTokenContract()
-            && result.toContract !== eth_config_1.eth_config.getTokenContract()) {
+        if (result.fromContract === ailab_core_1.eth_config.getTokenContract()
+            && result.toContract !== ailab_core_1.eth_config.getTokenContract()) {
             result.type = "sell";
         }
-        if (result.fromContract !== eth_config_1.eth_config.getTokenContract()
-            && result.toContract === eth_config_1.eth_config.getTokenContract()) {
+        if (result.fromContract !== ailab_core_1.eth_config.getTokenContract()
+            && result.toContract === ailab_core_1.eth_config.getTokenContract()) {
             result.type = "buy";
         }
         if (result.method === "addLiquidityETH") {
@@ -1139,7 +1137,7 @@ class eth_worker {
     }
     static processResultChecks(result, decodedAbi) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (result.status === eth_types_1.RESULT_STATUS.INVOLVED
+            if (result.status === ailab_core_1.RESULT_STATUS.INVOLVED
                 && result.sendStatus === "success") {
                 let withAmount = ["transfer", "buy", "sell"];
                 let fromTaxPerc = parseFloat(result.fromTaxPerc);
@@ -1163,8 +1161,8 @@ class eth_worker {
                     }
                 }
                 if (result.type === "transfer"
-                    && result.fromAddress.toLowerCase() !== eth_config_1.eth_config.getHotWalletAddress().toLowerCase()
-                    && result.fromAddress.toLowerCase() !== eth_config_1.eth_config.getTokenOwner().toLowerCase()
+                    && result.fromAddress.toLowerCase() !== ailab_core_1.eth_config.getHotWalletAddress().toLowerCase()
+                    && result.fromAddress.toLowerCase() !== ailab_core_1.eth_config.getTokenOwner().toLowerCase()
                     && result.fromAddress.toLowerCase() !== "0x8a9080fb96631cdc0fa95e479c68864dd5d3313b".toLowerCase() // evans address
                 ) {
                     if (taxAmount === 0) {
@@ -1176,12 +1174,12 @@ class eth_worker {
                 let foundContract = false;
                 let ignoreEvents = ["increaseAllowance", "setSwapAndLiquifyEnabled", "enableAllFees", "setTaxFee"];
                 /// DEEP SEARCH PARAMETERS FOR TOKEN_TO_TRACK CONTRACT
-                if (result.fromAddress.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()
-                    || result.toAddress.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                if (result.fromAddress.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()
+                    || result.toAddress.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                     if (ignoreEvents.indexOf(result.method) < 0) {
-                        let analyzeLogsResult = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
+                        let analyzeLogsResult = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
                         if (analyzeLogsResult.receipt.status) {
-                            result.sendStatus = eth_types_1.RESULT_SEND_STATUS.SUCCESS;
+                            result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.SUCCESS;
                             throw new Error("tracked contract found on tx, should be involved. hash:" + result.hash);
                         }
                     }
@@ -1192,21 +1190,21 @@ class eth_worker {
                         for (let y = 0; y < param.value.length; y++) {
                             let param_arr_value = param.value[y];
                             if (typeof param_arr_value === "string"
-                                && param_arr_value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                                && param_arr_value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                                 foundContract = true;
                             }
                         }
                     }
                     if (typeof param.value === "string"
-                        && param.value.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                        && param.value.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                         foundContract = true;
                     }
                 }
                 if (foundContract) {
                     if (ignoreEvents.indexOf(result.method) < 0) {
-                        let analyzeLogsResult = yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
+                        let analyzeLogsResult = yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(result.hash);
                         if (analyzeLogsResult.receipt.status) {
-                            result.sendStatus = eth_types_1.RESULT_SEND_STATUS.SUCCESS;
+                            result.sendStatus = ailab_core_1.RESULT_SEND_STATUS.SUCCESS;
                             console.log(result);
                             throw new Error("tracked contract found on tx, should be involved. hash:" + result.hash);
                         }
@@ -1251,7 +1249,7 @@ class eth_worker {
     static analyzeLogs(_tx_hash, strict = true) {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
-            let logResult = { receipt: eth_types_1.eth_types.getDefaultTransactionReceipt(), result: [] };
+            let logResult = { receipt: ailab_core_1.eth_types.getDefaultTransactionReceipt(), result: [] };
             let action = "analyze logs";
             let receipt = yield this.getReceiptByTxnHash(_tx_hash);
             if (!receipt)
@@ -1348,15 +1346,15 @@ class eth_worker {
     }
     static sendTokenFromHotWallet(_to, _amount) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.sendToken(eth_config_1.eth_config.getHotWalletAddress(), _to, _amount, eth_config_1.eth_config.getHotWalletKey());
+            return yield this.sendToken(ailab_core_1.eth_config.getHotWalletAddress(), _to, _amount, ailab_core_1.eth_config.getHotWalletKey());
         });
     }
     static sendToken(_from, _to, _amount, _key) {
         return __awaiter(this, void 0, void 0, function* () {
             _to = _to.replace(/\s/g, "");
             console.log("USING QUICKNODE");
-            console.log("sending token amount:%... initiating contract...from:%s", _amount, eth_config_1.eth_config.getHotWalletAddress());
-            let contract = new Web3Client.eth.Contract(eth_config_1.eth_config.getTokenAbi(), eth_config_1.eth_config.getTokenContract(), { from: _from });
+            console.log("sending token amount:%... initiating contract...from:%s", _amount, ailab_core_1.eth_config.getHotWalletAddress());
+            let contract = new Web3Client.eth.Contract(ailab_core_1.eth_config.getTokenAbi(), ailab_core_1.eth_config.getTokenContract(), { from: _from });
             let value = this.convertTokenToValue(_amount);
             //@ts-ignore
             let _data = contract.methods.transfer(_to, value).encodeABI();
@@ -1370,7 +1368,7 @@ class eth_worker {
                 from: _from
             });
             let _gas = yield Web3Client.eth.getGasPrice();
-            let gasLimit = Math.floor(estimateGas * eth_config_1.eth_config.getGasMultiplier());
+            let gasLimit = Math.floor(estimateGas * ailab_core_1.eth_config.getGasMultiplier());
             console.log("...gas estimate:%s gas price:%s gas:%s", estimateGas, _gas, gasLimit);
             let _nonce = yield Web3Client.eth.getTransactionCount(_from);
             // let _nonce = await eth_helper.getHotWalletNonce();
@@ -1378,7 +1376,7 @@ class eth_worker {
             let signedTransaction = yield Web3Client.eth.accounts.signTransaction({
                 nonce: _nonce,
                 data: _data,
-                to: eth_config_1.eth_config.getTokenContract(),
+                to: ailab_core_1.eth_config.getTokenContract(),
                 value: "0x0",
                 gas: gasLimit,
                 gasPrice: _gas,
@@ -1468,7 +1466,7 @@ class eth_worker {
                 if (currentCheckCount >= confirmationCheckLimit) {
                     throw new Error("unable to confirm transaction");
                 }
-            } while (height < eth_config_1.eth_config.getConfirmationNeeded());
+            } while (height < ailab_core_1.eth_config.getConfirmationNeeded());
             return true;
         });
     }
@@ -1550,7 +1548,7 @@ class eth_worker {
             if (logDb.count() > 0) {
                 console.log(`sync log found`);
                 for (const log of logDb._dataList) {
-                    let check_sync_log = yield eth_log_decoder_1.eth_log_decoder.getSyncLog({
+                    let check_sync_log = yield ailab_core_1.eth_log_decoder.getSyncLog({
                         address: (_a = log.address) !== null && _a !== void 0 ? _a : "",
                         blockHash: (_b = log.blockHash) !== null && _b !== void 0 ? _b : "",
                         blockNumber: (_c = log.blockNumber) !== null && _c !== void 0 ? _c : 0,
@@ -1568,17 +1566,17 @@ class eth_worker {
             // fallback web3
             else {
                 console.log(`not found in db, attempting to search sync log pair:${pairContract} in rpc`);
-                const logs = yield Web3Client.eth.getPastLogs({ address: pairContract, fromBlock: blockNumber, toBlock: blockNumber, topics: [eth_config_1.eth_config.getSyncTopicSig()] });
+                const logs = yield Web3Client.eth.getPastLogs({ address: pairContract, fromBlock: blockNumber, toBlock: blockNumber, topics: [ailab_core_1.eth_config.getSyncTopicSig()] });
                 if (logs.length === 0) {
                     console.log(`not found for current block:${blockNumber}, trying on block:${--blockNumber}`);
                     return eth_worker.getReserveByBlockNumber(blockNumber, pairContract);
                 }
                 for (const log of logs) {
-                    sync_log = yield eth_log_decoder_1.eth_log_decoder.getSyncLog(log);
+                    sync_log = yield ailab_core_1.eth_log_decoder.getSyncLog(log);
                     if (sync_log) {
                         console.log(`sync log found, adding on db`);
                         yield eth_worker.getDbTxnByHash(log.transactionHash);
-                        yield eth_receipt_logs_tools_1.eth_receipt_logs_tools.getReceiptLogs(log.transactionHash);
+                        yield ailab_core_1.eth_receipt_logs_tools.getReceiptLogs(log.transactionHash);
                     }
                 }
             }
@@ -1590,14 +1588,14 @@ class eth_worker {
     // BNB USD PAIR
     static getBnbUsdReserveByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
-            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getBnbUsdPairContract());
+            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, ailab_core_1.eth_config.getBnbUsdPairContract());
             return { bnb: syncLog.reserve0, usd: syncLog.reserve1 };
         });
     }
     static getBnbUsdPriceByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             const reserve = yield eth_worker.getBnbUsdReserveByBlockNumber(blockNumber);
-            return tools_1.tools.toBn(reserve.usd.toString()).dividedBy(tools_1.tools.toBn(reserve.bnb.toString()));
+            return ailab_core_1.tools.toBn(reserve.usd.toString()).dividedBy(ailab_core_1.tools.toBn(reserve.bnb.toString()));
         });
     }
     static getBnbUsdPriceByTime(timeStamp) {
@@ -1637,21 +1635,21 @@ class eth_worker {
     // BNB TOKEN PAIR
     static getTokenBnbReserveByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
-            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, eth_config_1.eth_config.getTokenBnbPairContract());
+            const syncLog = yield eth_worker.getReserveByBlockNumber(blockNumber, ailab_core_1.eth_config.getTokenBnbPairContract());
             return { bnb: syncLog.reserve0, token: syncLog.reserve1 };
         });
     }
     static getTokenBnbPriceByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             const reserve = yield eth_worker.getTokenBnbReserveByBlockNumber(blockNumber);
-            return tools_1.tools.toBn(reserve.bnb.toString()).dividedBy(tools_1.tools.toBn(reserve.token.toString()));
+            return ailab_core_1.tools.toBn(reserve.bnb.toString()).dividedBy(ailab_core_1.tools.toBn(reserve.token.toString()));
         });
     }
     static getTokenUsdPriceByBlockNumber(blockNumber) {
         return __awaiter(this, void 0, void 0, function* () {
             const bnb_usd = yield eth_worker.getBnbUsdPriceByBlockNumber(blockNumber);
             const bnb_token = yield eth_worker.getTokenBnbPriceByBlockNumber(blockNumber);
-            return tools_1.tools.toBn(bnb_token.toString()).multipliedBy(tools_1.tools.toBn(bnb_usd.toString()));
+            return ailab_core_1.tools.toBn(bnb_token.toString()).multipliedBy(ailab_core_1.tools.toBn(bnb_usd.toString()));
         });
     }
     static getTokenBnbValueByTime(amount, timeStamp) {
@@ -1688,62 +1686,62 @@ class eth_worker {
     //region TRADE
     static swapExactETHForTokens(bnb_amount) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log(`swapping ${bnb_amount} BNB for ${eth_config_1.eth_config.getTokenSymbol()}`);
+            console.log(`swapping ${bnb_amount} BNB for ${ailab_core_1.eth_config.getTokenSymbol()}`);
             const bnb_value = eth_worker.convertEthToValue(bnb_amount);
             console.log(`encoding swapExactETHForTokens data`);
-            const dex_contract = yield new Web3Client.eth.Contract(eth_config_1.eth_config.getDexAbi(), eth_config_1.eth_config.getDexContract());
-            let data = dex_contract.methods.swapExactETHForTokens(bnb_value, [eth_config_1.eth_config.getEthContract(), eth_config_1.eth_config.getTokenContract()], eth_config_1.eth_config.getHotWalletAddress(), Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)).encodeABI();
-            let _nonce = yield Web3Client.eth.getTransactionCount(eth_config_1.eth_config.getHotWalletAddress());
+            const dex_contract = yield new Web3Client.eth.Contract(ailab_core_1.eth_config.getDexAbi(), ailab_core_1.eth_config.getDexContract());
+            let data = dex_contract.methods.swapExactETHForTokens(bnb_value, [ailab_core_1.eth_config.getEthContract(), ailab_core_1.eth_config.getTokenContract()], ailab_core_1.eth_config.getHotWalletAddress(), Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)).encodeABI();
+            let _nonce = yield Web3Client.eth.getTransactionCount(ailab_core_1.eth_config.getHotWalletAddress());
             console.log(`nonce found:${_nonce}`);
             console.log(`estimating gas ${bnb_value}`);
             let estimateGas = yield Web3Client.eth.estimateGas({
                 value: bnb_value,
                 data: data,
-                to: eth_config_1.eth_config.getDexContract(),
-                from: eth_config_1.eth_config.getHotWalletAddress()
+                to: ailab_core_1.eth_config.getDexContract(),
+                from: ailab_core_1.eth_config.getHotWalletAddress()
             });
             console.log(`gas:${estimateGas}. signing transaction`);
             let signedTransaction = yield Web3Client.eth.accounts.signTransaction({
                 nonce: _nonce,
                 data: data,
-                to: eth_config_1.eth_config.getDexContract(),
+                to: ailab_core_1.eth_config.getDexContract(),
                 value: bnb_value,
                 gas: estimateGas,
                 gasPrice: yield Web3Client.eth.getGasPrice(),
-            }, eth_config_1.eth_config.getHotWalletKey());
+            }, ailab_core_1.eth_config.getHotWalletKey());
             console.log(`executing swap`);
-            assert_1.assert.notEmpty(signedTransaction.rawTransaction);
+            ailab_core_1.assert.notEmpty(signedTransaction.rawTransaction);
             return Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction);
         });
     }
     static swapExactTokensForETH(token_amount) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log(`swapping ${token_amount} ${eth_config_1.eth_config.getTokenSymbol()} for BNB`);
+            console.log(`swapping ${token_amount} ${ailab_core_1.eth_config.getTokenSymbol()} for BNB`);
             const token_value = eth_worker.convertTokenToValue(token_amount);
             console.log(`encoding swapExactTokensForETH data`);
-            const dex_contract = yield new Web3Client.eth.Contract(eth_config_1.eth_config.getDexAbi(), eth_config_1.eth_config.getDexContract());
-            let data = dex_contract.methods.swapExactTokensForETH(token_value, [eth_config_1.eth_config.getEthContract(), eth_config_1.eth_config.getTokenContract()], eth_config_1.eth_config.getHotWalletAddress(), Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)).encodeABI();
-            let _nonce = yield Web3Client.eth.getTransactionCount(eth_config_1.eth_config.getHotWalletAddress());
+            const dex_contract = yield new Web3Client.eth.Contract(ailab_core_1.eth_config.getDexAbi(), ailab_core_1.eth_config.getDexContract());
+            let data = dex_contract.methods.swapExactTokensForETH(token_value, [ailab_core_1.eth_config.getEthContract(), ailab_core_1.eth_config.getTokenContract()], ailab_core_1.eth_config.getHotWalletAddress(), Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)).encodeABI();
+            let _nonce = yield Web3Client.eth.getTransactionCount(ailab_core_1.eth_config.getHotWalletAddress());
             console.log(`nonce found:${_nonce}`);
-            console.log(`estimating gas ${token_value} ${eth_config_1.eth_config.getTokenContract()}`);
+            console.log(`estimating gas ${token_value} ${ailab_core_1.eth_config.getTokenContract()}`);
             let estimateGas = yield Web3Client.eth.estimateGas({
                 value: "0x0" // only tokens
                 ,
                 data: data,
-                to: eth_config_1.eth_config.getDexContract(),
-                from: eth_config_1.eth_config.getHotWalletAddress()
+                to: ailab_core_1.eth_config.getDexContract(),
+                from: ailab_core_1.eth_config.getHotWalletAddress()
             });
             console.log(`gas:${estimateGas}. signing transaction`);
             let signedTransaction = yield Web3Client.eth.accounts.signTransaction({
                 nonce: _nonce,
                 data: data,
-                to: eth_config_1.eth_config.getDexContract(),
+                to: ailab_core_1.eth_config.getDexContract(),
                 value: token_value,
                 gas: estimateGas,
                 gasPrice: yield Web3Client.eth.getGasPrice(),
-            }, eth_config_1.eth_config.getHotWalletKey());
+            }, ailab_core_1.eth_config.getHotWalletKey());
             console.log(`executing swap`);
-            assert_1.assert.notEmpty(signedTransaction.rawTransaction);
+            ailab_core_1.assert.notEmpty(signedTransaction.rawTransaction);
             return Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction);
         });
     }
