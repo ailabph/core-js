@@ -1,6 +1,5 @@
-import {tools} from "./tools";
 
-import {config} from "./config";
+import {config} from "./ailab-core";
 const params = {
     host     : 'localhost',
     user     : config.getConfig().db_user,

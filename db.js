@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const config_1 = require("./config");
+const ailab_core_1 = require("./ailab-core");
 const params = {
     host: 'localhost',
-    user: config_1.config.getConfig().db_user,
-    password: config_1.config.getConfig().db_pass,
-    database: config_1.config.getConfig().db_name,
-    port: config_1.config.getConfig().db_port,
+    user: ailab_core_1.config.getConfig().db_user,
+    password: ailab_core_1.config.getConfig().db_pass,
+    database: ailab_core_1.config.getConfig().db_name,
+    port: ailab_core_1.config.getConfig().db_port,
 };
 const mysql = require('mysql2/promise');
 const pool = mysql.createPool(params);
