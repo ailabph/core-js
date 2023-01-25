@@ -5,12 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_rpc = void 0;
 const web3_1 = __importDefault(require("web3"));
-const eth_config_1 = require("./eth_config");
+const ailab_core_1 = require("./ailab-core");
 class eth_rpc {
     static getWeb3Provider() {
         if (typeof eth_rpc.web3Provider !== "undefined")
             return eth_rpc.web3Provider;
-        eth_rpc.web3Provider = new web3_1.default.providers.HttpProvider(eth_config_1.eth_config.getRPCUrl());
+        eth_rpc.web3Provider = new web3_1.default.providers.HttpProvider(ailab_core_1.eth_config.getRPCUrl());
         return eth_rpc.web3Provider;
     }
     static getWeb3Client() {

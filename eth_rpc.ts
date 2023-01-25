@@ -1,7 +1,7 @@
 import Web3 from "web3";
 
 import { HttpProvider } from "web3-core";
-import {eth_config} from "./eth_config";
+import {eth_config} from "./ailab-core";
 export class eth_rpc{
     private static web3Provider:HttpProvider|undefined;
     private static web3Client:Web3|undefined;
