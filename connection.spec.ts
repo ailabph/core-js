@@ -1,5 +1,5 @@
 import {assert, expect} from "chai";
-import {tools} from "./tools";
+import {tools} from "./ailab-core";
 import {connection, ResultSetHeader} from "./connection";
 import {Connection, PoolConnection} from "mysql2/promise";
 import {meta_options} from "./build/meta_options";

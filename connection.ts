@@ -1,4 +1,4 @@
-import {config} from "./config";
+import {config} from "./ailab-core";
 import * as mysql from "mysql2/promise";
 import { Connection, Pool, PoolConnection} from "mysql2/promise";
 import * as t from "io-ts";

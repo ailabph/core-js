@@ -33,7 +33,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.connection = void 0;
-const config_1 = require("./config");
+const ailab_core_1 = require("./ailab-core");
 const mysql = __importStar(require("mysql2/promise"));
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
@@ -49,11 +49,11 @@ class connection {
     static getConfig() {
         return {
             connectionLimit: 10,
-            user: config_1.config.getConfig().db_user,
-            password: config_1.config.getConfig().db_pass,
-            database: config_1.config.getConfig().db_name,
-            host: config_1.config.getConfig().db_host,
-            port: config_1.config.getConfig().db_port,
+            user: ailab_core_1.config.getConfig().db_user,
+            password: ailab_core_1.config.getConfig().db_pass,
+            database: ailab_core_1.config.getConfig().db_name,
+            host: ailab_core_1.config.getConfig().db_host,
+            port: ailab_core_1.config.getConfig().db_port,
             namedPlaceholders: true,
         };
     }
@@ -117,13 +117,13 @@ class connection {
     }
     static execute({ sql, param = {}, force_pool = false }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (config_1.config.getConfig().verbose_log)
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log(`retrieving connection`);
             let conn = yield this.getConnection(force_pool);
-            if (config_1.config.getConfig().verbose_log)
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log(`connection retrieved, executing sql:${sql}`);
             let result = yield conn.execute(sql, param);
-            if (config_1.config.getConfig().verbose_log)
+            if (ailab_core_1.config.getConfig().verbose_log)
                 console.log(`query executed`);
             return result[0];
         });

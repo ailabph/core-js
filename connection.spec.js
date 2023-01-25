@@ -10,10 +10,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
-const tools_1 = require("./tools");
+const ailab_core_1 = require("./ailab-core");
 const connection_1 = require("./connection");
 const meta_options_1 = require("./build/meta_options");
-let timeStamp = tools_1.tools.getCurrentTimeStamp();
+let timeStamp = ailab_core_1.tools.getCurrentTimeStamp();
 describe("connection spec", () => {
     afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
         yield connection_1.connection.execute({ sql: " TRUNCATE TABLE meta_options " });
@@ -96,8 +96,8 @@ describe("connection spec", () => {
         yield connection_1.connection.startTransaction();
         // insert using force_pool
         timeStamp++;
-        const insert_1_tag = `tag1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
-        const insert_1_value = `value1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_1_tag = `tag1_${ailab_core_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_1_value = `value1_${ailab_core_1.tools.generateRandomNumber(1000, 9999)}`;
         let insert_1 = yield connection_1.connection.execute({
             sql: "INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param: {
@@ -111,8 +111,8 @@ describe("connection spec", () => {
         });
         // insert using default
         timeStamp++;
-        const insert_2_tag = `tag2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
-        const insert_2_value = `value2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_2_tag = `tag2_${ailab_core_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_2_value = `value2_${ailab_core_1.tools.generateRandomNumber(1000, 9999)}`;
         let insert_2 = yield connection_1.connection.execute({
             sql: "INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param: {
