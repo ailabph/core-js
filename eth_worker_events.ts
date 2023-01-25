@@ -1,9 +1,5 @@
-import {config} from "./config";
-import {tools} from "./tools";
-import {eth_config} from "./eth_config";
-import {connection} from "./connection";
+import {config,tools,eth_config,connection,eth_worker} from "./ailab-core";
 import {eth_transaction} from "./build/eth_transaction";
-import {eth_worker} from "./eth_worker";
 import {eth_contract_events} from "./build/eth_contract_events";
 import {eth_block} from "./build/eth_block";
 

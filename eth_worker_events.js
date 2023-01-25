@@ -10,23 +10,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_worker_events = void 0;
-const config_1 = require("./config");
-const tools_1 = require("./tools");
-const eth_config_1 = require("./eth_config");
-const connection_1 = require("./connection");
+const ailab_core_1 = require("./ailab-core");
 const eth_transaction_1 = require("./build/eth_transaction");
-const eth_worker_1 = require("./eth_worker");
 const eth_contract_events_1 = require("./build/eth_contract_events");
 class eth_worker_events {
     static run() {
         var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             if (!eth_worker_events.hasRun) {
-                console.log(`running events worker on env:${config_1.config.getEnv()} rpc:${eth_config_1.eth_config.getRPCUrl()}`);
+                console.log(`running events worker on env:${ailab_core_1.config.getEnv()} rpc:${ailab_core_1.eth_config.getRPCUrl()}`);
                 console.log(`retrieving unprocessed token tagged transactions`);
                 eth_worker_events.hasRun = true;
             }
-            yield connection_1.connection.startTransaction();
+            yield ailab_core_1.connection.startTransaction();
             try {
                 const unprocessedTransactions = new eth_transaction_1.eth_transaction();
                 yield unprocessedTransactions.list(" WHERE time_processed IS NULL AND token_found=:y ", { y: "y" }, ` ORDER BY id ASC LIMIT ${eth_worker_events.getBatchLimit()} `);
@@ -38,14 +34,14 @@ class eth_worker_events {
                     yield event.fetch();
                     if (event.recordExists()) {
                         console.log(`${transaction.hash} event already added, skipping`);
-                        transaction.time_processed = tools_1.tools.getCurrentTimeStamp();
+                        transaction.time_processed = ailab_core_1.tools.getCurrentTimeStamp();
                         yield transaction.save();
                         continue;
                     }
                     console.log(`analyzing ${transaction.hash} is_swap:${transaction.is_swap ? "yes" : "n"}`);
-                    const result = yield eth_worker_1.eth_worker.analyzeTokenTransaction(transaction);
+                    const result = yield ailab_core_1.eth_worker.analyzeTokenTransaction(transaction);
                     event.loadValues(result, true);
-                    const block = yield eth_worker_1.eth_worker.getBlockByNumber((_a = transaction.blockNumber) !== null && _a !== void 0 ? _a : 0, true);
+                    const block = yield ailab_core_1.eth_worker.getBlockByNumber((_a = transaction.blockNumber) !== null && _a !== void 0 ? _a : 0, true);
                     if (!((_b = block.time_added) !== null && _b !== void 0 ? _b : 0 > 0))
                         throw new Error(`no time_added information on block ${block.blockNumber}`);
                     event.block_time = block.time_added;
@@ -62,40 +58,40 @@ class eth_worker_events {
                     }
                     if (token_amount < 0)
                         throw new Error(`token_amount not established`);
-                    let bnb_usdBn = yield eth_worker_1.eth_worker.getBnbUsdPriceByBlockNumber(event.blockNumber);
+                    let bnb_usdBn = yield ailab_core_1.eth_worker.getBnbUsdPriceByBlockNumber(event.blockNumber);
                     event.bnb_usd = bnb_usdBn.toFixed(18);
-                    let token_bnbBn = yield eth_worker_1.eth_worker.getTokenBnbPriceByBlockNumber(event.blockNumber);
+                    let token_bnbBn = yield ailab_core_1.eth_worker.getTokenBnbPriceByBlockNumber(event.blockNumber);
                     event.token_usd = token_bnbBn.toFixed(18);
-                    event.token_bnb_value = tools_1.tools.toBn(token_amount).multipliedBy(token_bnbBn).toFixed(18);
+                    event.token_bnb_value = ailab_core_1.tools.toBn(token_amount).multipliedBy(token_bnbBn).toFixed(18);
                     event.token_usd_value = null;
                     yield event.save();
                     console.log(`${event.txn_hash} event added. method:${event.method} type:${event.type}`);
-                    transaction.time_processed = tools_1.tools.getCurrentTimeStamp();
+                    transaction.time_processed = ailab_core_1.tools.getCurrentTimeStamp();
                     yield transaction.save();
                 }
-                yield connection_1.connection.commit();
+                yield ailab_core_1.connection.commit();
             }
             catch (e) {
-                yield connection_1.connection.rollback();
+                yield ailab_core_1.connection.rollback();
                 console.error(e);
             }
-            yield tools_1.tools.sleep(eth_worker_events.waitMs());
+            yield ailab_core_1.tools.sleep(eth_worker_events.waitMs());
             yield eth_worker_events.run();
         });
     }
     static waitMs() {
-        const worker_wait_ms = config_1.config.getCustomOption("worker_wait_ms");
-        if (tools_1.tools.isNumeric(worker_wait_ms) && worker_wait_ms > 0) {
+        const worker_wait_ms = ailab_core_1.config.getCustomOption("worker_wait_ms");
+        if (ailab_core_1.tools.isNumeric(worker_wait_ms) && worker_wait_ms > 0) {
             return worker_wait_ms;
         }
-        return eth_config_1.eth_config.default_worker_wait_ms;
+        return ailab_core_1.eth_config.default_worker_wait_ms;
     }
     static getBatchLimit() {
-        const batch_limit = config_1.config.getCustomOption("worker_events_batch");
-        if (tools_1.tools.isNumeric(batch_limit) && batch_limit > 0) {
+        const batch_limit = ailab_core_1.config.getCustomOption("worker_events_batch");
+        if (ailab_core_1.tools.isNumeric(batch_limit) && batch_limit > 0) {
             return batch_limit;
         }
-        return eth_config_1.eth_config.default_worker_batch;
+        return ailab_core_1.eth_config.default_worker_batch;
     }
 }
 exports.eth_worker_events = eth_worker_events;
