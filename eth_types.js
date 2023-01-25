@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RESULT_SEND_STATUS = exports.RESULT_STATUS = exports.eth_types = void 0;
-const tools_1 = require("./tools");
-const assert_1 = require("./assert");
+const ailab_core_1 = require("./ailab-core");
 class eth_types {
     static getDefaultAnalysisResult(eth) {
         var _a;
@@ -43,11 +42,11 @@ class eth_types {
             token_usd_value: "0",
         };
         if (eth) {
-            result = tools_1.tools.importObjectValuesInto(eth, result);
-            result.hash = assert_1.assert.isString({ val: eth.hash, prop_name: "eth.hash" });
-            result.blockNumber = assert_1.assert.isNumber(eth.blockNumber, "result.blockNumber", 0);
-            result.fromAddress = assert_1.assert.isString({ val: eth.fromAddress, prop_name: "eth.fromAddress" });
-            result.toAddress = assert_1.assert.isString({ val: (_a = eth.toAddress) !== null && _a !== void 0 ? _a : "", prop_name: "eth.toAddress" });
+            result = ailab_core_1.tools.importObjectValuesInto(eth, result);
+            result.hash = ailab_core_1.assert.isString({ val: eth.hash, prop_name: "eth.hash" });
+            result.blockNumber = ailab_core_1.assert.isNumber(eth.blockNumber, "result.blockNumber", 0);
+            result.fromAddress = ailab_core_1.assert.isString({ val: eth.fromAddress, prop_name: "eth.fromAddress" });
+            result.toAddress = ailab_core_1.assert.isString({ val: (_a = eth.toAddress) !== null && _a !== void 0 ? _a : "", prop_name: "eth.toAddress" });
         }
         return result;
     }
@@ -81,4 +80,3 @@ var RESULT_SEND_STATUS;
     RESULT_SEND_STATUS["FAILED"] = "failed";
 })(RESULT_SEND_STATUS || (RESULT_SEND_STATUS = {}));
 exports.RESULT_SEND_STATUS = RESULT_SEND_STATUS;
-// export { GasInfo, ContractInfo, DecodedAbi, LogData, LogSigArgs, AnalyzeLogsResult, WalletInfo }
