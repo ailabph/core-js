@@ -7,28 +7,6 @@ const loadIniFile = require('read-ini-file');
 const u = require("underscore");
 require('dotenv').config();
 class config {
-    constructor() {
-        this.db_host = "";
-        this.db_port = 3306;
-        this.db_name = "";
-        this.db_user = "";
-        this.db_pass = "";
-        this.site_url = "";
-        this.site_front_url = "";
-        this.worker_url = "";
-        this.site_name = "";
-        this.site_tagline = "";
-        this.site_prefix = "";
-        this.site_shortcode = "";
-        this.site_logo_box = "";
-        this.site_logo_wide = "";
-        this.maintenance_mode = false;
-        this.maintenance_mode_message = "";
-        this.admin_ip = "";
-        this.verbose_log = false;
-        this.enable_twig_cache = false;
-        this.force_stop_all_workers = false;
-    }
     static resetCache() {
         this.CONFIG_RAW_OVERRIDE = undefined;
         this.ENV_OVERRIDE = undefined;
@@ -148,6 +126,28 @@ class config {
             throw new Error("unable to retrieve option_name:" + option_name + " from config");
         }
         return value_to_return !== null && value_to_return !== void 0 ? value_to_return : "";
+    }
+    constructor() {
+        this.db_host = "";
+        this.db_port = 3306;
+        this.db_name = "";
+        this.db_user = "";
+        this.db_pass = "";
+        this.site_url = "";
+        this.site_front_url = "";
+        this.worker_url = "";
+        this.site_name = "";
+        this.site_tagline = "";
+        this.site_prefix = "";
+        this.site_shortcode = "";
+        this.site_logo_box = "";
+        this.site_logo_wide = "";
+        this.maintenance_mode = false;
+        this.maintenance_mode_message = "";
+        this.admin_ip = "";
+        this.verbose_log = false;
+        this.enable_twig_cache = false;
+        this.force_stop_all_workers = false;
     }
 }
 exports.config = config;

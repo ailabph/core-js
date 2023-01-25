@@ -1,5 +1,5 @@
 import {expect, test} from '@jest/globals';
-import {config} from "./config";
+import {config} from "./ailab-core";
 
 beforeAll(()=>{
 
