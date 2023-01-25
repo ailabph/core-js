@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
 const tools_1 = require("./tools");
 const connection_1 = require("./connection");
+const meta_options_1 = require("./build/meta_options");
 let timeStamp = tools_1.tools.getCurrentTimeStamp();
 describe("connection spec", () => {
     afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
@@ -26,6 +27,7 @@ describe("connection spec", () => {
         yield connection_1.connection.startTransaction();
         let result = yield connection_1.connection.getConnection();
         chai_1.assert.isNotEmpty(result.config.database);
+        yield connection_1.connection.rollback();
     }));
     it("insert and query", () => __awaiter(void 0, void 0, void 0, function* () {
         timeStamp++;
@@ -94,12 +96,14 @@ describe("connection spec", () => {
         yield connection_1.connection.startTransaction();
         // insert using force_pool
         timeStamp++;
+        const insert_1_tag = `tag1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_1_value = `value1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
         let insert_1 = yield connection_1.connection.execute({
             sql: "INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param: {
                 type: "test",
-                tag: "tag_" + timeStamp,
-                value: "value_" + timeStamp,
+                tag: insert_1_tag,
+                value: insert_1_value,
                 updated_by: timeStamp,
                 time_updated: timeStamp,
             },
@@ -107,12 +111,14 @@ describe("connection spec", () => {
         });
         // insert using default
         timeStamp++;
+        const insert_2_tag = `tag2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const insert_2_value = `value2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
         let insert_2 = yield connection_1.connection.execute({
             sql: "INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param: {
                 type: "test",
-                tag: "tag_" + timeStamp,
-                value: "value_" + timeStamp,
+                tag: insert_2_tag,
+                value: insert_2_value,
                 updated_by: timeStamp,
                 time_updated: timeStamp,
             }
@@ -128,5 +134,9 @@ describe("connection spec", () => {
             sql: "SELECT * FROM meta_options WHERE 1",
         });
         (0, chai_1.expect)(query_result_2.length).equal(1, "expect 1 record on db after rollback");
+        let check = new meta_options_1.meta_options();
+        yield check.list(" WHERE 1 ");
+        check = check.getItem();
+        (0, chai_1.expect)(check.tag).equal(insert_1_tag, "tag");
     }));
 });

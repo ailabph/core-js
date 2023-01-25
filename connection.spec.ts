@@ -2,6 +2,7 @@ import {assert, expect} from "chai";
 import {tools} from "./tools";
 import {connection, ResultSetHeader} from "./connection";
 import {Connection, PoolConnection} from "mysql2/promise";
+import {meta_options} from "./build/meta_options";
 
 let timeStamp = tools.getCurrentTimeStamp();
 
@@ -21,6 +22,7 @@ describe("connection spec",()=>{
         await connection.startTransaction();
         let result = await connection.getConnection() as Connection;
         assert.isNotEmpty(result.config.database);
+        await connection.rollback();
     });
 
     it("insert and query",async()=>{
@@ -95,12 +97,14 @@ describe("connection spec",()=>{
 
         // insert using force_pool
         timeStamp++;
+        const insert_1_tag = `tag1_${tools.generateRandomNumber(1000,9999)}`;
+        const insert_1_value = `value1_${tools.generateRandomNumber(1000,9999)}`;
         let insert_1 = await connection.execute({
             sql:"INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param:{
                 type:"test",
-                tag:"tag_"+timeStamp,
-                value:"value_"+timeStamp,
+                tag:insert_1_tag,
+                value:insert_1_value,
                 updated_by:timeStamp,
                 time_updated:timeStamp,
             },
@@ -109,12 +113,14 @@ describe("connection spec",()=>{
 
         // insert using default
         timeStamp++;
+        const insert_2_tag = `tag2_${tools.generateRandomNumber(1000,9999)}`;
+        const insert_2_value = `value2_${tools.generateRandomNumber(1000,9999)}`;
         let insert_2 = await connection.execute({
             sql:"INSERT INTO meta_options (type,tag,value,updated_by,time_updated) VALUES (:type,:tag,:value,:updated_by,:time_updated) ",
             param:{
                 type:"test",
-                tag:"tag_"+timeStamp,
-                value:"value_"+timeStamp,
+                tag:insert_2_tag,
+                value:insert_2_value,
                 updated_by:timeStamp,
                 time_updated:timeStamp,
             }
@@ -132,6 +138,10 @@ describe("connection spec",()=>{
             sql:"SELECT * FROM meta_options WHERE 1",
         }) as any[];
         expect(query_result_2.length).equal(1,"expect 1 record on db after rollback");
+        let check = new meta_options();
+        await check.list(" WHERE 1 ");
+        check = check.getItem();
+        expect(check.tag).equal(insert_1_tag,"tag");
     });
 
 });
