@@ -10,25 +10,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_receipt_logs_tools = void 0;
-const assert_1 = require("./assert");
+const ailab_core_1 = require("./ailab-core");
 const eth_receipt_1 = require("./build/eth_receipt");
-const eth_worker_1 = require("./eth_worker");
 const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
-const eth_log_decoder_1 = require("./eth_log_decoder");
-const tools_1 = require("./tools");
-const eth_config_1 = require("./eth_config");
 class eth_receipt_logs_tools {
     static getReceiptLogs(txn_hash) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.inTransaction();
-            assert_1.assert.notEmpty(txn_hash, "txn_hash");
+            ailab_core_1.assert.inTransaction();
+            ailab_core_1.assert.notEmpty(txn_hash, "txn_hash");
             let receipt_db = new eth_receipt_1.eth_receipt();
             receipt_db.transactionHash = txn_hash;
             yield receipt_db.fetch();
             if (receipt_db.isNew()) {
                 console.log(`hash:${txn_hash} receipt not on db, retrieving in rpc...`);
-                const receipt = yield eth_worker_1.eth_worker.getReceiptByTxnHashWeb3(txn_hash);
+                const receipt = yield ailab_core_1.eth_worker.getReceiptByTxnHashWeb3(txn_hash);
                 receipt_db.blockHash = receipt.blockHash;
                 receipt_db.blockNumber = receipt.blockNumber;
                 receipt_db.contractAddress = (_a = receipt.contractAddress) !== null && _a !== void 0 ? _a : "";
@@ -102,7 +98,7 @@ class eth_receipt_logs_tools {
         return __awaiter(this, void 0, void 0, function* () {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
             // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
-            return yield eth_log_decoder_1.eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[0]);
+            return yield ailab_core_1.eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[0]);
         });
     }
     static getLastTopicLog(txn_hash) {
@@ -110,7 +106,7 @@ class eth_receipt_logs_tools {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
             if (analyzeLogsResult.receipt.logs.length === 0)
                 throw new Error(`transaction(${txn_hash}) has no log topics`);
-            return yield eth_log_decoder_1.eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[analyzeLogsResult.receipt.logs.length - 1]);
+            return yield ailab_core_1.eth_log_decoder.decodeLog(analyzeLogsResult.receipt.logs[analyzeLogsResult.receipt.logs.length - 1]);
         });
     }
     static getFirstLogByMethod(txn_hash, method_name, strict = false) {
@@ -118,7 +114,7 @@ class eth_receipt_logs_tools {
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
             // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
             for (const log of analyzeLogsResult.receipt.logs) {
-                const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
+                const decodedLog = yield ailab_core_1.eth_log_decoder.decodeLog(log);
                 if (decodedLog.method_name.toLowerCase() === method_name.toLowerCase()) {
                     return decodedLog;
                 }
@@ -150,7 +146,7 @@ class eth_receipt_logs_tools {
             // if(analyzeLogsResult.receipt.logs.length === 0) throw new Error(`transaction(${txn_hash}) has no log topics`);
             let to_return = false;
             for (const log of analyzeLogsResult.receipt.logs) {
-                const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
+                const decodedLog = yield ailab_core_1.eth_log_decoder.decodeLog(log);
                 if (decodedLog.method_name.toLowerCase() === method_name.toLowerCase()) {
                     to_return = decodedLog;
                 }
@@ -171,7 +167,7 @@ class eth_receipt_logs_tools {
             }
             let collection = [];
             for (const log of analyzeLogsResult.receipt.logs) {
-                const decodedLog = yield eth_log_decoder_1.eth_log_decoder.decodeLog(log);
+                const decodedLog = yield ailab_core_1.eth_log_decoder.decodeLog(log);
                 if (decodedLog.method_name.toLowerCase() === method_name.toLowerCase()) {
                     collection.push(decodedLog);
                 }
@@ -183,13 +179,13 @@ class eth_receipt_logs_tools {
     }
     static findValueInLogs(txn_hash, find_value) {
         return __awaiter(this, void 0, void 0, function* () {
-            assert_1.assert.notEmpty(find_value);
+            ailab_core_1.assert.notEmpty(find_value);
             const analyzeLogsResult = typeof txn_hash === "string" ? yield eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
-            let receipt = yield eth_worker_1.eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash);
+            let receipt = yield ailab_core_1.eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash);
             for (const log of receipt.logs) {
                 for (const key in log) {
                     const value = log[key];
-                    if (tools_1.tools.stringFoundInStringOrArray(value, find_value)) {
+                    if (ailab_core_1.tools.stringFoundInStringOrArray(value, find_value)) {
                         return true;
                     }
                 }
@@ -199,7 +195,7 @@ class eth_receipt_logs_tools {
     }
     static findTokenInLogs(txn_hash) {
         return __awaiter(this, void 0, void 0, function* () {
-            const findTokenContract = eth_worker_1.eth_worker.stripBeginningZeroXFromString(eth_config_1.eth_config.getTokenContract());
+            const findTokenContract = ailab_core_1.eth_worker.stripBeginningZeroXFromString(ailab_core_1.eth_config.getTokenContract());
             return yield eth_receipt_logs_tools.findValueInLogs(txn_hash, findTokenContract);
         });
     }
@@ -208,7 +204,7 @@ class eth_receipt_logs_tools {
             const transfers = yield eth_receipt_logs_tools.getLogsByMethod(txn_hash, "transfer");
             let foundTransfers = [];
             for (const transfer of transfers) {
-                if (transfer.from.toLowerCase() === from.toLowerCase() && transfer.ContractInfo.address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                if (transfer.from.toLowerCase() === from.toLowerCase() && transfer.ContractInfo.address.toLowerCase() === ailab_core_1.eth_config.getTokenContract().toLowerCase()) {
                     foundTransfers.push(transfer);
                 }
             }
