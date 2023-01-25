@@ -36,11 +36,9 @@ exports.eth_log_decoder = void 0;
 const eth_log_sig_1 = require("./build/eth_log_sig");
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
-const eth_config_1 = require("./eth_config");
-const eth_worker_1 = require("./eth_worker");
-const assert_1 = require("./assert");
+const ailab_core_1 = require("./ailab-core");
 const Web3 = require("web3");
-const Web3Provider = new Web3.providers.HttpProvider(eth_config_1.eth_config.getRPCUrl());
+const Web3Provider = new Web3.providers.HttpProvider(ailab_core_1.eth_config.getRPCUrl());
 const Web3Client = new Web3(Web3Provider);
 //region Log Types
 const ContractInfoCodec = t.type({
@@ -122,8 +120,8 @@ class eth_log_decoder {
                         decimals: 0,
                     }, method_name: "" };
             }
-            assert_1.assert.notEmpty(logSig.params_names, "params_names");
-            logSig.params_names = assert_1.assert.isString({ val: logSig.params_names, prop_name: "params_names", strict: true });
+            ailab_core_1.assert.notEmpty(logSig.params_names, "params_names");
+            logSig.params_names = ailab_core_1.assert.isString({ val: logSig.params_names, prop_name: "params_names", strict: true });
             // build data object
             // For future reference example:
             // -- Transfer(address indexed from,address indexed to,uint256 value);Transfer...
@@ -132,8 +130,8 @@ class eth_log_decoder {
             let parts = parameters.split(";");
             parts = parts[0];
             parts = parts.split("(");
-            const logMethodName = assert_1.assert.isString({ val: parts[0], prop_name: "log method name", strict: true });
-            let args = assert_1.assert.isString({ val: parts[1], prop_name: "log method arguments", strict: true });
+            const logMethodName = ailab_core_1.assert.isString({ val: parts[0], prop_name: "log method name", strict: true });
+            let args = ailab_core_1.assert.isString({ val: parts[1], prop_name: "log method arguments", strict: true });
             args = args.replace(")", "");
             //// get method name
             method_object.method_name = logMethodName;
@@ -143,8 +141,8 @@ class eth_log_decoder {
                 symbol: "",
                 decimals: 0,
             };
-            let contractMetaData = yield eth_worker_1.eth_worker.getContractMetaData(log.address);
-            assert_1.assert.isset({ val: contractMetaData.symbol, prop_name: "contractMetaData.symbol", strict: true });
+            let contractMetaData = yield ailab_core_1.eth_worker.getContractMetaData(log.address);
+            ailab_core_1.assert.isset({ val: contractMetaData.symbol, prop_name: "contractMetaData.symbol", strict: true });
             method_object.ContractInfo.address = log.address;
             method_object.ContractInfo.name = contractMetaData.name;
             method_object.ContractInfo.symbol = contractMetaData.symbol;

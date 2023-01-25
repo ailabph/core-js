@@ -2,10 +2,7 @@ import {eth_log_sig} from "./build/eth_log_sig";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 import {Log} from "web3-core";
-import {eth_config} from "./eth_config";
-import {eth_worker} from "./eth_worker";
-import {assert} from "./assert";
-import {tools} from "./tools";
+import { assert,eth_config,eth_worker } from "./ailab-core";
 
 const Web3 = require("web3");
 const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
@@ -20,6 +17,7 @@ const ContractInfoCodec = t.type({
     decimals: t.union([t.string,t.number]),
 });
 type ContractInfo = t.TypeOf<typeof ContractInfoCodec>;
+export { ContractInfo };
 
 type BaseType = {
     method_name:string,
