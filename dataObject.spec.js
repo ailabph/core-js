@@ -134,6 +134,65 @@ describe("dataObject spec orm", () => {
         assert.equal(check.isNew(), true, "record deleted, not on db");
     }));
 });
+describe("dataObject spec transaction", () => {
+    it("dataObject test commit", () => __awaiter(void 0, void 0, void 0, function* () {
+        yield connection_1.connection.startTransaction();
+        const meta = new meta_options_1.meta_options();
+        const tag = `tag_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const value = `value_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        meta.tag = tag;
+        meta.value = value;
+        yield meta.save();
+        yield connection_1.connection.commit();
+        const check = new meta_options_1.meta_options();
+        check.tag = tag;
+        yield check.fetch();
+        assert.equal(check.value, value, "expected value");
+        yield check.delete(true);
+    }));
+    it("dataObject test rollback", () => __awaiter(void 0, void 0, void 0, function* () {
+        yield connection_1.connection.startTransaction();
+        const meta = new meta_options_1.meta_options();
+        const tag = `tag_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const value = `value_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        meta.tag = tag;
+        meta.value = value;
+        yield meta.save();
+        const check = new meta_options_1.meta_options();
+        check.tag = tag;
+        yield check.fetch();
+        assert.equal(check.value, value, "expected value before rollback");
+        yield connection_1.connection.rollback();
+        const check2 = new meta_options_1.meta_options();
+        check2.tag = tag;
+        yield check2.fetch();
+        assert.equal(check2.isNew(), true, "record should not exist on db");
+    }));
+    it("dataObject test bypass transaction", () => __awaiter(void 0, void 0, void 0, function* () {
+        yield connection_1.connection.startTransaction();
+        const tag1 = `tag1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const value1 = `value1_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const meta1 = new meta_options_1.meta_options();
+        meta1.tag = tag1;
+        meta1.value = value1;
+        yield meta1.save();
+        const tag2 = `tag2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const value2 = `value2_${tools_1.tools.generateRandomNumber(1000, 9999)}`;
+        const meta2 = new meta_options_1.meta_options(true);
+        meta2.tag = tag2;
+        meta2.value = value2;
+        yield meta2.save();
+        yield connection_1.connection.rollback();
+        const check1 = new meta_options_1.meta_options();
+        check1.tag = tag1;
+        yield check1.fetch();
+        assert.equal(check1.isNew(), true, `tag1:${tag1} should not exist`);
+        const check2 = new meta_options_1.meta_options();
+        check2.tag = tag2;
+        yield check2.fetch();
+        assert.equal(check2.value, value2, `value2:${value2} should persist after rollback`);
+    }));
+});
 describe("dataObject spec methods", () => {
     it("propertyExists returns true", () => {
         let m = new meta_options_1.meta_options();

@@ -33,8 +33,11 @@ export abstract class dataObject{
     protected _required: string[] = [];
     protected _data_properties: string[] = [];
     protected _data_property_types:{[key:string]:any} = {};
+    protected bypass_transaction:boolean;
 
-    protected constructor() {}
+    protected constructor(bypass_transaction:boolean = false) {
+        this.bypass_transaction = bypass_transaction;
+    }
 
     //#region GETTERS
 
@@ -257,7 +260,7 @@ export abstract class dataObject{
         if(tools.isEmpty(where)) return false;
 
         let sql = `SELECT ${select} FROM ${this.getTableName(true)} ${join} ${where} ${order} `;
-        let result = await connection.execute({sql:sql,param:param}) as any[];
+        let result = await connection.execute({sql:sql,param:param,force_pool:this.bypass_transaction}) as any[];
 
         let items: object[] | PromiseLike<object[]> = [];
         if(!Array.isArray(items)){
@@ -325,7 +328,7 @@ export abstract class dataObject{
 
         let sql = `UPDATE \n\t ${this.getTableName(true)} \n SET \n\t ${insertSection} \n ${where} `;
 
-        let result = await connection.execute({sql:sql,param:param});
+        let result = await connection.execute({sql:sql,param:param,force_pool:this.bypass_transaction});
         this.importOriginalValuesFromCurrentValues();
     }
 
@@ -362,7 +365,7 @@ export abstract class dataObject{
         let sql = `INSERT INTO ${this.getTableName(true)} \n (${insertProperties}) \n VALUES \n (${insertValues}) `;
         if(tools.isEmpty(insertValues)) throw new Error("Unable to build an insert query string");
 
-        let result = await connection.execute({sql:sql,param:insertParam});
+        let result = await connection.execute({sql:sql,param:insertParam,force_pool:this.bypass_transaction});
         if(Array.isArray(result)) throw new Error("unexpected array type returned on an insert query");
 
         if(result.insertId > 0 && this._dataKeysPrimary.length > 0){
@@ -384,7 +387,7 @@ export abstract class dataObject{
 
         if(permaDelete || !hasStatus){
             sql = `DELETE FROM ${this.getTableName(true)} ${whereParam.where}`;
-            await connection.execute({sql:sql,param:param});
+            await connection.execute({sql:sql,param:param,force_pool:this.bypass_transaction});
             this._isNew = true;
             this.resetAllValues();
         }
@@ -392,7 +395,7 @@ export abstract class dataObject{
             if(this._data_properties.includes("status")){
                 sql = `UPDATE ${this.getTableName(true)} SET ${this.wrapPropertyForQuery("status")}=:status ${whereParam.where}`;
                 param["status"] = "c";
-                await connection.execute({sql:sql,param:param});
+                await connection.execute({sql:sql,param:param,force_pool:this.bypass_transaction});
                 this._isNew = true;
                 this.resetAllValues();
             }
@@ -432,7 +435,7 @@ export abstract class dataObject{
         if(keyResult.where === "") throw new Error("unable to build where string for query");
 
         let query = "SELECT * FROM " + this.getTableName(true) + " WHERE "+keyResult.where;
-        let result = await connection.execute({sql:query, param:keyResult.param}) as any[];
+        let result = await connection.execute({sql:query, param:keyResult.param, force_pool:this.bypass_transaction}) as any[];
         let parsedResult = connection.parseResultSetHeader(result);
         if(!parsedResult) {
             throw new Error("unable to execute query");

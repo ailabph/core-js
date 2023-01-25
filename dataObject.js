@@ -15,7 +15,7 @@ const connection_1 = require("./connection");
 const tools_1 = require("./tools");
 const u = require("underscore");
 class dataObject {
-    constructor() {
+    constructor(bypass_transaction = false) {
         this._isNew = true;
         this._dataList = [];
         this._dataIndex = 0;
@@ -28,6 +28,7 @@ class dataObject {
         this._required = [];
         this._data_properties = [];
         this._data_property_types = {};
+        this.bypass_transaction = bypass_transaction;
     }
     //#region GETTERS
     getValue(property) {
@@ -225,7 +226,7 @@ class dataObject {
             if (tools_1.tools.isEmpty(where))
                 return false;
             let sql = `SELECT ${select} FROM ${this.getTableName(true)} ${join} ${where} ${order} `;
-            let result = yield connection_1.connection.execute({ sql: sql, param: param });
+            let result = yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
             let items = [];
             if (!Array.isArray(items)) {
                 throw new Error("unable to retrieve record, executed query result expected to be array");
@@ -293,7 +294,7 @@ class dataObject {
                 throw new Error("section in sql for update is empty");
             }
             let sql = `UPDATE \n\t ${this.getTableName(true)} \n SET \n\t ${insertSection} \n ${where} `;
-            let result = yield connection_1.connection.execute({ sql: sql, param: param });
+            let result = yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
             this.importOriginalValuesFromCurrentValues();
         });
     }
@@ -330,7 +331,7 @@ class dataObject {
             let sql = `INSERT INTO ${this.getTableName(true)} \n (${insertProperties}) \n VALUES \n (${insertValues}) `;
             if (tools_1.tools.isEmpty(insertValues))
                 throw new Error("Unable to build an insert query string");
-            let result = yield connection_1.connection.execute({ sql: sql, param: insertParam });
+            let result = yield connection_1.connection.execute({ sql: sql, param: insertParam, force_pool: this.bypass_transaction });
             if (Array.isArray(result))
                 throw new Error("unexpected array type returned on an insert query");
             if (result.insertId > 0 && this._dataKeysPrimary.length > 0) {
@@ -352,7 +353,7 @@ class dataObject {
             let hasStatus = this._data_properties.includes("status");
             if (permaDelete || !hasStatus) {
                 sql = `DELETE FROM ${this.getTableName(true)} ${whereParam.where}`;
-                yield connection_1.connection.execute({ sql: sql, param: param });
+                yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
                 this._isNew = true;
                 this.resetAllValues();
             }
@@ -360,7 +361,7 @@ class dataObject {
                 if (this._data_properties.includes("status")) {
                     sql = `UPDATE ${this.getTableName(true)} SET ${this.wrapPropertyForQuery("status")}=:status ${whereParam.where}`;
                     param["status"] = "c";
-                    yield connection_1.connection.execute({ sql: sql, param: param });
+                    yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
                     this._isNew = true;
                     this.resetAllValues();
                 }
@@ -400,7 +401,7 @@ class dataObject {
             if (keyResult.where === "")
                 throw new Error("unable to build where string for query");
             let query = "SELECT * FROM " + this.getTableName(true) + " WHERE " + keyResult.where;
-            let result = yield connection_1.connection.execute({ sql: query, param: keyResult.param });
+            let result = yield connection_1.connection.execute({ sql: query, param: keyResult.param, force_pool: this.bypass_transaction });
             let parsedResult = connection_1.connection.parseResultSetHeader(result);
             if (!parsedResult) {
                 throw new Error("unable to execute query");
