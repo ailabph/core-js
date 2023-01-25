@@ -189,19 +189,28 @@ export { swap }
 //endregion
 
 // LOAD ABI
-abiDecoder.addABI(eth_config.getDexAbi());
-abiDecoder.addABI(eth_config.getSwapRouterAbi());
-abiDecoder.addABI(eth_config.getEthAbi());
-abiDecoder.addABI(eth_config.getTokenAbi());
+
 
 export class eth_abi_decoder{
 
+    private static hasAbiDecoderInitiated:boolean = false;
+    private static initAbiDecoder(){
+        if(this.hasAbiDecoderInitiated) return;
+        abiDecoder.addABI(eth_config.getDexAbi());
+        abiDecoder.addABI(eth_config.getSwapRouterAbi());
+        abiDecoder.addABI(eth_config.getEthAbi());
+        abiDecoder.addABI(eth_config.getTokenAbi());
+        this.hasAbiDecoderInitiated = true;
+    }
+
     public static decodeAbiPure(input: string | null | undefined){
+        this.initAbiDecoder();
         if(typeof input !== "string") throw new Error("input invalid");
         return abiDecoder.decodeMethod(input);
     }
 
     private static decodeAbi(input: string) : DecodedAbi | false{
+        this.initAbiDecoder();
         try{
             let result = abiDecoder.decodeMethod(input);
             if(isValidDecodedAbi(result)){
@@ -245,6 +254,7 @@ export class eth_abi_decoder{
     }
 
     public static decodeAbiObject(input: string | null): DecodedAbiObject | false {
+        this.initAbiDecoder();
         if(typeof input !== "string" || tools.isEmpty(input)) throw new Error("invalid input type, string expected");
 
         let abi = this.decodeAbi(input);
@@ -264,6 +274,7 @@ export class eth_abi_decoder{
 
     //region EVENT ABI GETTERS
     private static getGenericAbiTypeStrict(abiObj: DecodedAbiObject, codec: t.Type<any>, typeName:string): any | false{
+        this.initAbiDecoder();
         let paramAsObject = this.convertAbiParamsToObject(abiObj.abi.params);
         let decodedCodec = codec.decode(paramAsObject);
         if(d.isRight(decodedCodec)){
