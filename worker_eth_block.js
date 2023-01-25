@@ -9,16 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const eth_worker_1 = require("./eth_worker");
-const eth_block_1 = require("./build/eth_block");
 const ailab_core_1 = require("./ailab-core");
+const eth_block_1 = require("./build/eth_block");
 let lastBlock = 0;
 let startBlock = ailab_core_1.config.getCustomOption("STARTING_BLOCK", true);
 console.log("starting worker to track blocks");
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         let from = 0;
-        let to = yield eth_worker_1.eth_worker.getLatestBlockWeb3();
+        let to = yield ailab_core_1.eth_worker.getLatestBlockWeb3();
         let updateNeeded = false;
         if (lastBlock !== to) {
             console.log("Latest Block:%s", to);

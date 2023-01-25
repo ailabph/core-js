@@ -1,6 +1,5 @@
-import {eth_worker} from "./eth_worker";
+import {eth_worker,config} from "./ailab-core";
 import {eth_block} from "./build/eth_block";
-import {config} from "./ailab-core";
 
 let lastBlock = 0;
 let startBlock:number = config.getCustomOption("STARTING_BLOCK",true) as number;
