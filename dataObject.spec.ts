@@ -1,9 +1,7 @@
-import {expect} from "chai";
-// @ts-ignore
-import {meta_options} from "./build/meta_options";
+import { expect } from "chai";
+import { meta_options } from "./build/meta_options";
 import * as assert from "assert";
-import {tools} from "./tools";
-import {connection} from "./connection";
+import { connection, tools } from "./ailab-core";
 
 let timeStamp = tools.getCurrentTimeStamp();
 

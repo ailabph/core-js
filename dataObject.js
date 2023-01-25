@@ -10,9 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataObject = void 0;
-const conn = require('./db.js');
-const connection_1 = require("./connection");
-const tools_1 = require("./tools");
+const ailab_core_1 = require("./ailab-core");
 const u = require("underscore");
 class dataObject {
     constructor(bypass_transaction = false) {
@@ -54,7 +52,7 @@ class dataObject {
     }
     getType(property) {
         this.propertyExists(property);
-        if (!tools_1.tools.isset(this._data_property_types, property))
+        if (!ailab_core_1.tools.isset(this._data_property_types, property))
             throw new Error(`property:${property} does not have a type in ` + this.getTableName());
         return this._data_property_types[property].toLowerCase();
     }
@@ -133,14 +131,14 @@ class dataObject {
         return this._dataKeysAutoInc.includes(primaryKey);
     }
     hasPrimaryKey() {
-        return !tools_1.tools.isEmpty(this.getPrimaryKey());
+        return !ailab_core_1.tools.isEmpty(this.getPrimaryKey());
     }
     isIntegerPrimaryKey(property) {
         this.propertyExists(property);
         if (!this._dataKeysPrimary.includes(property))
             return false;
-        let type = tools_1.tools.getTypeFromSqlType(this.getType(property));
-        return type === tools_1.tools.NUMBER;
+        let type = ailab_core_1.tools.getTypeFromSqlType(this.getType(property));
+        return type === ailab_core_1.tools.NUMBER;
     }
     hasIntegerPrimaryKey() {
         let primaryKey = this.getPrimaryKey();
@@ -148,8 +146,8 @@ class dataObject {
             return false;
         }
         else {
-            let type = tools_1.tools.getTypeFromSqlType(this.getType(primaryKey));
-            return type === tools_1.tools.NUMBER;
+            let type = ailab_core_1.tools.getTypeFromSqlType(this.getType(primaryKey));
+            return type === ailab_core_1.tools.NUMBER;
         }
     }
     hasNonAutoIncIntPrimaryKey() {
@@ -163,16 +161,16 @@ class dataObject {
         for (let i = 0; i < this._dataKeysPrimary.length; i++) {
             let key = this._dataKeysPrimary[i];
             let current_value = this.getValue(key);
-            if (!tools_1.tools.isEmpty(current_value) && current_value !== dataObject.UNDEFINED_NUMBER && current_value !== dataObject.UNDEFINED_STRING) {
+            if (!ailab_core_1.tools.isEmpty(current_value) && current_value !== dataObject.UNDEFINED_NUMBER && current_value !== dataObject.UNDEFINED_STRING) {
                 where += ` WHERE ${property_divider} ${this.wrapPropertyForQuery(key)}=:${key} `;
                 param[key] = this.getValue(key);
                 break;
             }
         }
-        if (tools_1.tools.isEmpty(where)) {
+        if (ailab_core_1.tools.isEmpty(where)) {
             for (let i = 0; i < this._dataKeysUnique.length; i++) {
                 let key = this._dataKeysUnique[i];
-                if (!tools_1.tools.isEmpty(this.getValue(key)) &&
+                if (!ailab_core_1.tools.isEmpty(this.getValue(key)) &&
                     (this.getValue(key) !== dataObject.UNDEFINED_NUMBER && this.getValue(key) !== dataObject.UNDEFINED_STRING)) {
                     where += ` WHERE ${property_divider} ${this.wrapPropertyForQuery(key)}=:${key} `;
                     param[key] = this.getValue(key);
@@ -180,18 +178,18 @@ class dataObject {
                 }
             }
         }
-        if (tools_1.tools.isEmpty(where) && throwIfNoKeys) {
+        if (ailab_core_1.tools.isEmpty(where) && throwIfNoKeys) {
             throw new Error("No primary or unique keys to build query");
         }
-        if (tools_1.tools.isEmpty(where)) {
+        if (ailab_core_1.tools.isEmpty(where)) {
             for (let i = 0; i < this._data_properties.length; i++) {
                 let key = this._data_properties[i];
-                if (!tools_1.tools.isEmpty(this.getValue(key))) {
+                if (!ailab_core_1.tools.isEmpty(this.getValue(key))) {
                     if (this.getValue(key) === dataObject.UNDEFINED_NUMBER || this.getValue(key) === dataObject.UNDEFINED_STRING)
                         continue;
                     if (this.getValue(key) === this.getDefault(key))
                         continue;
-                    if (tools_1.tools.isEmpty(where)) {
+                    if (ailab_core_1.tools.isEmpty(where)) {
                         where += " WHERE ";
                     }
                     else {
@@ -218,15 +216,15 @@ class dataObject {
     }
     getRecord({ where = "", param = {}, getAll = false, order = "", select = " * ", join = "" }) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (tools_1.tools.isEmpty(where)) {
+            if (ailab_core_1.tools.isEmpty(where)) {
                 let whereParam = this.buildWhereParamForQuery(false, "");
                 where = whereParam.where;
                 param = whereParam.param;
             }
-            if (tools_1.tools.isEmpty(where))
+            if (ailab_core_1.tools.isEmpty(where))
                 return false;
             let sql = `SELECT ${select} FROM ${this.getTableName(true)} ${join} ${where} ${order} `;
-            let result = yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+            let result = yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
             let items = [];
             if (!Array.isArray(items)) {
                 throw new Error("unable to retrieve record, executed query result expected to be array");
@@ -271,12 +269,12 @@ class dataObject {
             if (!this.hasAnyChanges()) {
                 throw new Error("nothing to update, property has no changes");
             }
-            if (tools_1.tools.isEmpty(where)) {
+            if (ailab_core_1.tools.isEmpty(where)) {
                 let whereParam = this.buildWhereParamForQuery(true);
                 where = whereParam.where;
                 param = whereParam.param;
             }
-            if (tools_1.tools.isEmpty(where))
+            if (ailab_core_1.tools.isEmpty(where))
                 throw new Error("Unable to update, where is empty");
             let insertSection = "";
             for (let index in this._data_properties) {
@@ -284,17 +282,17 @@ class dataObject {
                 if (this._dataKeysPrimary.includes(property))
                     continue;
                 if (this.hasChange(property)) {
-                    if (!tools_1.tools.isEmpty(insertSection))
+                    if (!ailab_core_1.tools.isEmpty(insertSection))
                         insertSection += ", \n\t ";
                     insertSection += `${this.wrapPropertyForQuery(property)}=:${property} `;
                     param[property] = this[property];
                 }
             }
-            if (tools_1.tools.isEmpty(insertSection)) {
+            if (ailab_core_1.tools.isEmpty(insertSection)) {
                 throw new Error("section in sql for update is empty");
             }
             let sql = `UPDATE \n\t ${this.getTableName(true)} \n SET \n\t ${insertSection} \n ${where} `;
-            let result = yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+            let result = yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
             this.importOriginalValuesFromCurrentValues();
         });
     }
@@ -317,7 +315,7 @@ class dataObject {
                     continue;
                 let property_value = this.getValue(property);
                 if (this.hasValue(property)) {
-                    if (!tools_1.tools.isEmpty(insertProperties)) {
+                    if (!ailab_core_1.tools.isEmpty(insertProperties)) {
                         insertProperties += ", ";
                         insertValues += ", ";
                     }
@@ -329,9 +327,9 @@ class dataObject {
                 }
             }
             let sql = `INSERT INTO ${this.getTableName(true)} \n (${insertProperties}) \n VALUES \n (${insertValues}) `;
-            if (tools_1.tools.isEmpty(insertValues))
+            if (ailab_core_1.tools.isEmpty(insertValues))
                 throw new Error("Unable to build an insert query string");
-            let result = yield connection_1.connection.execute({ sql: sql, param: insertParam, force_pool: this.bypass_transaction });
+            let result = yield ailab_core_1.connection.execute({ sql: sql, param: insertParam, force_pool: this.bypass_transaction });
             if (Array.isArray(result))
                 throw new Error("unexpected array type returned on an insert query");
             if (result.insertId > 0 && this._dataKeysPrimary.length > 0) {
@@ -353,7 +351,7 @@ class dataObject {
             let hasStatus = this._data_properties.includes("status");
             if (permaDelete || !hasStatus) {
                 sql = `DELETE FROM ${this.getTableName(true)} ${whereParam.where}`;
-                yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+                yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
                 this._isNew = true;
                 this.resetAllValues();
             }
@@ -361,7 +359,7 @@ class dataObject {
                 if (this._data_properties.includes("status")) {
                     sql = `UPDATE ${this.getTableName(true)} SET ${this.wrapPropertyForQuery("status")}=:status ${whereParam.where}`;
                     param["status"] = "c";
-                    yield connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+                    yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
                     this._isNew = true;
                     this.resetAllValues();
                 }
@@ -401,8 +399,8 @@ class dataObject {
             if (keyResult.where === "")
                 throw new Error("unable to build where string for query");
             let query = "SELECT * FROM " + this.getTableName(true) + " WHERE " + keyResult.where;
-            let result = yield connection_1.connection.execute({ sql: query, param: keyResult.param, force_pool: this.bypass_transaction });
-            let parsedResult = connection_1.connection.parseResultSetHeader(result);
+            let result = yield ailab_core_1.connection.execute({ sql: query, param: keyResult.param, force_pool: this.bypass_transaction });
+            let parsedResult = ailab_core_1.connection.parseResultSetHeader(result);
             if (!parsedResult) {
                 throw new Error("unable to execute query");
             }
@@ -411,17 +409,6 @@ class dataObject {
             //     this._isNew = false;
             // }
             return this;
-        });
-    }
-    fetchList(where, param, sort = "") {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (typeof where === 'undefined' && typeof param === 'undefined') {
-                where = " WHERE ? ";
-                param = [1];
-            }
-            let strSQL = "SELECT * FROM " + this.getTableName(true) + " " + where + " " + sort;
-            const [rows, fields] = yield conn.execute(strSQL, param);
-            return rows;
         });
     }
     buildWhereParamFromKeys(throwError = false) {
@@ -478,7 +465,7 @@ class dataObject {
             param: keyParam,
         };
     }
-    defaulValues() {
+    defaultValues() {
         let toLook = [
             'time_created',
             'time_generated',
@@ -622,13 +609,13 @@ class dataObject {
                 continue;
             if (this.isIntegerPrimaryKey(property))
                 continue;
-            let property_type = tools_1.tools.getTypeFromSqlType(this.getType(property));
-            if (property_type === tools_1.tools.NUMBER) {
+            let property_type = ailab_core_1.tools.getTypeFromSqlType(this.getType(property));
+            if (property_type === ailab_core_1.tools.NUMBER) {
                 if (this.getValue(property) === dataObject.UNDEFINED_NUMBER) {
                     throw new Error(`Unable to save, property:${property} is required`);
                 }
             }
-            if (property === tools_1.tools.STRING) {
+            if (property === ailab_core_1.tools.STRING) {
                 if (this.getValue(property) === dataObject.UNDEFINED_STRING) {
                     throw new Error(`Unable to save, property:${property} is required`);
                 }

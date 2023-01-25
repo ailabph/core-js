@@ -1,8 +1,5 @@
-import {array} from "fp-ts";
 
-const conn = require('./db.js');
-import {connection} from "./connection";
-import { tools } from "./tools";
+import { connection,tools } from "./ailab-core";
 const u = require("underscore");
 
 type PrimaryWhereParam = {
@@ -412,7 +409,6 @@ export abstract class dataObject{
 
     //#endregion
 
-
     public async fetch() {
         // return this.querySelect().catch(e=>{console.log(e);return false;});
         return await this.getRecordAndLoadValues();
@@ -445,22 +441,6 @@ export abstract class dataObject{
         //     this._isNew = false;
         // }
         return this;
-    }
-
-
-
-
-
-
-
-    protected async fetchList(where:string, param: any[], sort: string = ""){
-        if(typeof where === 'undefined' && typeof param === 'undefined'){
-            where = " WHERE ? ";
-            param = [1];
-        }
-        let strSQL = "SELECT * FROM "+ this.getTableName(true) +" "+where+" "+sort;
-        const [rows,fields] = await conn.execute(strSQL,param);
-        return rows;
     }
 
     private buildWhereParamFromKeys(throwError: boolean = false): PrimaryWhereParam{
@@ -517,7 +497,7 @@ export abstract class dataObject{
         }
     }
 
-    private defaulValues() {
+    private defaultValues() {
         let toLook = [
             'time_created',
             'time_generated',
@@ -540,8 +520,6 @@ export abstract class dataObject{
             }
         }
     }
-
-    
 
     public loadValues(row: {[key:string]:any}, isNew:boolean = false, exclude:string[] = [], manualLoad:boolean = false, strict:boolean = false) {
         this._isNew = isNew;
