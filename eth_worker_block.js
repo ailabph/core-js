@@ -20,23 +20,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.eth_worker_block = void 0;
-const connection_1 = require("./connection");
-const config_1 = require("./config");
-const eth_config_1 = require("./eth_config");
-const tools_1 = require("./tools");
+const ailab_core_1 = require("./ailab-core");
 const eth_block_1 = require("./build/eth_block");
 const promises_1 = __importDefault(require("fs/promises"));
-const eth_worker_1 = require("./eth_worker");
-const assert_1 = require("./assert");
 class eth_worker_block {
     static run() {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             if (!eth_worker_block.hasRun) {
                 eth_worker_block.hasRun = true;
-                console.log(`running block worker on env:${config_1.config.getEnv()} rpc:${eth_config_1.eth_config.getRPCUrl()}`);
+                console.log(`running block worker on env:${ailab_core_1.config.getEnv()} rpc:${ailab_core_1.eth_config.getRPCUrl()}`);
             }
-            yield connection_1.connection.startTransaction();
+            yield ailab_core_1.connection.startTransaction();
             try {
                 // check if db empty, check for import csv
                 let latestBlock = new eth_block_1.eth_block();
@@ -44,7 +39,7 @@ class eth_worker_block {
                 if (latestBlock.count() === 0) {
                     // check import csv
                     console.log(`no block records found on db, checking if import.csv exists`);
-                    if (!assert_1.assert.fileExists("./import.csv", false)) {
+                    if (!ailab_core_1.assert.fileExists("./import.csv", false)) {
                         console.log(`no import.csv file found`);
                     }
                     else {
@@ -52,47 +47,54 @@ class eth_worker_block {
                         let blockNoIndex = -1, firstLine = true;
                         try {
                             // loop csv per line
-                            for (var _b = __asyncValues(file.readLines()), _c; _c = yield _b.next(), !_c.done;) {
-                                const line = _c.value;
-                                let newLine = line.replace(/(,)(?=(?:[^"]|"[^"]*")*$)/g, "|");
-                                newLine = newLine.replace(/"/g, "");
-                                newLine = newLine.replace(/,/g, "");
-                                const parts = newLine.split("|");
-                                // retrieve index for blockNo or blockNumber, throw error if not found
-                                if (firstLine) {
-                                    for (let index1 = 0; index1 < parts.length; index1++) {
-                                        const col_value = parts[index1].toLowerCase();
-                                        if (["blockno", "blocknumber", "block_no", "block_number"].includes(col_value)) {
-                                            blockNoIndex = index1;
+                            for (var _d = true, _e = __asyncValues(file.readLines()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                                _c = _f.value;
+                                _d = false;
+                                try {
+                                    const line = _c;
+                                    let newLine = line.replace(/(,)(?=(?:[^"]|"[^"]*")*$)/g, "|");
+                                    newLine = newLine.replace(/"/g, "");
+                                    newLine = newLine.replace(/,/g, "");
+                                    const parts = newLine.split("|");
+                                    // retrieve index for blockNo or blockNumber, throw error if not found
+                                    if (firstLine) {
+                                        for (let index1 = 0; index1 < parts.length; index1++) {
+                                            const col_value = parts[index1].toLowerCase();
+                                            if (["blockno", "blocknumber", "block_no", "block_number"].includes(col_value)) {
+                                                blockNoIndex = index1;
+                                            }
                                         }
+                                        if (blockNoIndex < 0)
+                                            throw new Error(`index for block number info not found`);
+                                        if (firstLine)
+                                            firstLine = false;
+                                        continue;
                                     }
-                                    if (blockNoIndex < 0)
-                                        throw new Error(`index for block number info not found`);
-                                    if (firstLine)
-                                        firstLine = false;
-                                    continue;
+                                    // insert block info
+                                    const blockNumber = parseInt(parts[blockNoIndex]);
+                                    let newBlock = new eth_block_1.eth_block();
+                                    newBlock.blockNumber = blockNumber;
+                                    yield newBlock.fetch();
+                                    if (newBlock.recordExists()) {
+                                        console.log(`block ${blockNumber} already on db, skipping`);
+                                        continue;
+                                    }
+                                    const web3BlockInfo = yield ailab_core_1.eth_worker.getBlockByNumberWeb3(blockNumber);
+                                    newBlock.blockNumber = web3BlockInfo.number;
+                                    newBlock.blockHash = web3BlockInfo.hash;
+                                    newBlock.time_added = typeof web3BlockInfo.timestamp === "string" ? parseInt(web3BlockInfo.timestamp) : web3BlockInfo.timestamp;
+                                    yield newBlock.save();
+                                    console.log(`added new block:${newBlock.blockNumber} on db`);
                                 }
-                                // insert block info
-                                const blockNumber = parseInt(parts[blockNoIndex]);
-                                let newBlock = new eth_block_1.eth_block();
-                                newBlock.blockNumber = blockNumber;
-                                yield newBlock.fetch();
-                                if (newBlock.recordExists()) {
-                                    console.log(`block ${blockNumber} already on db, skipping`);
-                                    continue;
+                                finally {
+                                    _d = true;
                                 }
-                                const web3BlockInfo = yield eth_worker_1.eth_worker.getBlockByNumberWeb3(blockNumber);
-                                newBlock.blockNumber = web3BlockInfo.number;
-                                newBlock.blockHash = web3BlockInfo.hash;
-                                newBlock.time_added = typeof web3BlockInfo.timestamp === "string" ? parseInt(web3BlockInfo.timestamp) : web3BlockInfo.timestamp;
-                                yield newBlock.save();
-                                console.log(`added new block:${newBlock.blockNumber} on db`);
                             }
                         }
                         catch (e_1_1) { e_1 = { error: e_1_1 }; }
                         finally {
                             try {
-                                if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                                if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
                             }
                             finally { if (e_1) throw e_1.error; }
                         }
@@ -100,7 +102,7 @@ class eth_worker_block {
                 }
                 else {
                     yield latestBlock.list(" WHERE 1 ", {}, " ORDER BY blockNumber DESC LIMIT 1 ");
-                    const latest_block_number = yield eth_worker_1.eth_worker.getLatestBlockWeb3();
+                    const latest_block_number = yield ailab_core_1.eth_worker.getLatestBlockWeb3();
                     const last_block_number = latestBlock.count() > 0 ? latestBlock.getItem().blockNumber : 0;
                     const diff = latest_block_number - last_block_number;
                     if (diff > 0) {
@@ -114,7 +116,7 @@ class eth_worker_block {
                                 // console.log(`block:${block_number_to_add} already on db, skipping...`);
                                 continue;
                             }
-                            const web3BlockInfo = yield eth_worker_1.eth_worker.getBlockByNumberWeb3(block_number_to_add);
+                            const web3BlockInfo = yield ailab_core_1.eth_worker.getBlockByNumberWeb3(block_number_to_add);
                             newBlock.blockNumber = web3BlockInfo.number;
                             newBlock.blockHash = web3BlockInfo.hash;
                             newBlock.time_added = typeof web3BlockInfo.timestamp === "string" ? parseInt(web3BlockInfo.timestamp) : web3BlockInfo.timestamp;
@@ -123,29 +125,29 @@ class eth_worker_block {
                         }
                     }
                 }
-                yield connection_1.connection.commit();
+                yield ailab_core_1.connection.commit();
             }
             catch (e) {
-                yield connection_1.connection.rollback();
+                yield ailab_core_1.connection.rollback();
                 console.log(e);
             }
-            yield tools_1.tools.sleep(eth_worker_block.waitMs());
+            yield ailab_core_1.tools.sleep(eth_worker_block.waitMs());
             yield eth_worker_block.run();
         });
     }
     static waitMs() {
-        const worker_wait_ms = config_1.config.getCustomOption("worker_wait_ms");
-        if (tools_1.tools.isNumeric(worker_wait_ms) && worker_wait_ms > 0) {
+        const worker_wait_ms = ailab_core_1.config.getCustomOption("worker_wait_ms");
+        if (ailab_core_1.tools.isNumeric(worker_wait_ms) && worker_wait_ms > 0) {
             return worker_wait_ms;
         }
-        return eth_config_1.eth_config.default_worker_wait_ms;
+        return ailab_core_1.eth_config.default_worker_wait_ms;
     }
     static getBatchLimit() {
-        const batch_limit = config_1.config.getCustomOption("worker_block_batch");
-        if (tools_1.tools.isNumeric(batch_limit) && batch_limit > 0) {
+        const batch_limit = ailab_core_1.config.getCustomOption("worker_block_batch");
+        if (ailab_core_1.tools.isNumeric(batch_limit) && batch_limit > 0) {
             return batch_limit;
         }
-        return eth_config_1.eth_config.default_worker_batch;
+        return ailab_core_1.eth_config.default_worker_batch;
     }
 }
 exports.eth_worker_block = eth_worker_block;

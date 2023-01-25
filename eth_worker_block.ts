@@ -1,11 +1,6 @@
-import {connection} from "./connection";
-import {config} from "./config";
-import {eth_config} from "./eth_config";
-import {tools} from "./tools";
+import {connection,config,eth_config,tools,eth_worker,assert} from "./ailab-core";
 import {eth_block} from "./build/eth_block";
 import fsPromise from "fs/promises";
-import {eth_worker} from "./eth_worker";
-import {assert} from "./assert";
 
 export class eth_worker_block{
 
