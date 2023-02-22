@@ -196,6 +196,7 @@ export class config{
     public maintenance_mode_message: string;
     public admin_ip: string;
     public verbose_log: boolean;
+    public verbose_sql_log: boolean;
     public enable_twig_cache: boolean;
     public force_stop_all_workers: boolean;
 
@@ -218,6 +219,7 @@ export class config{
         this.maintenance_mode_message = "";
         this.admin_ip = "";
         this.verbose_log = false;
+        this.verbose_sql_log = false;
         this.enable_twig_cache = false;
         this.force_stop_all_workers = false;
     }

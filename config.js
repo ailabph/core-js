@@ -125,7 +125,7 @@ class config {
         if (typeof value_to_return === "undefined" && must_have_value) {
             throw new Error("unable to retrieve option_name:" + option_name + " from config");
         }
-        return value_to_return !== null && value_to_return !== void 0 ? value_to_return : "";
+        return value_to_return ?? "";
     }
     constructor() {
         this.db_host = "";
@@ -146,6 +146,7 @@ class config {
         this.maintenance_mode_message = "";
         this.admin_ip = "";
         this.verbose_log = false;
+        this.verbose_sql_log = false;
         this.enable_twig_cache = false;
         this.force_stop_all_workers = false;
     }
@@ -160,3 +161,4 @@ config.ENV = {
     "live": "live",
     "test": "test",
 };
+//# sourceMappingURL=config.js.map

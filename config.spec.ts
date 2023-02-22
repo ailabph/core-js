@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { config } from "./ailab-core";
+import { config } from "./config";
 import sinon from "ts-sinon";
 import {expect} from "chai";
 import {tools} from "./tools";
