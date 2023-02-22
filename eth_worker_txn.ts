@@ -1,4 +1,9 @@
-import {config,tools,eth_config,connection,eth_worker} from "./ailab-core";
+
+import {config} from "./config";
+import {tools} from "./tools";
+import {eth_config} from "./eth_config";
+import {connection} from "./connection";
+import {eth_worker} from "./eth_worker";
 import {eth_block} from "./build/eth_block";
 import {eth_transaction} from "./build/eth_transaction";
 import {Transaction} from "web3-eth/types";
