@@ -1,5 +1,6 @@
 
-import { connection,tools } from "./ailab-core";
+import { connection } from "./connection";
+import { tools } from "./tools";
 const u = require("underscore");
 
 type PrimaryWhereParam = {
@@ -525,6 +526,7 @@ export abstract class dataObject{
         this._isNew = isNew;
         for(let row_property in row){
             let row_value = row[row_property];
+            if(typeof row_value === 'object') row_value = JSON.stringify(row_value);
             if(!this._data_properties.includes(row_property) && strict) continue;
             if(!(row_property in this)) continue;
             if(exclude.includes(row_property)) continue;

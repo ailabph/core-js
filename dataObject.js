@@ -1,16 +1,8 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataObject = void 0;
-const ailab_core_1 = require("./ailab-core");
+const connection_1 = require("./connection");
+const tools_1 = require("./tools");
 const u = require("underscore");
 class dataObject {
     constructor(bypass_transaction = false) {
@@ -52,7 +44,7 @@ class dataObject {
     }
     getType(property) {
         this.propertyExists(property);
-        if (!ailab_core_1.tools.isset(this._data_property_types, property))
+        if (!tools_1.tools.isset(this._data_property_types, property))
             throw new Error(`property:${property} does not have a type in ` + this.getTableName());
         return this._data_property_types[property].toLowerCase();
     }
@@ -131,14 +123,14 @@ class dataObject {
         return this._dataKeysAutoInc.includes(primaryKey);
     }
     hasPrimaryKey() {
-        return !ailab_core_1.tools.isEmpty(this.getPrimaryKey());
+        return !tools_1.tools.isEmpty(this.getPrimaryKey());
     }
     isIntegerPrimaryKey(property) {
         this.propertyExists(property);
         if (!this._dataKeysPrimary.includes(property))
             return false;
-        let type = ailab_core_1.tools.getTypeFromSqlType(this.getType(property));
-        return type === ailab_core_1.tools.NUMBER;
+        let type = tools_1.tools.getTypeFromSqlType(this.getType(property));
+        return type === tools_1.tools.NUMBER;
     }
     hasIntegerPrimaryKey() {
         let primaryKey = this.getPrimaryKey();
@@ -146,8 +138,8 @@ class dataObject {
             return false;
         }
         else {
-            let type = ailab_core_1.tools.getTypeFromSqlType(this.getType(primaryKey));
-            return type === ailab_core_1.tools.NUMBER;
+            let type = tools_1.tools.getTypeFromSqlType(this.getType(primaryKey));
+            return type === tools_1.tools.NUMBER;
         }
     }
     hasNonAutoIncIntPrimaryKey() {
@@ -161,16 +153,16 @@ class dataObject {
         for (let i = 0; i < this._dataKeysPrimary.length; i++) {
             let key = this._dataKeysPrimary[i];
             let current_value = this.getValue(key);
-            if (!ailab_core_1.tools.isEmpty(current_value) && current_value !== dataObject.UNDEFINED_NUMBER && current_value !== dataObject.UNDEFINED_STRING) {
+            if (!tools_1.tools.isEmpty(current_value) && current_value !== dataObject.UNDEFINED_NUMBER && current_value !== dataObject.UNDEFINED_STRING) {
                 where += ` WHERE ${property_divider} ${this.wrapPropertyForQuery(key)}=:${key} `;
                 param[key] = this.getValue(key);
                 break;
             }
         }
-        if (ailab_core_1.tools.isEmpty(where)) {
+        if (tools_1.tools.isEmpty(where)) {
             for (let i = 0; i < this._dataKeysUnique.length; i++) {
                 let key = this._dataKeysUnique[i];
-                if (!ailab_core_1.tools.isEmpty(this.getValue(key)) &&
+                if (!tools_1.tools.isEmpty(this.getValue(key)) &&
                     (this.getValue(key) !== dataObject.UNDEFINED_NUMBER && this.getValue(key) !== dataObject.UNDEFINED_STRING)) {
                     where += ` WHERE ${property_divider} ${this.wrapPropertyForQuery(key)}=:${key} `;
                     param[key] = this.getValue(key);
@@ -178,18 +170,18 @@ class dataObject {
                 }
             }
         }
-        if (ailab_core_1.tools.isEmpty(where) && throwIfNoKeys) {
+        if (tools_1.tools.isEmpty(where) && throwIfNoKeys) {
             throw new Error("No primary or unique keys to build query");
         }
-        if (ailab_core_1.tools.isEmpty(where)) {
+        if (tools_1.tools.isEmpty(where)) {
             for (let i = 0; i < this._data_properties.length; i++) {
                 let key = this._data_properties[i];
-                if (!ailab_core_1.tools.isEmpty(this.getValue(key))) {
+                if (!tools_1.tools.isEmpty(this.getValue(key))) {
                     if (this.getValue(key) === dataObject.UNDEFINED_NUMBER || this.getValue(key) === dataObject.UNDEFINED_STRING)
                         continue;
                     if (this.getValue(key) === this.getDefault(key))
                         continue;
-                    if (ailab_core_1.tools.isEmpty(where)) {
+                    if (tools_1.tools.isEmpty(where)) {
                         where += " WHERE ";
                     }
                     else {
@@ -202,214 +194,194 @@ class dataObject {
         }
         return { "where": where, "param": param };
     }
-    get({ where = "", param = {}, order = "", select = " * ", join = "" }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.getRecord({
-                where: where,
-                param: param,
-                getAll: true,
-                order: order,
-                select: select,
-                join: join
-            });
+    async get({ where = "", param = {}, order = "", select = " * ", join = "" }) {
+        return this.getRecord({
+            where: where,
+            param: param,
+            getAll: true,
+            order: order,
+            select: select,
+            join: join
         });
     }
-    getRecord({ where = "", param = {}, getAll = false, order = "", select = " * ", join = "" }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (ailab_core_1.tools.isEmpty(where)) {
-                let whereParam = this.buildWhereParamForQuery(false, "");
-                where = whereParam.where;
-                param = whereParam.param;
+    async getRecord({ where = "", param = {}, getAll = false, order = "", select = " * ", join = "" }) {
+        if (tools_1.tools.isEmpty(where)) {
+            let whereParam = this.buildWhereParamForQuery(false, "");
+            where = whereParam.where;
+            param = whereParam.param;
+        }
+        if (tools_1.tools.isEmpty(where))
+            return false;
+        let sql = `SELECT ${select} FROM ${this.getTableName(true)} ${join} ${where} ${order} `;
+        let result = await connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+        let items = [];
+        if (!Array.isArray(items)) {
+            throw new Error("unable to retrieve record, executed query result expected to be array");
+        }
+        if (getAll) {
+            for (let i = 0; i < result.length; i++) {
+                let item = result[i];
+                items.push(item);
             }
-            if (ailab_core_1.tools.isEmpty(where))
+            return items;
+        }
+        else {
+            if (result.length === 0) {
                 return false;
-            let sql = `SELECT ${select} FROM ${this.getTableName(true)} ${join} ${where} ${order} `;
-            let result = yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
-            let items = [];
-            if (!Array.isArray(items)) {
-                throw new Error("unable to retrieve record, executed query result expected to be array");
             }
-            if (getAll) {
-                for (let i = 0; i < result.length; i++) {
-                    let item = result[i];
-                    items.push(item);
-                }
-                return items;
-            }
-            else {
-                if (result.length === 0) {
-                    return false;
-                }
-                this.loadValues(result[0]);
-                this._isNew = false;
-                return true;
-            }
-        });
-    }
-    getRecordAndLoadValues() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.getRecord({ getAll: false });
-        });
-    }
-    save() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hasAnyChanges())
-                return;
-            this.checkRequiredValues();
-            if (this.isNew()) {
-                yield this.insert();
-            }
-            else {
-                yield this.update({});
-            }
-        });
-    }
-    update({ where = "", param = {} }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hasAnyChanges()) {
-                throw new Error("nothing to update, property has no changes");
-            }
-            if (ailab_core_1.tools.isEmpty(where)) {
-                let whereParam = this.buildWhereParamForQuery(true);
-                where = whereParam.where;
-                param = whereParam.param;
-            }
-            if (ailab_core_1.tools.isEmpty(where))
-                throw new Error("Unable to update, where is empty");
-            let insertSection = "";
-            for (let index in this._data_properties) {
-                let property = this._data_properties[index];
-                if (this._dataKeysPrimary.includes(property))
-                    continue;
-                if (this.hasChange(property)) {
-                    if (!ailab_core_1.tools.isEmpty(insertSection))
-                        insertSection += ", \n\t ";
-                    insertSection += `${this.wrapPropertyForQuery(property)}=:${property} `;
-                    param[property] = this[property];
-                }
-            }
-            if (ailab_core_1.tools.isEmpty(insertSection)) {
-                throw new Error("section in sql for update is empty");
-            }
-            let sql = `UPDATE \n\t ${this.getTableName(true)} \n SET \n\t ${insertSection} \n ${where} `;
-            let result = yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
-            this.importOriginalValuesFromCurrentValues();
-        });
-    }
-    insert() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.hasAnyValue())
-                throw new Error("nothing to insert");
-            let insertProperties = "";
-            let insertValues = "";
-            let insertParam = {};
-            if (this.hasNonAutoIncIntPrimaryKey()) {
-                let primaryKey = this.getPrimaryKey();
-                if (!primaryKey)
-                    throw new Error("expected to have primary key");
-                this[primaryKey] = Date.now();
-            }
-            for (let i = 0; i < this._data_properties.length; i++) {
-                let property = this._data_properties[i];
-                if (this._dataKeysAutoInc.includes(property))
-                    continue;
-                let property_value = this.getValue(property);
-                if (this.hasValue(property)) {
-                    if (!ailab_core_1.tools.isEmpty(insertProperties)) {
-                        insertProperties += ", ";
-                        insertValues += ", ";
-                    }
-                    insertProperties += "\n\t ";
-                    insertValues += "\n\t ";
-                    insertProperties += this.wrapPropertyForQuery(property);
-                    insertValues += `:${property}`;
-                    insertParam[property] = property_value;
-                }
-            }
-            let sql = `INSERT INTO ${this.getTableName(true)} \n (${insertProperties}) \n VALUES \n (${insertValues}) `;
-            if (ailab_core_1.tools.isEmpty(insertValues))
-                throw new Error("Unable to build an insert query string");
-            let result = yield ailab_core_1.connection.execute({ sql: sql, param: insertParam, force_pool: this.bypass_transaction });
-            if (Array.isArray(result))
-                throw new Error("unexpected array type returned on an insert query");
-            if (result.insertId > 0 && this._dataKeysPrimary.length > 0) {
-                let primaryKey = this.getPrimaryKey();
-                if (primaryKey) {
-                    this[primaryKey] = result.insertId;
-                }
-            }
+            this.loadValues(result[0]);
             this._isNew = false;
-            this.importOriginalValuesFromCurrentValues();
-        });
+            return true;
+        }
     }
-    delete(permaDelete = false) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.isNew())
-                throw new Error("unable to delete a new record");
+    async getRecordAndLoadValues() {
+        await this.getRecord({ getAll: false });
+    }
+    async save() {
+        if (!this.hasAnyChanges())
+            return;
+        this.checkRequiredValues();
+        if (this.isNew()) {
+            await this.insert();
+        }
+        else {
+            await this.update({});
+        }
+    }
+    async update({ where = "", param = {} }) {
+        if (!this.hasAnyChanges()) {
+            throw new Error("nothing to update, property has no changes");
+        }
+        if (tools_1.tools.isEmpty(where)) {
             let whereParam = this.buildWhereParamForQuery(true);
-            let sql = "", param = whereParam.param;
-            let hasStatus = this._data_properties.includes("status");
-            if (permaDelete || !hasStatus) {
-                sql = `DELETE FROM ${this.getTableName(true)} ${whereParam.where}`;
-                yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+            where = whereParam.where;
+            param = whereParam.param;
+        }
+        if (tools_1.tools.isEmpty(where))
+            throw new Error("Unable to update, where is empty");
+        let insertSection = "";
+        for (let index in this._data_properties) {
+            let property = this._data_properties[index];
+            if (this._dataKeysPrimary.includes(property))
+                continue;
+            if (this.hasChange(property)) {
+                if (!tools_1.tools.isEmpty(insertSection))
+                    insertSection += ", \n\t ";
+                insertSection += `${this.wrapPropertyForQuery(property)}=:${property} `;
+                param[property] = this[property];
+            }
+        }
+        if (tools_1.tools.isEmpty(insertSection)) {
+            throw new Error("section in sql for update is empty");
+        }
+        let sql = `UPDATE \n\t ${this.getTableName(true)} \n SET \n\t ${insertSection} \n ${where} `;
+        let result = await connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+        this.importOriginalValuesFromCurrentValues();
+    }
+    async insert() {
+        if (!this.hasAnyValue())
+            throw new Error("nothing to insert");
+        let insertProperties = "";
+        let insertValues = "";
+        let insertParam = {};
+        if (this.hasNonAutoIncIntPrimaryKey()) {
+            let primaryKey = this.getPrimaryKey();
+            if (!primaryKey)
+                throw new Error("expected to have primary key");
+            this[primaryKey] = Date.now();
+        }
+        for (let i = 0; i < this._data_properties.length; i++) {
+            let property = this._data_properties[i];
+            if (this._dataKeysAutoInc.includes(property))
+                continue;
+            let property_value = this.getValue(property);
+            if (this.hasValue(property)) {
+                if (!tools_1.tools.isEmpty(insertProperties)) {
+                    insertProperties += ", ";
+                    insertValues += ", ";
+                }
+                insertProperties += "\n\t ";
+                insertValues += "\n\t ";
+                insertProperties += this.wrapPropertyForQuery(property);
+                insertValues += `:${property}`;
+                insertParam[property] = property_value;
+            }
+        }
+        let sql = `INSERT INTO ${this.getTableName(true)} \n (${insertProperties}) \n VALUES \n (${insertValues}) `;
+        if (tools_1.tools.isEmpty(insertValues))
+            throw new Error("Unable to build an insert query string");
+        let result = await connection_1.connection.execute({ sql: sql, param: insertParam, force_pool: this.bypass_transaction });
+        if (Array.isArray(result))
+            throw new Error("unexpected array type returned on an insert query");
+        if (result.insertId > 0 && this._dataKeysPrimary.length > 0) {
+            let primaryKey = this.getPrimaryKey();
+            if (primaryKey) {
+                this[primaryKey] = result.insertId;
+            }
+        }
+        this._isNew = false;
+        this.importOriginalValuesFromCurrentValues();
+    }
+    async delete(permaDelete = false) {
+        if (this.isNew())
+            throw new Error("unable to delete a new record");
+        let whereParam = this.buildWhereParamForQuery(true);
+        let sql = "", param = whereParam.param;
+        let hasStatus = this._data_properties.includes("status");
+        if (permaDelete || !hasStatus) {
+            sql = `DELETE FROM ${this.getTableName(true)} ${whereParam.where}`;
+            await connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
+            this._isNew = true;
+            this.resetAllValues();
+        }
+        else {
+            if (this._data_properties.includes("status")) {
+                sql = `UPDATE ${this.getTableName(true)} SET ${this.wrapPropertyForQuery("status")}=:status ${whereParam.where}`;
+                param["status"] = "c";
+                await connection_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
                 this._isNew = true;
                 this.resetAllValues();
             }
             else {
-                if (this._data_properties.includes("status")) {
-                    sql = `UPDATE ${this.getTableName(true)} SET ${this.wrapPropertyForQuery("status")}=:status ${whereParam.where}`;
-                    param["status"] = "c";
-                    yield ailab_core_1.connection.execute({ sql: sql, param: param, force_pool: this.bypass_transaction });
-                    this._isNew = true;
-                    this.resetAllValues();
-                }
-                else {
-                    throw new Error("unable to soft delete, no status property");
-                }
+                throw new Error("unable to soft delete, no status property");
             }
-        });
+        }
     }
-    refresh() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.isNew())
-                return;
-            yield this.fetch();
-        });
+    async refresh() {
+        if (this.isNew())
+            return;
+        await this.fetch();
     }
     //#endregion
-    fetch() {
-        return __awaiter(this, void 0, void 0, function* () {
-            // return this.querySelect().catch(e=>{console.log(e);return false;});
-            return yield this.getRecordAndLoadValues();
-        });
+    async fetch() {
+        // return this.querySelect().catch(e=>{console.log(e);return false;});
+        return await this.getRecordAndLoadValues();
     }
-    querySelect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            let keyResult = this.buildWhereParamFromKeysObject();
-            if (keyResult.where === "") {
-                for (let index in this._data_properties) {
-                    let prop = this._data_properties[index];
-                    if (dataObject.hasChanges(this, prop)) {
-                        keyResult.where += " " + this.getTableName(true) + "." + dataObject.convertToQuerySafe(prop) + " = :" + prop + " \n ";
-                        // @ts-ignore
-                        keyResult.param[prop] = this[prop];
-                    }
+    async querySelect() {
+        let keyResult = this.buildWhereParamFromKeysObject();
+        if (keyResult.where === "") {
+            for (let index in this._data_properties) {
+                let prop = this._data_properties[index];
+                if (dataObject.hasChanges(this, prop)) {
+                    keyResult.where += " " + this.getTableName(true) + "." + dataObject.convertToQuerySafe(prop) + " = :" + prop + " \n ";
+                    // @ts-ignore
+                    keyResult.param[prop] = this[prop];
                 }
             }
-            if (keyResult.where === "")
-                throw new Error("unable to build where string for query");
-            let query = "SELECT * FROM " + this.getTableName(true) + " WHERE " + keyResult.where;
-            let result = yield ailab_core_1.connection.execute({ sql: query, param: keyResult.param, force_pool: this.bypass_transaction });
-            let parsedResult = ailab_core_1.connection.parseResultSetHeader(result);
-            if (!parsedResult) {
-                throw new Error("unable to execute query");
-            }
-            // if(parsedResult.length > 0){
-            //     this.loadData(parsedResult[0]);
-            //     this._isNew = false;
-            // }
-            return this;
-        });
+        }
+        if (keyResult.where === "")
+            throw new Error("unable to build where string for query");
+        let query = "SELECT * FROM " + this.getTableName(true) + " WHERE " + keyResult.where;
+        let result = await connection_1.connection.execute({ sql: query, param: keyResult.param, force_pool: this.bypass_transaction });
+        let parsedResult = connection_1.connection.parseResultSetHeader(result);
+        if (!parsedResult) {
+            throw new Error("unable to execute query");
+        }
+        // if(parsedResult.length > 0){
+        //     this.loadData(parsedResult[0]);
+        //     this._isNew = false;
+        // }
+        return this;
     }
     buildWhereParamFromKeys(throwError = false) {
         let keyWhere = "";
@@ -493,6 +465,8 @@ class dataObject {
         this._isNew = isNew;
         for (let row_property in row) {
             let row_value = row[row_property];
+            if (typeof row_value === 'object')
+                row_value = JSON.stringify(row_value);
             if (!this._data_properties.includes(row_property) && strict)
                 continue;
             if (!(row_property in this))
@@ -609,13 +583,13 @@ class dataObject {
                 continue;
             if (this.isIntegerPrimaryKey(property))
                 continue;
-            let property_type = ailab_core_1.tools.getTypeFromSqlType(this.getType(property));
-            if (property_type === ailab_core_1.tools.NUMBER) {
+            let property_type = tools_1.tools.getTypeFromSqlType(this.getType(property));
+            if (property_type === tools_1.tools.NUMBER) {
                 if (this.getValue(property) === dataObject.UNDEFINED_NUMBER) {
                     throw new Error(`Unable to save, property:${property} is required`);
                 }
             }
-            if (property === ailab_core_1.tools.STRING) {
+            if (property === tools_1.tools.STRING) {
                 if (this.getValue(property) === dataObject.UNDEFINED_STRING) {
                     throw new Error(`Unable to save, property:${property} is required`);
                 }
@@ -626,3 +600,4 @@ class dataObject {
 exports.dataObject = dataObject;
 dataObject.UNDEFINED_STRING = "ailab_core_undefined";
 dataObject.UNDEFINED_NUMBER = -987654321;
+//# sourceMappingURL=dataObject.js.map
