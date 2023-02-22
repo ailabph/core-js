@@ -17,7 +17,7 @@ import { dataObject } from "./dataObject";
 export { dataObject };
 
 import {
-    eth_abi_decoder,
+    web3_abi_decoder,
     DecodedMethodArguments,
     DecodedAbi,
     DecodedAbiObject,
@@ -38,9 +38,9 @@ import {
     swapExactETHForTokensSupportingFeeOnTransferTokens,
     swapExactTokensForTokensSupportingFeeOnTransferTokens,
     swap,
-} from "./eth_abi_decoder";
+} from "./web3_abi_decoder";
 export {
-    eth_abi_decoder,
+    web3_abi_decoder,
     DecodedMethodArguments,
     DecodedAbi,
     DecodedAbiObject,
@@ -67,7 +67,7 @@ import { eth_config } from "./eth_config";
 export { eth_config };
 
 import {
-    eth_log_decoder,
+    web3_log_decoder,
     BaseType,
     TransferLog,
     SwapLog,
@@ -76,9 +76,9 @@ import {
     SyncLog,
     DepositLog,
     MintLog,
-} from "./eth_log_decoder";
+} from "./web3_log_decoder";
 export {
-    eth_log_decoder,
+    web3_log_decoder,
     BaseType,
     TransferLog,
     SwapLog,
@@ -149,3 +149,9 @@ export { logger };
 
 import { tools } from "./tools";
 export { tools };
+
+import { eth_ohlc_tool, BAR_COLOR, OHLC_DETAILED, OHLC_SIMPLE, OHLC_DETAILED_LIST } from "./eth_ohlc_tool";
+export { eth_ohlc_tool,BAR_COLOR, OHLC_DETAILED, OHLC_SIMPLE, OHLC_DETAILED_LIST };
+
+import { eth_trade_tools } from "./eth_trade_tools";
+export { eth_trade_tools };
