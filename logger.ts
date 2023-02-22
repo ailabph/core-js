@@ -1,5 +1,5 @@
 import {log_message} from "./build/log_message";
-import {tools} from "./ailab-core";
+import {tools} from "./tools";
 
 export class logger{
 
