@@ -1,4 +1,5 @@
-import {eth_worker,config} from "./ailab-core";
+import {eth_worker} from "./eth_worker";
+import {config} from "./config";
 import {eth_block} from "./build/eth_block";
 
 let lastBlock = 0;

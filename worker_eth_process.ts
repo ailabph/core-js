@@ -1,4 +1,8 @@
-import {config, connection, tools,eth_worker,AnalysisResult} from "./ailab-core";
+import {config} from "./config";
+import {connection} from "./connection";
+import {tools} from "./tools";
+import {eth_worker} from "./eth_worker";
+import {AnalysisResult} from "./eth_types";
 
 import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_events} from "./build/eth_contract_events";
