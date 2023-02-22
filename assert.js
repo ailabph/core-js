@@ -24,11 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.assert = void 0;
-const ailab_core_1 = require("./ailab-core");
+const connection_1 = require("./connection");
+const tools_1 = require("./tools");
 const fs = __importStar(require("fs"));
 class assert {
     static inTransaction() {
-        if (!ailab_core_1.connection.inTransactionMode())
+        if (!connection_1.connection.inTransactionMode())
             throw new Error("not in transaction mode");
         return true;
     }
@@ -40,8 +41,15 @@ class assert {
         }
         return true;
     }
+    static isDefined(val, description = "") {
+        if (typeof val === "undefined") {
+            const errorMessage = tools_1.tools.isNotEmpty(description) ? description : "value is undefined";
+            throw new Error(errorMessage);
+        }
+        return val;
+    }
     static notEmpty(value, property_name = "") {
-        if (ailab_core_1.tools.isEmpty(value))
+        if (tools_1.tools.isEmpty(value))
             throw new Error(`${property_name} is empty`);
         return true;
     }
@@ -64,15 +72,62 @@ class assert {
             assert.notEmpty(val, prop_name);
         return val;
     }
+    static stringNotEmpty(val, prop_name = "") {
+        return assert.isString({ val: val, prop_name: prop_name, strict: true });
+    }
+    static positiveInt(val) {
+        return tools_1.tools.parseInt({ val: val, strict: true });
+    }
+    static positiveNumber(val) {
+        if (typeof val !== "number") {
+            if (!tools_1.tools.isNumeric(val))
+                throw new Error(`${val} is not numeric`);
+            val = Number.parseFloat(val);
+        }
+        if (!(val > 0))
+            throw new Error(`${val} must be greater than zero`);
+        return val;
+    }
+    static naturalNumber(val) {
+        val = tools_1.tools.parseIntSimple(val);
+        if (val < 0)
+            throw new Error(`${val} must not be lesser than zero`);
+        return val;
+    }
     static isNumber(value, property_name = "", greaterThan) {
         const value_type = typeof value;
-        if (value_type !== "number")
-            throw new Error(`${property_name} is expected to be a number, not ${value_type}`);
+        if (value_type !== "number") {
+            const stack = new Error().stack;
+            throw new Error(`${property_name} is expected to be a number, not ${value_type} value:${value} | ${stack}`);
+        }
         if (typeof greaterThan === "number") {
+            const stack = new Error().stack;
             if (greaterThan > value)
-                throw new Error(`${property_name} expected to be greater than ${greaterThan}`);
+                throw new Error(`${property_name} expected to be greater than ${greaterThan} | ${stack}`);
         }
         return value;
     }
+    static isNumeric(value, desc = "") {
+        if (!tools_1.tools.isNumeric(value)) {
+            throw new Error(tools_1.tools.isEmpty(desc) ? `${value} is not numeric` : desc);
+        }
+        return value;
+    }
+    static isValidDate(val) {
+        if (!tools_1.tools.isValidDate(val))
+            throw new Error(`${val} is not a valid date`);
+        return val;
+    }
+    static recordExist(db, moreInfo = "record does not exist") {
+        if (db.isNew())
+            throw new Error(moreInfo);
+        return true;
+    }
+    static recordsFound(db, moreInfo = "records do not exist") {
+        if (db.count() === 0)
+            throw new Error(moreInfo);
+        return true;
+    }
 }
 exports.assert = assert;
+//# sourceMappingURL=assert.js.map

@@ -1,5 +1,8 @@
-import {connection, tools} from "./ailab-core";
+import {connection} from "./connection";
+import {dataObject} from "./dataObject";
+import {tools} from "./tools";
 import * as fs from "fs";
+import _ from "lodash";
 
 interface AssertArguments {
     val:any,
@@ -19,6 +22,13 @@ export class assert{
             return false;
         }
         return true;
+    }
+    public static isDefined<T>(val:T|undefined, description:string=""):T{
+        if(typeof val === "undefined"){
+            const errorMessage = tools.isNotEmpty(description) ? description : "value is undefined";
+            throw new Error(errorMessage);
+        }
+        return val as T;
     }
 
     public static notEmpty(value:any, property_name:string = ""):boolean{
@@ -45,12 +55,62 @@ export class assert{
         return val;
     }
 
+    public static stringNotEmpty(val:any,prop_name:string=""):string{
+        return assert.isString({val:val,prop_name:prop_name,strict:true});
+    }
+
+    public static positiveInt(val:any):number{
+        return tools.parseInt({val:val,strict:true});
+    }
+
+    public static positiveNumber(val:any):number{
+        if(typeof val !== "number"){
+            if(!tools.isNumeric(val)) throw new Error(`${val} is not numeric`);
+            val = Number.parseFloat(val);
+        }
+        if(!(val > 0)) throw new Error(`${val} must be greater than zero`);
+        return val;
+    }
+
+    public static naturalNumber(val:any):number{
+        val = tools.parseIntSimple(val);
+        if(val < 0) throw new Error(`${val} must not be lesser than zero`);
+        return val;
+    }
+
     public static isNumber(value:any, property_name:string = "", greaterThan:number|undefined):number{
         const value_type = typeof value;
-        if(value_type !== "number") throw new Error(`${property_name} is expected to be a number, not ${value_type}`);
+        if(value_type !== "number") {
+            const stack = new Error().stack;
+            throw new Error(`${property_name} is expected to be a number, not ${value_type} value:${value} | ${stack}`);
+        }
         if(typeof greaterThan === "number"){
-            if(greaterThan > value) throw new Error(`${property_name} expected to be greater than ${greaterThan}`);
+            const stack = new Error().stack;
+            if(greaterThan > value) throw new Error(`${property_name} expected to be greater than ${greaterThan} | ${stack}`);
         }
         return value;
     }
+
+    public static isNumeric<T>(value:T, desc:string=""):T{
+        if(!tools.isNumeric(value)){
+            throw new Error(tools.isEmpty(desc) ? `${value} is not numeric` : desc);
+        }
+        return value;
+    }
+
+    public static isValidDate(val:string):string{
+        if(!tools.isValidDate(val)) throw new Error(`${val} is not a valid date`);
+        return val;
+    }
+
+    public static recordExist(db:dataObject,moreInfo:string = "record does not exist"):boolean{
+        if(db.isNew()) throw new Error(moreInfo);
+        return true;
+    }
+
+    public static recordsFound(db:dataObject,moreInfo:string = "records do not exist"):boolean{
+        if(db.count() === 0) throw new Error(moreInfo);
+        return true;
+    }
+
 }
