@@ -22,72 +22,21 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __asyncValues = (this && this.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tools = void 0;
-const ailab_core_1 = require("./ailab-core");
+const assert_1 = require("./assert");
 const fs = __importStar(require("fs"));
 const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
-const dayjs_1 = __importDefault(require("dayjs"));
-const timezone_1 = __importDefault(require("dayjs/plugin/timezone"));
-const utc_1 = __importDefault(require("dayjs/plugin/utc"));
+const lodash_1 = __importDefault(require("lodash"));
+const time_helper_1 = require("./time_helper");
 class tools {
-    static timeInit() {
-        if (tools.hasTimeInit)
-            return;
-        dayjs_1.default.extend(utc_1.default);
-        dayjs_1.default.extend(timezone_1.default);
-        tools.hasTimeInit = true;
-    }
-    static getTimeZone() {
-        const timezone = ailab_core_1.config.getCustomOption("timezone");
-        if (!tools.isEmpty(timezone))
-            return timezone;
-        return "Asia/Manila";
-    }
+    //region TIME
     static getTime(time = null) {
-        tools.timeInit();
-        let to_return = undefined;
-        if (time === null) {
-            to_return = (0, dayjs_1.default)();
-        }
-        else if (typeof time === "number" || typeof time === "string") {
-            if (tools.isUnixTimestamp(time)) {
-                to_return = dayjs_1.default.unix(ailab_core_1.assert.isNumber(time, "time", 0));
-            }
-            else if (tools.isMilliseconds(time)) {
-                to_return = dayjs_1.default.unix(ailab_core_1.assert.isNumber(time, "time", 0));
-            }
-            else {
-                to_return = (0, dayjs_1.default)(time);
-            }
-            if (to_return === undefined)
-                throw new Error(`unable to create time object from passed argument:${time}`);
-        }
-        else {
-            to_return = time;
-        }
-        to_return.tz(tools.getTimeZone());
-        return to_return;
+        return time_helper_1.time_helper.getTime(time);
     }
     static isUnixTimestamp(timestamp) {
         return Number.isInteger(timestamp) && timestamp >= 0;
@@ -96,10 +45,9 @@ class tools {
         return Number.isInteger(timestamp) && timestamp >= 0 && timestamp % 1000 === 0;
     }
     static getCurrentTimeStamp() {
-        return tools.getTime().unix();
-        // return (new Date() as unknown as number) / 1000 | 0;
+        return time_helper_1.time_helper.getCurrentTimeStamp();
     }
-    //region END TIME
+    //endregion END TIME
     static isset(obj, prop) {
         return obj.hasOwnProperty(prop) && typeof obj[prop] !== "undefined" && obj[prop] != null;
     }
@@ -114,6 +62,9 @@ class tools {
             return val.length === 0;
         }
         return Object.keys(val).length === 0;
+    }
+    static isNotEmpty(val) {
+        return !this.isEmpty(val);
     }
     static getTypeFromSqlType(sql_type) {
         if (tools.isEmpty(sql_type))
@@ -185,41 +136,19 @@ class tools {
         }
         return to_return;
     }
-    static sleep(ms = 1000) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        });
+    static async sleep(ms = 1000) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
-    static restructureDataFile(sourceFilePath, targetFilePath, separator, targetIndex) {
-        var _a, e_1, _b, _c;
-        return __awaiter(this, void 0, void 0, function* () {
-            ailab_core_1.assert.fileExists(sourceFilePath);
-            const file = yield promises_1.default.open(sourceFilePath, 'r');
-            let data = [];
-            try {
-                for (var _d = true, _e = __asyncValues(file.readLines()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
-                    _c = _f.value;
-                    _d = false;
-                    try {
-                        const line = _c;
-                        const parts = line.split(separator);
-                        data.push(parts[targetIndex]);
-                    }
-                    finally {
-                        _d = true;
-                    }
-                }
-            }
-            catch (e_1_1) { e_1 = { error: e_1_1 }; }
-            finally {
-                try {
-                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
-                }
-                finally { if (e_1) throw e_1.error; }
-            }
-            yield tools.writeIntoFileArrayOfStrings(targetFilePath, data);
-            console.log(`${data.length} lines processed. restructured data from ${sourceFilePath} to ${targetFilePath} `);
-        });
+    static async restructureDataFile(sourceFilePath, targetFilePath, separator, targetIndex) {
+        assert_1.assert.fileExists(sourceFilePath);
+        const file = await promises_1.default.open(sourceFilePath, 'r');
+        let data = [];
+        for await (const line of file.readLines()) {
+            const parts = line.split(separator);
+            data.push(parts[targetIndex]);
+        }
+        await tools.writeIntoFileArrayOfStrings(targetFilePath, data);
+        console.log(`${data.length} lines processed. restructured data from ${sourceFilePath} to ${targetFilePath} `);
     }
     static importObjectValuesInto(from, to) {
         for (const key in from) {
@@ -232,11 +161,6 @@ class tools {
     static toFixed(num, decimal = 2) {
         let bn = new bignumber_js_1.default(num);
         return bn.decimalPlaces(decimal).toString();
-    }
-    static isNumeric(value) {
-        if (typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value))
-            return false;
-        return !isNaN(value - parseFloat(value));
     }
     static stringFoundInStringOrArray(target, find) {
         if (typeof target === "string") {
@@ -256,58 +180,145 @@ class tools {
     static toBn(value) {
         return new bignumber_js_1.default(value);
     }
-    //region CHECKER
+    //region CHECK
     static isNull(val) {
         return val === null || val === undefined;
     }
-    //endregion
-    //region GETTER
-    static parseInt(val, name = "", strict = false) {
-        if (tools.isNull(val))
-            throw new Error(`${name} must not be null or undefined`);
-        let to_return = -123456789;
+    static isWholeNumber(val) {
+        if (!tools.isNumeric(val))
+            return false;
+        if (typeof val === "string") {
+            val = tools.toBn(val).toNumber();
+        }
         if (typeof val === "number") {
-            to_return = Math.floor(val);
+            return val % 1 === 0;
         }
-        else if (typeof val === "string") {
-            to_return = parseInt(val);
+        return false;
+    }
+    static isNumber(val) {
+        return typeof val === "number";
+    }
+    static isValidDate(dateString) {
+        const date = new Date(dateString);
+        return !isNaN(date.getTime());
+    }
+    static isNumeric(value) {
+        if (typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value))
+            return false;
+        return !isNaN(value - parseFloat(value));
+    }
+    static isStringAndNotEmpty(value) {
+        return typeof value === "string" && !this.isEmpty(value);
+    }
+    //endregion CHECK
+    //region GETTER
+    static parseInt({ val, name = "", strict = true }) {
+        let result = 0;
+        if (!tools.isNumeric(val)) {
+            if (strict)
+                throw new Error(`${name} is not numeric`);
         }
-        if (to_return === -123456789)
-            throw new Error(`unable to parse int of ${name}:${val}`);
+        else {
+            if (!tools.isWholeNumber(val) && strict)
+                throw new Error(`${name} is not a whole number`);
+            if (typeof val === "number") {
+                if (lodash_1.default.isInteger(val)) {
+                    result = val;
+                }
+                else {
+                    result = Math.floor(val);
+                }
+            }
+            else if (typeof val === "string") {
+                result = lodash_1.default.parseInt(val);
+            }
+            else {
+                if (strict)
+                    throw new Error(`${name} is not of type number or string`);
+            }
+        }
+        return result;
+    }
+    static parseIntSimple(val) {
+        return this.parseInt({ val: val, strict: true });
+    }
+    static parseNumber({ val, name = "", strict = true }) {
+        let result = 0;
+        if (tools.isNumeric(val)) {
+            result = Number(val);
+        }
+        else {
+            if (strict)
+                throw new Error(`${name} is not numeric`);
+        }
+        return result;
+    }
+    static getNumber(val, decimal) {
+        let to_return = this.parseNumber({ val: val, strict: true });
+        if (typeof decimal === "number" && decimal > 0) {
+            to_return = Number.parseFloat(tools.toBn(to_return.toString()).toFixed(decimal));
+        }
         return to_return;
+    }
+    static numericToString({ val, dec = 18, name = "", strict = true }) {
+        let result = "0.00";
+        if (val === undefined && strict)
+            throw new Error(`${name} is undefined`);
+        if (typeof val === "number" || typeof val === "string") {
+            if (!tools.isNumeric(val)) {
+                if (strict)
+                    throw new Error(`${name} is not numeric`);
+            }
+            else {
+                result = tools.toBn(val).toFixed(18);
+            }
+        }
+        else if (strict) {
+            throw new Error(`${name} type must be string or number`);
+        }
+        return result;
+    }
+    static convertNumberToHex(num) {
+        return "0x" + num.toString(16);
     }
     //endregion END GETTER
     //region FILE
-    static writeIntoFileArrayOfStrings(filePath, lines) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (ailab_core_1.assert.fileExists(filePath, false)) {
-                yield fs.promises.writeFile(filePath, '');
-            }
-            else {
-                yield fs.promises.writeFile(filePath, '');
-            }
-            for (const line of lines) {
-                yield fs.promises.appendFile(filePath, line + '\n');
-            }
-        });
+    static async writeIntoFileArrayOfStrings(filePath, lines) {
+        if (assert_1.assert.fileExists(filePath, false)) {
+            await fs.promises.writeFile(filePath, '');
+        }
+        else {
+            await fs.promises.writeFile(filePath, '');
+        }
+        for (const line of lines) {
+            await fs.promises.appendFile(filePath, line + '\n');
+        }
     }
-    static writeJsonToFile(data, fileName) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                const jsonData = JSON.stringify(data, null, 4);
-                yield fs.promises.writeFile(fileName, jsonData);
-                console.log(`Data written to ${fileName}`);
-            }
-            catch (err) {
-                console.error(err);
-            }
-        });
+    static async writeJsonToFile(data, fileName) {
+        try {
+            const jsonData = JSON.stringify(data, null, 4);
+            await fs.promises.writeFile(fileName, jsonData);
+            console.log(`Data written to ${fileName}`);
+        }
+        catch (err) {
+            console.error(err);
+        }
+    }
+    //endregion
+    //region UTILITIES
+    static caseInsensitiveIncludes(arr, searchElement) {
+        return arr.map(s => s.toLowerCase()).includes(searchElement.toLowerCase());
+    }
+    static lastSubstring(val, last_len) {
+        if (last_len > val.length)
+            throw new Error(`last len ${last_len} is greater than string length ${val.length}`);
+        return val.substr(val.length - last_len, val.length);
     }
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";
-//region TIME
-tools.hasTimeInit = false;
+tools.LINE = "---------------------";
 tools.STRING = "string";
 tools.NUMBER = "number";
 tools.BOOLEAN = "boolean";
+//# sourceMappingURL=tools.js.map

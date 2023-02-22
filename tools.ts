@@ -1,4 +1,4 @@
-import {assert,config} from "./ailab-core";
+import {assert} from "./assert";
 
 import * as fs from "fs";
 import fsPromise from "fs/promises";
@@ -6,47 +6,17 @@ import BigNumber from "bignumber.js";
 import dayjs, {Dayjs} from "dayjs";
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
+import _ from "lodash";
+import {time_helper} from "./time_helper";
 
 export class tools{
 
     public static BASE_DIR = "..";
+    public static readonly LINE = "---------------------";
 
     //region TIME
-    private static hasTimeInit:boolean = false;
-    private static timeInit(){
-        if(tools.hasTimeInit) return;
-        dayjs.extend(utc);
-        dayjs.extend(timezone);
-        tools.hasTimeInit = true;
-    }
-    private static getTimeZone():string{
-        const timezone = config.getCustomOption("timezone") as string;
-        if(!tools.isEmpty(timezone)) return timezone;
-        return "Asia/Manila";
-    }
     public static getTime(time:number|string|Dayjs|null = null):Dayjs{
-        tools.timeInit();
-        let to_return:Dayjs|undefined = undefined;
-        if(time === null){
-            to_return = dayjs();
-        }
-        else if(typeof time === "number" || typeof time === "string"){
-            if(tools.isUnixTimestamp(time)){
-                to_return = dayjs.unix(assert.isNumber( time,"time",0));
-            }
-            else if(tools.isMilliseconds(time)){
-                to_return = dayjs.unix(assert.isNumber(time,"time",0));
-            }
-            else{
-                to_return = dayjs(time);
-            }
-            if(to_return === undefined) throw new Error(`unable to create time object from passed argument:${time}`);
-        }
-        else{
-            to_return = time;
-        }
-        to_return.tz(tools.getTimeZone());
-        return to_return;
+        return time_helper.getTime(time);
     }
     public static isUnixTimestamp(timestamp: any): boolean {
         return Number.isInteger(timestamp) && timestamp >= 0;
@@ -55,10 +25,9 @@ export class tools{
         return Number.isInteger(timestamp) && timestamp >= 0 && timestamp % 1000 === 0;
     }
     public static getCurrentTimeStamp():number{
-        return tools.getTime().unix();
-        // return (new Date() as unknown as number) / 1000 | 0;
+        return time_helper.getCurrentTimeStamp();
     }
-    //region END TIME
+    //endregion END TIME
 
     public static isset(obj:{[key:string]:any}, prop:string): boolean{
         return obj.hasOwnProperty(prop) && typeof obj[prop] !== "undefined" && obj[prop] != null;
@@ -75,6 +44,9 @@ export class tools{
             return val.length === 0;
         }
         return Object.keys(val).length === 0;
+    }
+    public static isNotEmpty(val:any):boolean{
+        return !this.isEmpty(val);
     }
 
     public static readonly STRING = "string";
@@ -157,8 +129,6 @@ export class tools{
         return new Promise( resolve => setTimeout(resolve, ms) );
     }
 
-
-
     public static async restructureDataFile(sourceFilePath:string, targetFilePath:string, separator:string, targetIndex:number){
         assert.fileExists(sourceFilePath);
         const file = await fsPromise.open(sourceFilePath, 'r');
@@ -185,10 +155,7 @@ export class tools{
         return bn.decimalPlaces(decimal).toString();
     }
 
-    public static isNumeric(value: any): boolean {
-        if(typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value)) return false;
-        return !isNaN(value - parseFloat(value));
-    }
+
 
     public static stringFoundInStringOrArray(target:string|any[], find:string): boolean{
         if(typeof target === "string"){
@@ -209,24 +176,99 @@ export class tools{
         return new BigNumber(value);
     }
 
-    //region CHECKER
+    //region CHECK
     public static isNull(val:any):boolean{
         return val === null || val === undefined;
     }
-    //endregion
+    public static isWholeNumber(val:unknown):boolean{
+        if(!tools.isNumeric(val)) return false;
+        if(typeof val === "string"){
+            val = tools.toBn(val).toNumber();
+        }
+        if(typeof val === "number"){
+            return val%1 === 0;
+        }
+        return false;
+    }
+    public static isNumber(val:any):boolean{
+        return typeof val === "number";
+    }
+    public static isValidDate(dateString: string): boolean {
+        const date = new Date(dateString);
+        return !isNaN(date.getTime());
+    }
+    public static isNumeric(value: any): boolean {
+        if(typeof value === 'string' && /^0x[0-9a-fA-F]+$/.test(value)) return false;
+        return !isNaN(value - parseFloat(value));
+    }
+    public static isStringAndNotEmpty(value:any):boolean {
+        return typeof value === "string" && !this.isEmpty(value);
+    }
+    //endregion CHECK
 
     //region GETTER
-    public static parseInt(val:unknown,name:string="",strict:boolean=false):number{
-        if(tools.isNull(val)) throw new Error(`${name} must not be null or undefined`);
-        let to_return:number = -123456789;
-        if(typeof val === "number"){
-            to_return = Math.floor(val);
+    public static parseInt({val,name="",strict=true}:{val:unknown,name?:string,strict?:boolean}):number{
+        let result:number = 0;
+        if(!tools.isNumeric(val)){
+            if(strict) throw new Error(`${name} is not numeric`);
         }
-        else if(typeof val === "string"){
-            to_return = parseInt(val);
+        else{
+            if(!tools.isWholeNumber(val) && strict) throw new Error(`${name} is not a whole number`);
+            if(typeof val === "number"){
+                if(_.isInteger(val)){
+                    result = val;
+                }
+                else{
+                    result = Math.floor(val);
+                }
+            }
+            else if(typeof val === "string"){
+                result = _.parseInt(val);
+            }
+            else{
+                if(strict) throw new Error(`${name} is not of type number or string`);
+            }
         }
-        if(to_return === -123456789) throw new Error(`unable to parse int of ${name}:${val}`);
+        return result;
+    }
+    public static parseIntSimple(val:any):number{
+        return this.parseInt({val:val,strict:true});
+    }
+    public static parseNumber({val,name="",strict=true}:{val:unknown,name?:string,strict?:boolean}):number{
+        let result:number = 0;
+        if(tools.isNumeric(val)){
+            result = Number(val);
+        }
+        else{
+            if(strict) throw new Error(`${name} is not numeric`);
+        }
+        return result;
+    }
+    public static getNumber(val:any,decimal?:number):number{
+        let to_return = this.parseNumber({val:val,strict:true});
+        if(typeof decimal === "number" && decimal > 0){
+            to_return = Number.parseFloat(tools.toBn(to_return.toString()).toFixed(decimal));
+        }
         return to_return;
+    }
+    public static numericToString({val,dec=18,name="",strict=true}:{val:unknown,dec?:number,name?:string,strict?:boolean}):string{
+        let result = "0.00";
+        if(val === undefined && strict) throw new Error(`${name} is undefined`);
+        if(typeof val === "number" || typeof val === "string"){
+            if(!tools.isNumeric(val)) {
+                if(strict) throw new Error(`${name} is not numeric`);
+            }
+            else{
+                result = tools.toBn(val).toFixed(18);
+            }
+        }
+        else if(strict){
+            throw new Error(`${name} type must be string or number`);
+        }
+        return result;
+    }
+    public static convertNumberToHex(num:number):string{
+        return "0x"+num.toString(16);
     }
     //endregion END GETTER
 
@@ -253,4 +295,13 @@ export class tools{
     }
     //endregion
 
+    //region UTILITIES
+    public static caseInsensitiveIncludes(arr: string[], searchElement: string) {
+        return arr.map(s => s.toLowerCase()).includes(searchElement.toLowerCase());
+    }
+    public static lastSubstring(val:string,last_len:number):string{
+        if(last_len > val.length) throw new Error(`last len ${last_len} is greater than string length ${val.length}`);
+        return val.substr(val.length-last_len, val.length);
+    }
+    //endregion
 }

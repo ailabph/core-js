@@ -1,5 +1,6 @@
 import {expect} from "chai";
-import * as assert from "assert";
+// import * as assert from "assert";
+import { assert } from 'chai';
 import {tools} from "./tools";
 const u = require("underscore");
 
@@ -28,6 +29,17 @@ describe("tools spec",()=>{
         assert.equal(tools.isEmpty('hello'),false);
         assert.equal(tools.isEmpty([1, 2, 3]),false);
         assert.equal(tools.isEmpty({ a: 1, b: 2 }),false);
+    });
+    it("isWholeNumber return true",()=>{
+        expect(tools.isWholeNumber(1)).to.be.true;
+        expect(tools.isWholeNumber("123")).to.be.true;
+        expect(tools.isWholeNumber("-456")).to.be.true;
+    });
+    it("isWholeNumber return false",()=>{
+        expect(tools.isWholeNumber(1.123)).to.be.false;
+        expect(tools.isWholeNumber("123.456")).to.be.false;
+        expect(tools.isWholeNumber("-456.789")).to.be.false;
+        expect(tools.isWholeNumber("abc")).to.be.false;
     });
     it("convertArrayOfStringToString array",()=>{
         let x = ["a","b","c"];
@@ -60,6 +72,24 @@ describe("tools spec",()=>{
         expect(tools.isNumeric({})).to.be.false;
     });
 
+    it('parseInt should return an integer for numeric values', () => {
+        expect(tools.parseInt({val:3,strict:true})).to.be.equal(3);
+        expect(tools.parseInt({val:'5',strict:true})).to.be.equal(5);
+        expect(tools.parseInt({val:'123',strict:true})).to.be.equal(123);
+    });
+
+    it('parseInt should return an integer for numeric non whole number', () => {
+        expect(tools.parseInt({val:3.1,strict:false})).to.be.equal(3);
+        expect(tools.parseInt({val:'5.12',strict:false})).to.be.equal(5);
+        expect(tools.parseInt({val:'-3.14',strict:false})).to.be.equal(-3);
+    });
+    it('parseInt should throw an error', () => {
+        expect(()=>{tools.parseInt({val: "abc", strict: true})}).to.throw(" is not numeric");
+        expect(()=>{tools.parseInt({val: {name:"abc"}, strict: true})}).to.throw(" is not numeric");
+        expect(()=>{tools.parseInt({val: '5.12', strict: true})}).to.throw(" is not a whole number");
+
+    });
+
     it('stringFoundInStringOrArray should return true', () => {
         expect(tools.stringFoundInStringOrArray('hello','HE')).to.be.true;
         expect(tools.stringFoundInStringOrArray(['jane','doe'],'jan')).to.be.true;
@@ -68,5 +98,38 @@ describe("tools spec",()=>{
     it('stringFoundInStringOrArray should return false', () => {
         expect(tools.stringFoundInStringOrArray('hello','HELLOTHERE')).to.be.false;
         expect(tools.stringFoundInStringOrArray(['jane','doe'],'JANUARY')).to.be.false;
+    });
+
+    it('numericToString should return a numeric string', () => {
+        expect(tools.numericToString({val:123,dec:18})).to.be.string("123.000000000000000000");
+        expect(tools.numericToString({val:"456.1234567890",dec:8})).to.be.string("456.12345678");
+    });
+    it('numericToString should return a zero', () => {
+        expect(tools.numericToString({val:"abc",strict:false})).to.be.string("0.00");
+        expect(tools.numericToString({val:{name:"john",age:23},strict:false})).to.be.string("0.00");
+    });
+    it('numericToString should throws error', () => {
+        expect(()=> {
+            tools.numericToString({val: "abc", strict: true})
+        }).to.throw(" is not numeric");
+        expect(()=> {
+            tools.numericToString({val: undefined,name:"number", strict: true})
+        }).to.throw("number is undefined");
+    });
+
+    it('caseInsensitiveIncludes should return true if search element is included in the array ignoring case sensitivity', () => {
+        const arr = ["Hello", "WORLD"];
+        const searchElement = "world";
+        const result = tools.caseInsensitiveIncludes(arr, searchElement);
+
+        assert.isTrue(result);
+    });
+
+    it('caseInsensitiveIncludes should return false if search element is not included in the array', () => {
+        const arr = ["Hello", "WORLD"];
+        const searchElement = "Universe";
+        const result = tools.caseInsensitiveIncludes(arr, searchElement);
+
+        assert.isFalse(result);
     });
 });
