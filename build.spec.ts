@@ -1,4 +1,5 @@
-import {build, connection} from "./ailab-core";
+import {build} from "./build";
+import {connection} from "./connection";
 
 describe("build spec",()=>{
 

@@ -1,10 +1,16 @@
 
-import { connection, config, dataObject, tools } from "./ailab-core";
+import { connection } from "./connection";
+import { config } from "./config";
+import { dataObject } from "./dataObject";
+import { tools } from "./tools";
 import { PoolConnection } from "mysql2/promise";
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 import * as fs from "fs";
 import * as handlebars from "handlebars";
+import {argv} from "process";
+import {eth_worker_price} from "./eth_worker_price";
+const readline = require('readline');
 
 type TableDataHeader = {
     table_name:string,
@@ -224,3 +230,33 @@ export class build{
         }
     }
 }
+
+(async()=>{
+    if(argv.includes("run_build")){
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        const default_dir = process.cwd();
+        let dir = await new Promise<string>(resolve => {
+            console.log(`current target dir: ${default_dir}`);
+            rl.question(`target dir of db classes? `, (name: string | PromiseLike<string>) => {
+                resolve(name);
+            });
+        });
+        dir = tools.isEmpty(dir) ? default_dir : dir;
+        console.log(`selected dir: ${dir}`);
+
+        const default_dataObject = "./dataObject";
+        let target_dataObject = await new Promise<string>(resolve => {
+            console.log(`current data object: ${default_dataObject}`);
+            rl.question(`target data object? `, (name: string | PromiseLike<string>) => {
+                resolve(name);
+            });
+        });
+        target_dataObject = tools.isEmpty(target_dataObject) ? default_dataObject : target_dataObject;
+        console.log(`selected data object: ${target_dataObject}`);
+
+        build.run(dir,target_dataObject).finally();
+    }
+})();
