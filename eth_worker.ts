@@ -1,32 +1,24 @@
 import {BlockTransactionObject, BlockTransactionString, Transaction, TransactionReceipt} from "web3-eth/types"
 import {
-    AnalysisResult,
-    AnalyzeLogsResult, BnbUsdReserve,
-    ContractInfo,
-    eth_types,
-    GasInfo,
-    LogData,
-    LogSigArgs,
-    RESULT_SEND_STATUS,
-    RESULT_STATUS,
-    TokenBnbReserve,
-    WalletInfo,
-    DecodedAbiObject,
-    eth_abi_decoder,
-    eth_config,
-    eth_tools,
     DepositLog,
-    eth_log_decoder,
+    web3_log_decoder,
     SwapLog,
     SyncLog,
     TransferLog,
     WithdrawalLog,
-    tools,
-    assert,
-    assert_eth,
-    eth_receipt_logs_tools,
-    eth_transaction_tools,
-} from "./ailab-core";
+} from "./web3_log_decoder";
+
+import { eth_types,AnalysisResult,AnalyzeLogsResult,BnbUsdReserve,ContractInfo,LogData,RESULT_SEND_STATUS,RESULT_STATUS,TokenBnbReserve,WalletInfo,LogSigArgs,GasInfo } from "./eth_types";
+import { web3_abi_decoder,DecodedAbiObject } from "./web3_abi_decoder";
+import { eth_receipt_logs_tools } from "./eth_receipt_logs_tools";
+import { eth_transaction_tools } from "./eth_transaction_tools";
+import { eth_rpc } from "./eth_rpc";
+import { assert_eth } from "./assert_eth";
+import { assert } from "./assert";
+import { eth_config } from "./eth_config";
+import { config } from "./config";
+import { eth_tools } from "./eth_tools";
+import { tools } from "./tools";
 
 import fsPromise from "fs/promises";
 import BigNumber from "bignumber.js";
@@ -35,13 +27,32 @@ import {eth_transaction} from "./build/eth_transaction";
 import {eth_contract_data} from "./build/eth_contract_data";
 import {eth_log_sig} from "./build/eth_log_sig";
 import {eth_receipt} from "./build/eth_receipt";
-import {eth_transaction_known} from "./build/eth_transaction_known";
 import {eth_block} from "./build/eth_block";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
+import {HttpProvider, Log} from "web3-core";
+import {PAIR_INFO, TRADE_PAIR_INFO} from "./eth_worker_trade";
+import {eth_price_track_header} from "./build/eth_price_track_header";
+import {eth_pair_price_tools} from "./eth_pair_price_tools";
+import Web3 from "web3";
+import {eth_contract_data_tools} from "./eth_contract_data_tools";
+import {web3_quicknode} from "./web3_quicknode";
+import {web3_pancake_pair} from "./web3_pancake_pair";
+import {web3_pancake_factory} from "./web3_pancake_factory";
 
-const Web3 = require("web3");
-const Web3Provider = new Web3.providers.HttpProvider(eth_config.getRPCUrl());
-const Web3Client = new Web3(Web3Provider);
+// const Web3 = require("web3");
+// const Web3Provider:HttpProvider = eth_rpc.getWeb3Provider();
+const Web3Client:Web3 = eth_rpc.getWeb3Client();
+
+enum ADDRESS_TYPE {
+    ADDRESS = "wallet",
+    CONTRACT = "contracty",
+}
+export { ADDRESS_TYPE }
+type ADDRESS_INFO = {
+    type:ADDRESS_TYPE,
+    name:string
+}
+export { ADDRESS_INFO }
 
 export class eth_worker{
 
@@ -127,6 +138,27 @@ export class eth_worker{
         return this.convertAmountToValue(_token_amount, eth_config.getTokenDecimal());
     }
 
+    public static getBnbUsdValue(bnb_amount:number|string,bnb_usd:number|string):string{
+        bnb_amount = tools.numericToString({val:bnb_amount,dec:eth_config.getEthDecimal(),name:"bnb_amount",strict:true});
+        bnb_usd = tools.numericToString({val:bnb_usd,dec:eth_config.getEthDecimal(),name:"bnb_usd",strict:true});
+        return tools.toBn(bnb_amount).multipliedBy(tools.toBn(bnb_usd)).toFixed(eth_config.getEthDecimal());
+    }
+    public static getTokenBnbValue(token_amount:number|string,bnb_token:number|string):string{
+        token_amount = tools.numericToString({val:token_amount,dec:eth_config.getTokenDecimal(),name:"token_amount",strict:true});
+        bnb_token = tools.numericToString({val:bnb_token,dec:eth_config.getTokenDecimal(),name:"bnb_token",strict:true});
+        return tools.toBn(token_amount).multipliedBy(tools.toBn(bnb_token)).toFixed(eth_config.getTokenDecimal());
+    }
+    public static getTokenUsdValue(token_amount:number|string,bnb_usd:number|string,bnb_token:string|number):string{
+        const token_bnb_value = this.getTokenBnbValue(token_amount,bnb_token);
+        bnb_usd = tools.numericToString({val:bnb_usd,dec:eth_config.getEthDecimal(),name:"bnb_usd",strict:true});
+        return tools.toBn(token_bnb_value).multipliedBy(tools.toBn(bnb_usd)).toFixed(eth_config.getTokenDecimal());
+    }
+    public static getTokenUsd(bnb_usd:number|string,bnb_token:string|number):string{
+        bnb_usd = tools.numericToString({val:bnb_usd,dec:eth_config.getEthDecimal(),strict:true});
+        bnb_token = tools.numericToString({val:bnb_token,dec:eth_config.getTokenDecimal(),strict:true});
+        return tools.toBn(bnb_usd).multipliedBy(tools.toBn(bnb_token)).toFixed(eth_config.getTokenDecimal());
+    }
+
     static checkIfInvolved({from="",to=null,abi=false}:{from?:string,to?:string|null,abi?:DecodedAbiObject|false}):boolean{
         if(from.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
         if(typeof to === "string" && to.toLowerCase() === eth_config.getTokenContract().toLowerCase()) return true;
@@ -161,7 +193,7 @@ export class eth_worker{
         const toMatch = toAddress?.toLowerCase() === eth_config.getTokenContract().toLowerCase();
         const inputMatch = input?.toLowerCase().includes(eth_worker.stripBeginningZeroXFromString(eth_config.getTokenContract().toLowerCase()));
         if(fromMatch || toMatch || inputMatch){
-            const decodedAbi = eth_abi_decoder.decodeAbiObject(input);
+            const decodedAbi = web3_abi_decoder.decodeAbiObject(input);
             if(decodedAbi) return true;
             else{
                 return await eth_receipt_logs_tools.findTokenInLogs(hash ?? "");
@@ -177,7 +209,7 @@ export class eth_worker{
                 txn.method_name = "unknown";
                 const receipt = await eth_worker.getReceiptByTxnHash(txn.hash);
                 if(receipt) txn.send_status = receipt.status?1:0;
-                const abi = eth_abi_decoder.decodeAbiObject(txn.input);
+                const abi = web3_abi_decoder.decodeAbiObject(txn.input);
                 if(abi) txn.method_name = abi.abi.name;
                 const swaps = await eth_receipt_logs_tools.getLogsByMethod<SwapLog>(txn.hash,"swap");
                 txn.is_swap = swaps.length > 0 ? 1 : 0;
@@ -230,6 +262,30 @@ export class eth_worker{
         return hash.replace(/^(0x)/,"");
     }
 
+    public static async isContract(address:string):Promise<boolean> {
+        const contract = await eth_worker.getContractMetaData(address);
+        return contract.name !== "";
+    }
+
+    public static async isWalletAddress(address:string):Promise<boolean> {
+        return !(await this.isContract(address));
+    }
+
+
+    public static async getAddressInfo(address:string):Promise<ADDRESS_INFO>{
+        const contractInfo = await this.getContractMetaData(address);
+        const addressInfo:ADDRESS_INFO = {name: "", type: ADDRESS_TYPE.ADDRESS};
+        if(tools.isEmpty(contractInfo.name)){
+            addressInfo.type = ADDRESS_TYPE.ADDRESS;
+            addressInfo.name = ADDRESS_TYPE.ADDRESS;
+        }
+        else{
+            addressInfo.type = ADDRESS_TYPE.CONTRACT;
+            addressInfo.name = contractInfo.symbol;
+        }
+        return addressInfo;
+    }
+
     //endregion END OF UTILITIES
 
     //region GETTERS
@@ -241,23 +297,35 @@ export class eth_worker{
         if(lastBlock.count() > 0){
             latestBlock = lastBlock.getItem().blockNumber;
         }
-        // fallback
         if(latestBlock < 0){
-            latestBlock = await eth_worker.getLatestBlockWeb3();
+            latestBlock = assert.positiveInt(config.getCustomOption("STARTING_BLOCK",true));
         }
         return latestBlock;
     }
 
     static async getLatestBlockWeb3(): Promise<number> {
-        return await Web3Client.eth.getBlockNumber();
+        return web3_quicknode.getLatestBlock();
     }
 
     public static async getBlockByNumber(blockNumber:number,strict:boolean = false):Promise<eth_block>{
+        if(config.getConfig().verbose_log) console.log(`getBlockByNumber | retrieving block ${blockNumber} info from db`);
         assert.isNumber(blockNumber,"blockNumber",0);
         const block = new eth_block();
         block.blockNumber = blockNumber;
         await block.fetch();
-        if(strict && block.isNew()) throw new Error(`unable to retrieve block:${blockNumber} from db`);
+        if(block.isNew()){
+            if(config.getConfig().verbose_log) console.log(`getBlockByNumber | block ${blockNumber} not on db, retrieving via rpc`);
+            const web3Block = await this.getBlockByNumberWeb3(blockNumber);
+            if(!web3Block && strict){
+                throw new Error(`unable to retrieve block:${blockNumber} from rpc`);
+            }
+            block.loadValues(web3Block,true);
+            block.blockNumber = web3Block.number;
+            block.blockHash = web3Block.hash
+            block.time_added = assert.isNumber( web3Block.timestamp,"web3Block.timestamp",0);
+            await block.save();
+        }
+        if(config.getConfig().verbose_log) console.log(`getBlockByNumber | block ${blockNumber} found`);
         return block;
     }
     static async getBlockByNumberWeb3(blockNumber:number): Promise<BlockTransactionString>{
@@ -351,6 +419,21 @@ export class eth_worker{
         }
     }
 
+    public static async getDbReceipt(transactionHash:string):Promise<eth_receipt>{
+        const dbReceipt = new eth_receipt();
+        dbReceipt.transactionHash = transactionHash;
+        await dbReceipt.fetch();
+        if(dbReceipt.isNew()){
+            const web3Receipt = await this.getReceiptByTxnHashWeb3(transactionHash);
+            if(!web3Receipt) throw new Error(`unable to retrieve receipt with hash ${transactionHash} via rpc`);
+            dbReceipt.loadValues(web3Receipt,true);
+            dbReceipt.fromAddress = web3Receipt.from;
+            dbReceipt.toAddress = web3Receipt.to;
+            await dbReceipt.save();
+        }
+        return dbReceipt;
+    }
+
     static async estimateGasContract(_from: string, _to: string, _amount: string, _contract_address: string): Promise<any[]> {
         let transfer_contract = await new Web3Client.eth.Contract(eth_config.getTransferAbi(), _contract_address);
         //@ts-ignore
@@ -392,45 +475,10 @@ export class eth_worker{
         };
     }
 
-    static async getContractMetaData(_contract_address: string): Promise<ContractInfo> {
-        let contractInfo = {} as ContractInfo;
-        contractInfo.address = _contract_address;
-        contractInfo.name = "";
-        contractInfo.symbol = "";
-        contractInfo.decimals = 0;
-
-        let contract_data = new eth_contract_data();
-        contract_data.contract = _contract_address;
-        await contract_data.fetch();
-        if(contract_data.isNew()){
-            contract_data.name = "";
-            contract_data.symbol = "";
-            contract_data.decimals = 0;
-            let contract = new Web3Client.eth.Contract(eth_config.getTokenAbi(), _contract_address);
-            try {
-                contract_data.name = await contract.methods.name().call();
-            } catch (e) {
-                // console.log("ERROR on %s: %s",_contract_address, e);
-            }
-            try {
-                contract_data.symbol = await contract.methods.symbol().call();
-            } catch (e) {
-                // console.log("ERROR on %s: %s",_contract_address, e);
-            }
-            try {
-                contract_data.decimals = await contract.methods.decimals().call();
-            } catch (e) {
-                // console.log("ERROR on %s: %s",_contract_address, e);
-            }
-
-            await contract_data.save();
-        }
-
-        contractInfo.name = contract_data.name ?? "";
-        contractInfo.symbol = contract_data.symbol ?? "";
-        contractInfo.decimals = contract_data.decimals ?? 0;
-
-        return contractInfo;
+    static async getContractMetaData(_contract_address:string): Promise<ContractInfo> {
+        const contractInfo = await eth_contract_data_tools.getContractViaAddress(_contract_address,true);
+        if(contractInfo) return contractInfo;
+        else throw new Error(`unable to retrieve contract info of ${_contract_address}`);
     }
 
     static async getTokenBalance(_address: string): Promise<string> {
@@ -464,12 +512,121 @@ export class eth_worker{
         return await Web3Client.eth.getTransactionCount(eth_config.getHotWalletAddress());
     }
 
-    public static async getPairAddress(token_1:string,token_2:string):Promise<string>{
-        const contract = new Web3Client.eth.Contract(eth_config.getPancakeFactoryAbi(), eth_config.getPancakeFactoryContract());
-        return contract.methods.getPair(token_1,token_2).call();
+    public static async getPairAddress(token_1:string,token_2:string):Promise<string|false>{
+        return web3_pancake_factory.getPair(token_2,token_2);
     }
 
-    //endregion
+    public static async getPairContractToken0(pairContract:string):Promise<string>{
+        return eth_pair_price_tools.getPairContractToken0(pairContract);
+    }
+
+    public static async getPairContractToken1(pairContract:string):Promise<string>{
+        return eth_pair_price_tools.getPairContractToken1(pairContract);
+    }
+
+    public static async getPairInfo(pairContract:string):Promise<PAIR_INFO>{
+        return eth_pair_price_tools.getPairInfo(pairContract);
+    }
+
+    public static async getLogsByBlockNumber(blockNumber:number):Promise<Log[]>{
+        const db_logs = new eth_receipt_logs();
+        await db_logs.list(" WHERE blockNumber=:blockNumber ",{blockNumber:blockNumber});
+        if(db_logs.count() === 0){
+            if(config.getConfig().verbose_log) console.log(`getLogsByBlockNumber | logs of block ${blockNumber} not in db, retrieving via rpc`);
+            return await this.getLogsByBlockNumberViaWeb3(blockNumber);
+        }
+        else{
+            if(config.getConfig().verbose_log) console.log(`getLogsByBlockNumber | logs of block ${blockNumber} in db`);
+            let logs:Log[] = [];
+            for(const db_log of db_logs._dataList as eth_receipt_logs[]){
+                logs.push(this.convertDbLogToWeb3Log(db_log));
+            }
+            return logs;
+        }
+    }
+
+    public static async getLogsBetweenBlockNumbersViaRpc(fromBlock:number,toBlock:number):Promise<Log[]>{
+        fromBlock = assert.isNumber(fromBlock,"fromBlock",0);
+        toBlock = assert.isNumber(toBlock,"toBlock",fromBlock);
+        const logs = await Web3Client.eth.getPastLogs({fromBlock:fromBlock,toBlock:toBlock});
+        return logs;
+    }
+
+    public static convertDbLogToWeb3Log(db_log:eth_receipt_logs):Log{
+        return {
+            address: assert.isString({val: db_log.address, prop_name: "address", strict: true}),
+            blockHash: assert.isString({val: db_log.blockHash, prop_name: "blockHash", strict: true}),
+            blockNumber: assert.isNumber(db_log.blockNumber, "blockNumber", 0),
+            data: assert.isString({val: db_log.data, prop_name: "data", strict: true}),
+            logIndex: assert.isNumber(db_log.logIndex, "logIndex", 0),
+            topics: JSON.parse(assert.isString({val: db_log.topics, prop_name: "topics", strict: true})),
+            transactionHash: assert.isString({val: db_log.transactionHash, prop_name: "transactionHash", strict: true}),
+            transactionIndex: assert.isNumber(db_log.transactionIndex, "transactionIndex", -1),
+        };
+    }
+
+    public static async convertWeb3LogToDbLog(log:Log):Promise<eth_receipt_logs>{
+        const newLog = new eth_receipt_logs();
+        newLog.transactionHash = log.transactionHash;
+        newLog.logIndex = log.logIndex;
+        await newLog.fetch();
+        if(newLog.recordExists()) return newLog;
+        newLog.loadValues(log,true);
+        const block = await this.getBlockByNumber(log.blockNumber);
+        newLog.blockTime = block.time_added;
+        return newLog;
+    }
+
+    public static async getLogsByTransactionHash(transactionHash:string, recursive:boolean = true):Promise<Log[]>{
+        const db_logs = new eth_receipt_logs();
+
+        await db_logs.list(" WHERE transactionHash=:transactionHash ",{transactionHash:transactionHash});
+        if(db_logs.count() === 0){
+            if(config.getConfig().verbose_log) console.log(`getLogsByTransactionHash | logs of hash ${transactionHash} not on db, retrieving via rpc`);
+            if(recursive){
+                const db_transaction = await this.getTxnByHash(transactionHash);
+                const logs = await this.getLogsByBlockNumber(assert.isNumber(db_transaction.blockNumber,"db_transaction.blockNumber",0));
+                return this.getLogsByTransactionHash(transactionHash,false);
+            }
+            throw new Error(`no logs found for transaction:${transactionHash}`);
+        }
+        else{
+            if(config.getConfig().verbose_log) console.log(`getLogsByTransactionHash | logs of hash ${transactionHash} in db`);
+            let logs:Log[] = [];
+            for(const db_log of db_logs._dataList as eth_receipt_logs[]){
+                logs.push(this.convertDbLogToWeb3Log(db_log));
+            }
+            return logs;
+        }
+    }
+
+    public static async getLogsByBlockNumberViaWeb3(blockNumber:number):Promise<Log[]>{
+        if(config.getConfig().verbose_log) console.log(`getLogsByBlockNumberViaWeb3 | retrieving logs in block ${blockNumber} info via rpc`);
+        const blockInfo = await this.getBlockByNumber(blockNumber);
+        if(!blockInfo) throw new Error(`unable to retrieve block info of ${blockNumber} from rpc`);
+        const logs = await Web3Client.eth.getPastLogs({fromBlock:blockNumber,toBlock:blockNumber});
+        if(!logs || logs.length === 0) throw new Error(`no logs found for block ${blockNumber} via rpc`);
+        if(config.getConfig().verbose_log) console.log(`getLogsByBlockNumberViaWeb3 | ${logs.length} logs found, saving to db records`);
+        for(const log of logs as Log[]){
+            const check = new eth_receipt_logs();
+            await check.list(" WHERE transactionHash=:transactionHash AND logIndex=:logIndex ",{transactionHash:log.transactionHash,logIndex:log.logIndex});
+            if(check.count() === 0){
+                const newLog = new eth_receipt_logs();
+                newLog.loadValues(log,true);
+                newLog.txn_hash = log.transactionHash;
+                newLog.blockTime = blockInfo.time_added;
+                await newLog.save();
+            }
+        }
+        return logs;
+    }
+
+    public static async getBlockWithReceiptsViaRpc(blockNumber:number){
+        const response = await eth_rpc.getEtherProvider().send("qn_getBlockWithReceipts",[tools.convertNumberToHex(blockNumber)]);
+        console.log(response);
+    }
+
+    //endregion GETTER
 
     //region ANALYZE TOOL
 
@@ -490,7 +647,7 @@ export class eth_worker{
         result = await this.processContractCreationEvent(tx,result);
         if (typeof tx.toAddress === "undefined" || tx.toAddress === null || tx.toAddress === "") return result;
 
-        let decodedAbi = eth_abi_decoder.decodeAbiObject(tx.input);
+        let decodedAbi = web3_abi_decoder.decodeAbiObject(tx.input);
         if(!decodedAbi) return result;
         result.method = decodedAbi.abi.name;
 
@@ -524,7 +681,7 @@ export class eth_worker{
 
         if(!eth_worker.checkIfInvolved2(transaction)) return result;
         result.status = RESULT_STATUS.INVOLVED;
-        const decoded_abi = eth_abi_decoder.decodeAbiObject(transaction.input);
+        const decoded_abi = web3_abi_decoder.decodeAbiObject(transaction.input);
         if(!decoded_abi) {
             result.abiDecodeStatus = "failed";
             return result;
@@ -556,7 +713,7 @@ export class eth_worker{
         result.sendStatus = txn.send_status ? RESULT_SEND_STATUS.SUCCESS : RESULT_SEND_STATUS.FAILED;
         if(result.status !== RESULT_STATUS.INVOLVED) return result;
 
-        const abi = eth_abi_decoder.decodeAbiObject(txn.input);
+        const abi = web3_abi_decoder.decodeAbiObject(txn.input);
         result.method = abi ? abi.abi.name : "unknown";
 
         if(result.sendStatus !== RESULT_SEND_STATUS.SUCCESS) return result;
@@ -583,7 +740,7 @@ export class eth_worker{
             result.toDecimal = lastTransfer1.ContractInfo.decimals;
             result.toAddress = lastTransfer1.to;
 
-            const transferAbi = eth_abi_decoder.getTransferAbi(abi);
+            const transferAbi = web3_abi_decoder.getTransferAbi(abi);
             if(transferAbi){
                 result.fromValue = transferAbi.amount.toString();
             }
@@ -604,8 +761,8 @@ export class eth_worker{
             result.toAddress = txn.fromAddress ?? "";
 
             const logsResult = await eth_receipt_logs_tools.getReceiptLogs(txn.hash);
-            const firstLog = await eth_log_decoder.decodeLog(logsResult.receipt.logs[0]);
-            const lastLog = await eth_log_decoder.decodeLog( logsResult.receipt.logs[logsResult.receipt.logs.length-1] );
+            const firstLog = await web3_log_decoder.decodeLog(logsResult.receipt.logs[0]);
+            const lastLog = await web3_log_decoder.decodeLog( logsResult.receipt.logs[logsResult.receipt.logs.length-1] );
             const lastSwap = await eth_receipt_logs_tools.getLastLogByMethod<SwapLog>(txn.hash,"swap") as SwapLog;
             const firstTransferFrom = await eth_receipt_logs_tools.getFirstTransferFrom(txn.hash,txn.fromAddress??"");
             result.type = lastTransfer1.ContractInfo.address.toLowerCase() === eth_config.getTokenContract().toLowerCase() ? "buy" : "sell";
@@ -648,7 +805,7 @@ export class eth_worker{
 
             let gross_token_amount:string = "0";
             if(result.type === "buy"){
-                const swapExactETHForTokensAbi = eth_abi_decoder.getSwapExactETHForTokens(abi);
+                const swapExactETHForTokensAbi = web3_abi_decoder.getSwapExactETHForTokens(abi);
                 if(swapExactETHForTokensAbi){
                     gross_token_amount = swapExactETHForTokensAbi.amountOutMin > lastSwap.amount1Out ? swapExactETHForTokensAbi.amountOutMin.toString() : lastSwap.amount1Out.toString();
                 }
@@ -661,18 +818,18 @@ export class eth_worker{
             }
             if(result.type === "sell"){
                 if(abi){
-                    const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abi);
+                    const swapExactTokensForETHSupportingFeeOnTransferTokensAbi = web3_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(abi);
                     if(swapExactTokensForETHSupportingFeeOnTransferTokensAbi){
                         gross_token_amount = swapExactTokensForETHSupportingFeeOnTransferTokensAbi.amountIn.toString();
 
                     }
 
-                    const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
+                    const swapExactTokensForTokensSupportingFeeOnTransferTokensAbi = web3_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(abi);
                     if(swapExactTokensForTokensSupportingFeeOnTransferTokensAbi){
                         gross_token_amount = swapExactTokensForTokensSupportingFeeOnTransferTokensAbi.amountIn.toString();
                     }
 
-                    const swapTokensForExactETHAbi = eth_abi_decoder.getSwapTokensForExactETH(abi);
+                    const swapTokensForExactETHAbi = web3_abi_decoder.getSwapTokensForExactETH(abi);
                     if(swapTokensForExactETHAbi){
                         gross_token_amount = swapTokensForExactETHAbi.amountInMax.toString();
                     }
@@ -753,7 +910,7 @@ export class eth_worker{
     /// ADD LIQUIDITY
     static async processAddLiquidity(result: AnalysisResult, decodedAbi: DecodedAbiObject): Promise<AnalysisResult>{
         let action = "process add liquidity";
-        let methodAbi = eth_abi_decoder.getAddLiquidityETH(decodedAbi);
+        let methodAbi = web3_abi_decoder.getAddLiquidityETH(decodedAbi);
         if(!methodAbi) return result;
 
         result.tag = this.getTagAddLiquidityToToken();
@@ -784,7 +941,7 @@ export class eth_worker{
         tx.toAddress = assert.isString({val:tx.toAddress,prop_name:"tx.toAddress",strict:true});
         if(tx.toAddress.toLowerCase() !== eth_config.getTokenContract().toLowerCase()) return result;
 
-        let methodAbi = await eth_abi_decoder.getApproveAbi(decodedAbi);
+        let methodAbi = await web3_abi_decoder.getApproveAbi(decodedAbi);
         if(!methodAbi) return result;
 
         result.fromContract = eth_config.getTokenContract();
@@ -805,7 +962,7 @@ export class eth_worker{
         tx.hash = assert.isString({val:tx.hash,prop_name:"tx.hash",strict:true});
         if(tx.toAddress.toLowerCase() !== eth_config.getTokenContract().toLowerCase()) return result;
 
-        let methodAbi = await eth_abi_decoder.getTransferAbi(decodedAbi);
+        let methodAbi = await web3_abi_decoder.getTransferAbi(decodedAbi);
         if(!methodAbi) return result;
 
         result.fromContract = eth_config.getTokenContract();
@@ -866,7 +1023,7 @@ export class eth_worker{
         const analyzeResultLogs = await eth_receipt_logs_tools.getReceiptLogs(tx.hash);
 
         // BUY
-        const swapExactETHForTokens = await eth_abi_decoder.getSwapExactETHForTokens(decodedAbi);
+        const swapExactETHForTokens = await web3_abi_decoder.getSwapExactETHForTokens(decodedAbi);
         if(swapExactETHForTokens){
             result.tag = eth_worker.getTagSwapEthToToken();
             // FROM
@@ -881,7 +1038,7 @@ export class eth_worker{
             result.toAmountGross = this.convertValueToETH(result.toAmountGross);
         }
 
-        const swapETHForExactTokens = await eth_abi_decoder.getSwapETHForExactTokens(decodedAbi);
+        const swapETHForExactTokens = await web3_abi_decoder.getSwapETHForExactTokens(decodedAbi);
         if(swapETHForExactTokens){
             result.tag = this.getTagSwapEthToToken();
             // FROM
@@ -896,7 +1053,7 @@ export class eth_worker{
             result.toAmountGross = this.convertValueToAmount(result.toAmountGross, result.toDecimal);
         }
 
-        const swapExactETHForTokensSupportingFeeOnTransferTokens =  await eth_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
+        const swapExactETHForTokensSupportingFeeOnTransferTokens =  await web3_abi_decoder.getSwapExactETHForTokensSupportingFeeOnTransferTokens(decodedAbi);
         if(swapExactETHForTokensSupportingFeeOnTransferTokens){
             result.tag = this.getTagSwapEthToToken();
             // FROM
@@ -914,7 +1071,7 @@ export class eth_worker{
 
 
         // SELL
-        const swapTokensForExactETH = await eth_abi_decoder.getSwapTokensForExactETH(decodedAbi);
+        const swapTokensForExactETH = await web3_abi_decoder.getSwapTokensForExactETH(decodedAbi);
         if(swapTokensForExactETH){
             result.tag = this.getTagSwapTokenToEth();
             result.fromAmountGross = this.convertValueToAmount(swapTokensForExactETH.amountInMax.toString(),fromContractInfo.decimals);
@@ -929,7 +1086,7 @@ export class eth_worker{
             // result.fromAmountGross = eth_worker.convertValueToAmount(syncLog.reserve1.toString(),firstTransferLog.ContractInfo.decimals);
         }
 
-        const swapExactTokensForETHSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
+        const swapExactTokensForETHSupportingFeeOnTransferTokens = await web3_abi_decoder.getSwapExactTokensForETHSupportingFeeOnTransferTokens(decodedAbi);
         if(swapExactTokensForETHSupportingFeeOnTransferTokens){
             result.tag = this.getTagSwapTokenToOtherToken();
             // FROM AMOUNT GROSS
@@ -944,7 +1101,7 @@ export class eth_worker{
         }
 
 
-        const swapExactTokensForTokens = await eth_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
+        const swapExactTokensForTokens = await web3_abi_decoder.getSwapExactTokensForTokens(decodedAbi);
         if(swapExactTokensForTokens){
             if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapTokenToOtherToken();
             if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapOtherTokenToToken();
@@ -967,7 +1124,7 @@ export class eth_worker{
 
 
 
-        const swapExactTokensForTokensSupportingFeeOnTransferTokens = await eth_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
+        const swapExactTokensForTokensSupportingFeeOnTransferTokens = await web3_abi_decoder.getSwapExactTokensForTokensSupportingFeeOnTransferTokens(decodedAbi);
         if(swapExactTokensForTokensSupportingFeeOnTransferTokens){
             if(fromContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapTokenToOtherToken();
             if(toContract.toLowerCase() === eth_config.getTokenContract().toLowerCase()) result.tag = this.getTagSwapOtherTokenToToken();
@@ -994,7 +1151,7 @@ export class eth_worker{
     static async processTransitSwap(tx: eth_transaction, decodedAbi: DecodedAbiObject, result: AnalysisResult): Promise<AnalysisResult>{
         let action = "process transit swap";
         if(tools.isEmpty(tx.hash)) throw new Error("cannot "+action+", hash not set");
-        let swap = await eth_abi_decoder.getSwap(decodedAbi);
+        let swap = await web3_abi_decoder.getSwap(decodedAbi);
 
         if(swap){
             const analyzeResultLogs = await eth_receipt_logs_tools.getReceiptLogs(tx.hash);
@@ -1617,7 +1774,7 @@ export class eth_worker{
         if(logDb.count() > 0){
             console.log(`sync log found`);
             for(const log of logDb._dataList as eth_receipt_logs[]){
-                let check_sync_log = await eth_log_decoder.getSyncLog({
+                let check_sync_log = await web3_log_decoder.getSyncLog({
                     address: log.address ?? "",
                     blockHash: log.blockHash ?? "",
                     blockNumber: log.blockNumber ?? 0,
@@ -1641,7 +1798,7 @@ export class eth_worker{
                 return eth_worker.getReserveByBlockNumber(blockNumber,pairContract);
             }
             for(const log of logs){
-                sync_log = await eth_log_decoder.getSyncLog(log);
+                sync_log = await web3_log_decoder.getSyncLog(log);
                 if(sync_log){
                     console.log(`sync log found, adding on db`);
                     await eth_worker.getDbTxnByHash(log.transactionHash);
@@ -1657,6 +1814,10 @@ export class eth_worker{
     private static async getBnbUsdReserveByBlockNumber(blockNumber:number):Promise<BnbUsdReserve>{
         const syncLog = await eth_worker.getReserveByBlockNumber(blockNumber,eth_config.getBnbUsdPairContract());
         return {bnb:syncLog.reserve0,usd:syncLog.reserve1};
+    }
+
+    public static getBnbUsdPriceByReserve(bnbReserve:bigint,usdReserve:bigint):BigNumber{
+        return tools.toBn(usdReserve.toString()).dividedBy(tools.toBn(bnbReserve.toString()));
     }
 
     public static async getBnbUsdPriceByBlockNumber(blockNumber:number):Promise<BigNumber>{

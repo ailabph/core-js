@@ -1,4 +1,6 @@
-import {assert,eth_worker,tools} from "./ailab-core";
+import {assert} from "./assert";
+import {eth_worker} from "./eth_worker";
+import {tools} from "./tools";
 import {eth_transaction} from "./build/eth_transaction";
 
 export class eth_transaction_tools{

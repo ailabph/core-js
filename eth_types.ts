@@ -1,10 +1,12 @@
 import {TransactionReceipt} from "web3-eth/types";
 import {Account, AddedAccount, EncryptedKeystoreV3Json} from "web3-core/types";
 import {eth_transaction} from "./build/eth_transaction";
-import {assert,tools} from "./ailab-core";
+import {assert} from "./assert";
+import {tools} from "./tools";
 
 export class eth_types{
 
+    //region GET
     public static getDefaultAnalysisResult(eth?:eth_transaction|undefined):AnalysisResult{
         let result:AnalysisResult = {
             abiDecodeStatus: "",
@@ -51,7 +53,6 @@ export class eth_types{
         }
         return result;
     }
-
     public static getDefaultTransactionReceipt():TransactionReceipt{
         return {
             blockHash: "",
@@ -67,6 +68,10 @@ export class eth_types{
             transactionIndex: 0
         };
     }
+    public static getDefaultContractInfo():ContractInfo{
+        return {address: "", decimals: 18, name: "", symbol: ""};
+    }
+    //endregion GET
 
 }
 
