@@ -22,18 +22,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.connection = void 0;
-const ailab_core_1 = require("./ailab-core");
+const config_1 = require("./config");
 const mysql = __importStar(require("mysql2/promise"));
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
@@ -49,11 +40,11 @@ class connection {
     static getConfig() {
         return {
             connectionLimit: 10,
-            user: ailab_core_1.config.getConfig().db_user,
-            password: ailab_core_1.config.getConfig().db_pass,
-            database: ailab_core_1.config.getConfig().db_name,
-            host: ailab_core_1.config.getConfig().db_host,
-            port: ailab_core_1.config.getConfig().db_port,
+            user: config_1.config.getConfig().db_user,
+            password: config_1.config.getConfig().db_pass,
+            database: config_1.config.getConfig().db_name,
+            host: config_1.config.getConfig().db_host,
+            port: config_1.config.getConfig().db_port,
             namedPlaceholders: true,
         };
     }
@@ -74,93 +65,77 @@ class connection {
         };
         return conn;
     }
-    static init() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield connection.initiatePoolConnection();
-            yield connection.initiateSingleConnection();
-        });
+    static async init() {
+        await connection.initiatePoolConnection();
+        await connection.initiateSingleConnection();
     }
-    static initiatePoolConnection() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (typeof this.pool === "undefined") {
-                this.pool = yield mysql.createPool(this.getConfig());
-            }
-        });
+    static async initiatePoolConnection() {
+        if (typeof this.pool === "undefined") {
+            this.pool = await mysql.createPool(this.getConfig());
+        }
     }
-    static initiateSingleConnection() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (typeof this.singleConnection === "undefined") {
-                this.singleConnection = yield mysql.createConnection(this.getConfig());
-                this.singleConnection = this.setQueryConfig(this.singleConnection);
-            }
-        });
+    static async initiateSingleConnection() {
+        if (typeof this.singleConnection === "undefined") {
+            this.singleConnection = await mysql.createConnection(this.getConfig());
+            this.singleConnection = this.setQueryConfig(this.singleConnection);
+        }
     }
-    static getConnection(force_pool = false) {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.init();
-            if (force_pool || !this.inTransaction) {
-                if (typeof this.pool === "undefined")
-                    throw new Error("pool not connected");
-                if (typeof this.lastPoolConnection !== "undefined")
-                    return this.lastPoolConnection;
-                this.lastPoolConnection = yield this.pool.getConnection();
-                this.lastPoolConnection = this.setQueryConfig(this.lastPoolConnection);
+    static async getConnection(force_pool = false) {
+        await this.init();
+        if (force_pool || !this.inTransaction) {
+            if (typeof this.pool === "undefined")
+                throw new Error("pool not connected");
+            if (typeof this.lastPoolConnection !== "undefined")
                 return this.lastPoolConnection;
-            }
-            else {
-                if (typeof this.singleConnection === "undefined") {
-                    throw new Error("singleConnection is undefined");
-                }
-                return this.singleConnection;
-            }
-        });
-    }
-    static execute({ sql, param = {}, force_pool = false }) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (ailab_core_1.config.getConfig().verbose_log)
-                console.log(`retrieving connection`);
-            let conn = yield this.getConnection(force_pool);
-            if (ailab_core_1.config.getConfig().verbose_log)
-                console.log(`connection retrieved, executing sql:${sql}`);
-            let result = yield conn.execute(sql, param);
-            if (ailab_core_1.config.getConfig().verbose_log)
-                console.log(`query executed`);
-            return result[0];
-        });
-    }
-    static startTransaction() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.inTransaction)
-                throw new Error(`already in transaction`);
-            this.inTransaction = true;
-            yield this.init();
+            this.lastPoolConnection = await this.pool.getConnection();
+            this.lastPoolConnection = this.setQueryConfig(this.lastPoolConnection);
+            return this.lastPoolConnection;
+        }
+        else {
             if (typeof this.singleConnection === "undefined") {
                 throw new Error("singleConnection is undefined");
             }
-            yield this.singleConnection.beginTransaction();
-        });
+            return this.singleConnection;
+        }
     }
-    static commit() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.inTransaction)
-                throw new Error("unable to commit, not in transaction mode");
-            if (typeof this.singleConnection === "undefined")
-                throw new Error("singleConnection is undefined");
-            // this.singleConnection = await this.initiateSingleConnection();
-            yield this.singleConnection.commit();
-            this.inTransaction = false;
-        });
+    static async execute({ sql, param = {}, force_pool = false }) {
+        if (config_1.config.getConfig().verbose_sql_log)
+            console.log(`retrieving connection`);
+        let conn = await this.getConnection(force_pool);
+        if (config_1.config.getConfig().verbose_sql_log)
+            console.log(`connection retrieved, executing sql:${sql}`);
+        let result = await conn.execute(sql, param);
+        if (config_1.config.getConfig().verbose_sql_log)
+            console.log(`query executed`);
+        return result[0];
     }
-    static rollback() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.inTransaction)
-                throw new Error("unable to rollback, not in transaction mode");
-            if (typeof this.singleConnection === "undefined")
-                throw new Error("singleConnection is undefined");
-            // this.singleConnection = await this.initiateSingleConnection();
-            yield this.singleConnection.rollback();
-            this.inTransaction = false;
-        });
+    static async startTransaction() {
+        if (this.inTransaction)
+            throw new Error(`already in transaction`);
+        this.inTransaction = true;
+        await this.init();
+        if (typeof this.singleConnection === "undefined") {
+            throw new Error("singleConnection is undefined");
+        }
+        await this.singleConnection.beginTransaction();
+    }
+    static async commit() {
+        if (!this.inTransaction)
+            throw new Error("unable to commit, not in transaction mode");
+        if (typeof this.singleConnection === "undefined")
+            throw new Error("singleConnection is undefined");
+        // this.singleConnection = await this.initiateSingleConnection();
+        await this.singleConnection.commit();
+        this.inTransaction = false;
+    }
+    static async rollback() {
+        if (!this.inTransaction)
+            throw new Error("unable to rollback, not in transaction mode");
+        if (typeof this.singleConnection === "undefined")
+            throw new Error("singleConnection is undefined");
+        // this.singleConnection = await this.initiateSingleConnection();
+        await this.singleConnection.rollback();
+        this.inTransaction = false;
     }
     //#region PARSERS
     static parseResultSetHeader(result) {
@@ -184,3 +159,4 @@ class connection {
 }
 exports.connection = connection;
 connection.inTransaction = false;
+//# sourceMappingURL=connection.js.map

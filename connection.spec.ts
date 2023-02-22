@@ -1,5 +1,5 @@
 import {assert, expect} from "chai";
-import {tools} from "./ailab-core";
+import {tools} from "./tools";
 import {connection, ResultSetHeader} from "./connection";
 import {Connection, PoolConnection} from "mysql2/promise";
 import {meta_options} from "./build/meta_options";
@@ -15,7 +15,7 @@ describe("connection spec",()=>{
 
     it("getConnection",async()=>{
         let result = await connection.getConnection() as PoolConnection;
-        assert.equal(result.connection.config.database,"ailab_core");
+        assert.isNotEmpty<string>(result.connection.config.database ?? "");
     });
 
     it("getConnection transaction",async()=>{
