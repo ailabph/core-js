@@ -8,3 +8,4 @@ class patcher {
     }
 }
 exports.patcher = patcher;
+//# sourceMappingURL=patcher.js.map
