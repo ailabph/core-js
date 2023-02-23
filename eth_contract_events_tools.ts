@@ -4,8 +4,16 @@ import { eth_config } from "./eth_config";
 import { eth_receipt_logs_tools } from "./eth_receipt_logs_tools";
 import { tools } from "./tools";
 import {eth_contract_events} from "./build/eth_contract_events";
+import {config} from "./config";
 
 export class eth_contract_events_tools{
+
+    private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
+        if(config.getConfig().verbose_log || force_display){
+            console.log(`eth_contract_events_tools|${method}|${msg}`);
+            if(end) console.log(`eth_contract_events_tools|${method}|${tools.LINE}`);
+        }
+    }
 
     //region UTILITIES
     public static isTokenRelated(db_log:eth_receipt_logs):boolean{
@@ -16,7 +24,8 @@ export class eth_contract_events_tools{
 
     //region CHECKER
     public static async checkAndSaveForTradeEvents(newEvent:eth_contract_events):Promise<eth_contract_events>{
-        if(newEvent.recordExists()) throw new Error(`event is already saved`);
+        const method = `checkAndSaveForTradeEvents`;
+        if(newEvent.recordExists()) throw new eth_contract_events_tools_error(`${method}|event is already saved`);
         const propertiesThatShouldNotBeEmpty = [
             "txn_hash",
             "pair_contract",
@@ -37,7 +46,7 @@ export class eth_contract_events_tools{
         ];
         for(const prop of propertiesThatShouldNotBeEmpty as string[]) {
             if (tools.isEmpty(newEvent[prop]))
-                throw new Error(`${prop} for new contract event should not be empty`);
+                throw new eth_contract_events_tools_error(`${method}|${prop} for new contract event should not be empty`);
         }
         const propertiesThatShouldBeNumeric = [
             "blockNumber",
@@ -57,27 +66,27 @@ export class eth_contract_events_tools{
         ];
         for(const prop of propertiesThatShouldBeNumeric as any[]){
             if(!tools.isNumeric(newEvent[prop]))
-                throw new Error(`${prop} for new contract event should be numeric. value found ${newEvent[prop]}`);
+                throw new eth_contract_events_tools_error(`${method}|${prop} for new contract event should be numeric. value found ${newEvent[prop]}`);
         }
         const eventCheck = new eth_contract_events();
         await eventCheck.list(
             " WHERE txn_hash=:hash AND logIndex=:logIndex ",
             {
-                hash: assert.stringNotEmpty(newEvent.txn_hash),
-                logIndex: assert.positiveInt(newEvent.logIndex)
+                hash: assert.stringNotEmpty(newEvent.txn_hash,`${method} newEvent.txn_hash`),
+                logIndex: assert.positiveInt(newEvent.logIndex,`${method} newEvent.logIndex`)
             });
         if(eventCheck.count() > 0)
-            throw new Error(`unable to save to trade event, already added to event hash ${newEvent.txn_hash} logIndex ${newEvent.logIndex} `);
+            throw new eth_contract_events_tools_error(`${method}|unable to save to trade event, already added to event hash ${newEvent.txn_hash} logIndex ${newEvent.logIndex} `);
 
         await newEvent.save();
         return newEvent;
     }
     //endregion CHECKER
 
-    //region PROCESS LOGS TO EVENTS
-    //loop through events
-    //if log isTokenRelated, process
-    //time_processed_events
-    //endregion PROCESS LOGS TO EVENTS
+}
 
+class eth_contract_events_tools_error extends Error{
+    constructor(message:string) {
+        super(message);
+    }
 }
