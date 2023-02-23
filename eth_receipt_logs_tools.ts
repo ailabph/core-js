@@ -12,10 +12,10 @@ import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {Log} from "web3-core";
 import {PAIR_INFO, TRADE_TYPE} from "./eth_worker_trade";
 import {TIME_FORMATS, time_helper} from "./time_helper";
-import {eth_worker_price} from "./eth_worker_price";
+import {worker_price} from "./worker_price";
 import {eth_contract_events} from "./build/eth_contract_events";
 import {eth_contract_events_tools} from "./eth_contract_events_tools";
-import {eth_pair_price_tools} from "./eth_pair_price_tools";
+import {web3_pair_price_tools} from "./web3_pair_price_tools";
 
 //region TYPES
 type SwapTradeInfo = {
@@ -355,11 +355,11 @@ export class eth_receipt_logs_tools{
                     fees_percentage = tools.toBn(tokenAmountDifference).dividedBy(tools.toBn(mainTokenInfo.swapAmount)).toFixed(4);
                 }
 
-                const bnb_usd_price = await eth_worker_price.getBnbUsdPrice(blockTime);
-                const token_usd_price = await eth_worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
-                const token_bnb_price = await eth_worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
-                const token_usd_value = await eth_worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address,blockTime,mainTokenInfo.transferAmount);
-                const token_bnb_value = await eth_worker_price.getBnbValueOfToken(mainTokenInfo.contractInfo.address,blockTime,mainTokenInfo.transferAmount);
+                const bnb_usd_price = await worker_price.getBnbUsdPrice(blockTime);
+                const token_usd_price = await worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
+                const token_bnb_price = await worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
+                const token_usd_value = await worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address,blockTime,mainTokenInfo.transferAmount);
+                const token_bnb_value = await worker_price.getBnbValueOfToken(mainTokenInfo.contractInfo.address,blockTime,mainTokenInfo.transferAmount);
 
                 // create event
                 const transaction = await eth_worker.getTxnByHash(assert.stringNotEmpty(log.transactionHash));
@@ -446,12 +446,13 @@ export class eth_receipt_logs_tools{
 
     //region CHECKER
     public static isContractEventLog(log:eth_receipt_logs):boolean{
-        const address = assert.stringNotEmpty(log.address);
+        const address = assert.stringNotEmpty(log.address,`isContractEventLog|log.address`);
         return address.toLowerCase() === eth_config.getTokenContract().toLowerCase();
     }
     public static isPairEventLog(log:eth_receipt_logs):boolean{
-        return  assert.stringNotEmpty(log.address).toLowerCase() === eth_config.getTokenBnbPairContract().toLowerCase()
-                || assert.stringNotEmpty(log.address).toLowerCase() === eth_config.getTokenUsdPairContract().toLowerCase();
+        const contract_address = assert.stringNotEmpty(log.address,`isPairEventLog log.address`);
+        return  contract_address.toLowerCase() === eth_config.getTokenBnbPairContract().toLowerCase()
+                || contract_address.toLowerCase() === eth_config.getTokenUsdPairContract().toLowerCase();
     }
     //endregion CHECKER
 
@@ -540,10 +541,10 @@ export class eth_receipt_logs_tools{
         return to_return;
     }
     public static async getContractInfoFromPair(pair_contract:string|PAIR_INFO,selected_token_contract:string):Promise<SwapTradeInfo>{
-        return eth_pair_price_tools.getContractInfoFromPair(pair_contract,selected_token_contract);
+        return web3_pair_price_tools.getContractInfoFromPair(pair_contract,selected_token_contract);
     }
     public static async getOppositeContractPairOf(pair_contract:string|PAIR_INFO,selected_token_contract:string):Promise<SwapTradeInfo>{
-        return eth_pair_price_tools.getOppositeContractPairOf(pair_contract,selected_token_contract);
+        return web3_pair_price_tools.getOppositeContractPairOf(pair_contract,selected_token_contract);
     }
 
     public static async getTotalTransferOfSwap(db_log:eth_receipt_logs,token_contract:string):Promise<string>{
@@ -570,6 +571,18 @@ export class eth_receipt_logs_tools{
                 && (transferLog.from.toLowerCase() === pairInfo.address.toLowerCase() || transferLog.to.toLowerCase() === pairInfo.address.toLowerCase())
             ){
                 to_return = tools.toBn(to_return).plus(tools.toBn(eth_worker.convertValueToAmount(transferLog.value.toString(),transferLog.ContractInfo.decimals))).toFixed(tools.parseIntSimple(transferLog.ContractInfo.decimals));
+            }
+            else{
+                if(log.id === db_log.id) continue;
+                try{
+                    const decoded_log = await web3_log_decoder.decodeLog(eth_worker.convertDbLogToWeb3Log(log));
+                    if(
+                        decoded_log.method_name.toLowerCase() === "SwapAndLiquify".toLowerCase()
+                        || decoded_log.method_name.toLowerCase() === "Swap".toLowerCase()
+                    ){
+                        to_return = "0";
+                    }
+                }catch (e){}
             }
         }
         return to_return;

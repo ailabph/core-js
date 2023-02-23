@@ -13,10 +13,10 @@ const eth_receipt_1 = require("./build/eth_receipt");
 const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
 const eth_worker_trade_1 = require("./eth_worker_trade");
 const time_helper_1 = require("./time_helper");
-const eth_worker_price_1 = require("./eth_worker_price");
+const worker_price_1 = require("./worker_price");
 const eth_contract_events_1 = require("./build/eth_contract_events");
 const eth_contract_events_tools_1 = require("./eth_contract_events_tools");
-const eth_pair_price_tools_1 = require("./eth_pair_price_tools");
+const web3_pair_price_tools_1 = require("./web3_pair_price_tools");
 //endregion TYPES
 class eth_receipt_logs_tools {
     //region GETTERS
@@ -343,11 +343,11 @@ class eth_receipt_logs_tools {
                 if (tools_1.tools.getNumber(tokenAmountDifference, mainTokenDecimals) > 0) {
                     fees_percentage = tools_1.tools.toBn(tokenAmountDifference).dividedBy(tools_1.tools.toBn(mainTokenInfo.swapAmount)).toFixed(4);
                 }
-                const bnb_usd_price = await eth_worker_price_1.eth_worker_price.getBnbUsdPrice(blockTime);
-                const token_usd_price = await eth_worker_price_1.eth_worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
-                const token_bnb_price = await eth_worker_price_1.eth_worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
-                const token_usd_value = await eth_worker_price_1.eth_worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address, blockTime, mainTokenInfo.transferAmount);
-                const token_bnb_value = await eth_worker_price_1.eth_worker_price.getBnbValueOfToken(mainTokenInfo.contractInfo.address, blockTime, mainTokenInfo.transferAmount);
+                const bnb_usd_price = await worker_price_1.worker_price.getBnbUsdPrice(blockTime);
+                const token_usd_price = await worker_price_1.worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
+                const token_bnb_price = await worker_price_1.worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
+                const token_usd_value = await worker_price_1.worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address, blockTime, mainTokenInfo.transferAmount);
+                const token_bnb_value = await worker_price_1.worker_price.getBnbValueOfToken(mainTokenInfo.contractInfo.address, blockTime, mainTokenInfo.transferAmount);
                 // create event
                 const transaction = await eth_worker_1.eth_worker.getTxnByHash(assert_1.assert.stringNotEmpty(log.transactionHash));
                 const decodedTransaction = await web3_abi_decoder_1.web3_abi_decoder.decodeAbiObject(transaction.input);
@@ -423,12 +423,13 @@ class eth_receipt_logs_tools {
     //endregion
     //region CHECKER
     static isContractEventLog(log) {
-        const address = assert_1.assert.stringNotEmpty(log.address);
+        const address = assert_1.assert.stringNotEmpty(log.address, `isContractEventLog|log.address`);
         return address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase();
     }
     static isPairEventLog(log) {
-        return assert_1.assert.stringNotEmpty(log.address).toLowerCase() === eth_config_1.eth_config.getTokenBnbPairContract().toLowerCase()
-            || assert_1.assert.stringNotEmpty(log.address).toLowerCase() === eth_config_1.eth_config.getTokenUsdPairContract().toLowerCase();
+        const contract_address = assert_1.assert.stringNotEmpty(log.address, `isPairEventLog log.address`);
+        return contract_address.toLowerCase() === eth_config_1.eth_config.getTokenBnbPairContract().toLowerCase()
+            || contract_address.toLowerCase() === eth_config_1.eth_config.getTokenUsdPairContract().toLowerCase();
     }
     //endregion CHECKER
     //region LOG TRADE INFO
@@ -519,10 +520,10 @@ class eth_receipt_logs_tools {
         return to_return;
     }
     static async getContractInfoFromPair(pair_contract, selected_token_contract) {
-        return eth_pair_price_tools_1.eth_pair_price_tools.getContractInfoFromPair(pair_contract, selected_token_contract);
+        return web3_pair_price_tools_1.web3_pair_price_tools.getContractInfoFromPair(pair_contract, selected_token_contract);
     }
     static async getOppositeContractPairOf(pair_contract, selected_token_contract) {
-        return eth_pair_price_tools_1.eth_pair_price_tools.getOppositeContractPairOf(pair_contract, selected_token_contract);
+        return web3_pair_price_tools_1.web3_pair_price_tools.getOppositeContractPairOf(pair_contract, selected_token_contract);
     }
     static async getTotalTransferOfSwap(db_log, token_contract) {
         let to_return = "0";
@@ -542,6 +543,18 @@ class eth_receipt_logs_tools {
             if (transferLog && transferLog.ContractInfo.address.toLowerCase() === token_contract.toLowerCase()
                 && (transferLog.from.toLowerCase() === pairInfo.address.toLowerCase() || transferLog.to.toLowerCase() === pairInfo.address.toLowerCase())) {
                 to_return = tools_1.tools.toBn(to_return).plus(tools_1.tools.toBn(eth_worker_1.eth_worker.convertValueToAmount(transferLog.value.toString(), transferLog.ContractInfo.decimals))).toFixed(tools_1.tools.parseIntSimple(transferLog.ContractInfo.decimals));
+            }
+            else {
+                if (log.id === db_log.id)
+                    continue;
+                try {
+                    const decoded_log = await web3_log_decoder_1.web3_log_decoder.decodeLog(eth_worker_1.eth_worker.convertDbLogToWeb3Log(log));
+                    if (decoded_log.method_name.toLowerCase() === "SwapAndLiquify".toLowerCase()
+                        || decoded_log.method_name.toLowerCase() === "Swap".toLowerCase()) {
+                        to_return = "0";
+                    }
+                }
+                catch (e) { }
             }
         }
         return to_return;
