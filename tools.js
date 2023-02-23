@@ -177,9 +177,6 @@ class tools {
         }
         return false;
     }
-    static toBn(value) {
-        return new bignumber_js_1.default(value);
-    }
     //region CHECK
     static isNull(val) {
         return val === null || val === undefined;
@@ -239,8 +236,8 @@ class tools {
         }
         return result;
     }
-    static parseIntSimple(val) {
-        return this.parseInt({ val: val, strict: true });
+    static parseIntSimple(val, prop_name = "") {
+        return this.parseInt({ val: val, name: prop_name, strict: true });
     }
     static parseNumber({ val, name = "", strict = true }) {
         let result = 0;
@@ -281,6 +278,12 @@ class tools {
     static convertNumberToHex(num) {
         return "0x" + num.toString(16);
     }
+    static getPropertyValue(obj, propName, object_name = "object") {
+        if (!(propName in obj)) {
+            throw new Error(`Property '${propName}' does not exist in ${object_name}`);
+        }
+        return obj[propName];
+    }
     //endregion END GETTER
     //region FILE
     static async writeIntoFileArrayOfStrings(filePath, lines) {
@@ -313,6 +316,35 @@ class tools {
         if (last_len > val.length)
             throw new Error(`last len ${last_len} is greater than string length ${val.length}`);
         return val.substr(val.length - last_len, val.length);
+    }
+    //endregion
+    //region MATH
+    static toBn(value) {
+        if (typeof value === "string" || typeof value === "number") {
+            return new bignumber_js_1.default(value);
+        }
+        return value;
+    }
+    static deduct(from, to, decimal = 18, desc = "") {
+        return tools.toBn(from).minus(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
+    }
+    static add(from, to, decimal = 18, desc = "") {
+        return tools.toBn(from).plus(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
+    }
+    static multiply(from, to, decimal = 18, desc = "") {
+        return tools.toBn(from).multipliedBy(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
+    }
+    static divide(from, to, decimal = 18, desc = "") {
+        return tools.toBn(from).dividedBy(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
+    }
+    static greaterThan(from, to) {
+        return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
+    }
+    static lesserThan(from, to) {
+        return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;
+    }
+    static equalTo(from, to) {
+        return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
     }
 }
 exports.tools = tools;

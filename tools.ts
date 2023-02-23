@@ -1,4 +1,5 @@
 import {assert} from "./assert";
+import {config} from "./config";
 
 import * as fs from "fs";
 import fsPromise from "fs/promises";
@@ -172,10 +173,6 @@ export class tools{
         return false;
     }
 
-    public static toBn(value:string|number):BigNumber{
-        return new BigNumber(value);
-    }
-
     //region CHECK
     public static isNull(val:any):boolean{
         return val === null || val === undefined;
@@ -231,8 +228,8 @@ export class tools{
         }
         return result;
     }
-    public static parseIntSimple(val:any):number{
-        return this.parseInt({val:val,strict:true});
+    public static parseIntSimple(val:any,prop_name:string=""):number{
+        return this.parseInt({val:val,name:prop_name,strict:true});
     }
     public static parseNumber({val,name="",strict=true}:{val:unknown,name?:string,strict?:boolean}):number{
         let result:number = 0;
@@ -270,6 +267,12 @@ export class tools{
     public static convertNumberToHex(num:number):string{
         return "0x"+num.toString(16);
     }
+    public static getPropertyValue<T>(obj: {[key:string]:any}, propName: string, object_name:string="object"): T {
+        if (!(propName in obj)) {
+            throw new Error(`Property '${propName}' does not exist in ${object_name}`);
+        }
+        return obj[propName];
+    }
     //endregion END GETTER
 
     //region FILE
@@ -304,4 +307,34 @@ export class tools{
         return val.substr(val.length-last_len, val.length);
     }
     //endregion
+
+    //region MATH
+    public static toBn(value:string|number|BigNumber):BigNumber{
+        if(typeof value === "string" || typeof value === "number"){
+            return new BigNumber(value);
+        }
+        return value;
+    }
+    public static deduct(from:string|number|BigNumber,to:string|number|BigNumber,decimal:number|string=18,desc:string=""):string{
+        return tools.toBn(from).minus(tools.toBn(to)).toFixed(assert.naturalNumber(decimal,desc));
+    }
+    public static add(from:string|number|BigNumber,to:string|number|BigNumber,decimal:number|string=18,desc:string=""):string{
+        return tools.toBn(from).plus(tools.toBn(to)).toFixed(assert.naturalNumber(decimal,desc));
+    }
+    public static multiply(from:string|number|BigNumber,to:string|number|BigNumber,decimal:number|string=18,desc:string=""):string{
+        return tools.toBn(from).multipliedBy(tools.toBn(to)).toFixed(assert.naturalNumber(decimal,desc));
+    }
+    public static divide(from:string|number|BigNumber,to:string|number|BigNumber,decimal:number|string=18,desc:string=""):string{
+        return tools.toBn(from).dividedBy(tools.toBn(to)).toFixed(assert.naturalNumber(decimal,desc));
+    }
+    public static greaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
+        return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
+    }
+    public static lesserThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
+        return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;
+    }
+    public static equalTo(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
+        return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
+    }
+    //endregion MATH
 }

@@ -132,4 +132,17 @@ describe("tools spec",()=>{
 
         assert.isFalse(result);
     });
+
+    it('getPropertyValue should return the value of an existing property', () => {
+        const obj = { name: 'John', age: 30 };
+        const name: string = tools.getPropertyValue<string>(obj, 'name');
+        expect(name).to.equal('John');
+    });
+
+    it('getPropertyValue should throw an error for a non-existing property', () => {
+        const obj = { name: 'John', age: 30 };
+        expect(() => tools.getPropertyValue<string>(obj, 'address')).to.throw(
+            "Property 'address' does not exist in object"
+        );
+    });
 });

@@ -121,5 +121,14 @@ describe("tools spec", () => {
         const result = tools_1.tools.caseInsensitiveIncludes(arr, searchElement);
         chai_2.assert.isFalse(result);
     });
+    it('getPropertyValue should return the value of an existing property', () => {
+        const obj = { name: 'John', age: 30 };
+        const name = tools_1.tools.getPropertyValue(obj, 'name');
+        (0, chai_1.expect)(name).to.equal('John');
+    });
+    it('getPropertyValue should throw an error for a non-existing property', () => {
+        const obj = { name: 'John', age: 30 };
+        (0, chai_1.expect)(() => tools_1.tools.getPropertyValue(obj, 'address')).to.throw("Property 'address' does not exist in object");
+    });
 });
 //# sourceMappingURL=tools.spec.js.map
