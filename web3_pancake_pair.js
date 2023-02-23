@@ -8,9 +8,9 @@ const tools_1 = require("./tools");
 class web3_pancake_pair {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
-            console.log(`${this.name}|${method}|${msg}`);
+            console.log(`web3_pancake_pair|${method}|${msg}`);
             if (end)
-                console.log(`${tools_1.tools.LINE}`);
+                console.log(`web3_pancake_pair|${method}|${tools_1.tools.LINE}`);
         }
     }
     static initContract(address) {
@@ -34,6 +34,9 @@ class web3_pancake_pair {
             return false;
         }
     }
+    static async token0Strict(pair_address) {
+        return await this.token0(pair_address, true);
+    }
     static async token1(pair_address, strict = false) {
         const method = "token1";
         this.log(`retrieving token1 from pair address ${pair_address}`, method);
@@ -50,6 +53,9 @@ class web3_pancake_pair {
             }
             return false;
         }
+    }
+    static async token1Strict(pair_address) {
+        return await this.token1(pair_address, true);
     }
 }
 exports.web3_pancake_pair = web3_pancake_pair;

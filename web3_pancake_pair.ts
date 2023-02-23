@@ -8,8 +8,8 @@ export class web3_pancake_pair{
 
     private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
         if(config.getConfig().verbose_log || force_display){
-            console.log(`${this.name}|${method}|${msg}`);
-            if(end) console.log(`${tools.LINE}`);
+            console.log(`web3_pancake_pair|${method}|${msg}`);
+            if(end) console.log(`web3_pancake_pair|${method}|${tools.LINE}`);
         }
     }
 
@@ -34,6 +34,9 @@ export class web3_pancake_pair{
             return false;
         }
     }
+    public static async token0Strict(pair_address:string):Promise<string>{
+        return await this.token0(pair_address,true) as string;
+    }
     public static async token1(pair_address:string,strict:boolean=false):Promise<string|false>{
         const method = "token1";
         this.log(`retrieving token1 from pair address ${pair_address}`,method);
@@ -49,6 +52,9 @@ export class web3_pancake_pair{
             }
             return false;
         }
+    }
+    public static async token1Strict(pair_address:string):Promise<string>{
+        return await this.token1(pair_address,true) as string;
     }
     //endregion READ
 }
