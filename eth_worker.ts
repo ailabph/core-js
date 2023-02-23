@@ -32,16 +32,17 @@ import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {HttpProvider, Log} from "web3-core";
 import {PAIR_INFO, TRADE_PAIR_INFO} from "./eth_worker_trade";
 import {eth_price_track_header} from "./build/eth_price_track_header";
-import {eth_pair_price_tools} from "./eth_pair_price_tools";
+import {web3_pair_price_tools} from "./web3_pair_price_tools";
 import Web3 from "web3";
 import {eth_contract_data_tools} from "./eth_contract_data_tools";
 import {web3_quicknode} from "./web3_quicknode";
 import {web3_pancake_pair} from "./web3_pancake_pair";
 import {web3_pancake_factory} from "./web3_pancake_factory";
+import {web3_rpc_web3} from "./web3_rpc_web3";
 
 // const Web3 = require("web3");
 // const Web3Provider:HttpProvider = eth_rpc.getWeb3Provider();
-const Web3Client:Web3 = eth_rpc.getWeb3Client();
+const Web3Client:Web3 = web3_rpc_web3.getWeb3Client();
 
 enum ADDRESS_TYPE {
     ADDRESS = "wallet",
@@ -517,15 +518,15 @@ export class eth_worker{
     }
 
     public static async getPairContractToken0(pairContract:string):Promise<string>{
-        return eth_pair_price_tools.getPairContractToken0(pairContract);
+        return web3_pair_price_tools.getPairContractToken0(pairContract);
     }
 
     public static async getPairContractToken1(pairContract:string):Promise<string>{
-        return eth_pair_price_tools.getPairContractToken1(pairContract);
+        return web3_pair_price_tools.getPairContractToken1(pairContract);
     }
 
     public static async getPairInfo(pairContract:string):Promise<PAIR_INFO>{
-        return eth_pair_price_tools.getPairInfo(pairContract);
+        return web3_pair_price_tools.getPairInfo(pairContract);
     }
 
     public static async getLogsByBlockNumber(blockNumber:number):Promise<Log[]>{

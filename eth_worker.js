@@ -23,14 +23,15 @@ const eth_log_sig_1 = require("./build/eth_log_sig");
 const eth_receipt_1 = require("./build/eth_receipt");
 const eth_block_1 = require("./build/eth_block");
 const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
-const eth_pair_price_tools_1 = require("./eth_pair_price_tools");
+const web3_pair_price_tools_1 = require("./web3_pair_price_tools");
 const web3_1 = __importDefault(require("web3"));
 const eth_contract_data_tools_1 = require("./eth_contract_data_tools");
 const web3_quicknode_1 = require("./web3_quicknode");
 const web3_pancake_factory_1 = require("./web3_pancake_factory");
+const web3_rpc_web3_1 = require("./web3_rpc_web3");
 // const Web3 = require("web3");
 // const Web3Provider:HttpProvider = eth_rpc.getWeb3Provider();
-const Web3Client = eth_rpc_1.eth_rpc.getWeb3Client();
+const Web3Client = web3_rpc_web3_1.web3_rpc_web3.getWeb3Client();
 var ADDRESS_TYPE;
 (function (ADDRESS_TYPE) {
     ADDRESS_TYPE["ADDRESS"] = "wallet";
@@ -478,13 +479,13 @@ class eth_worker {
         return web3_pancake_factory_1.web3_pancake_factory.getPair(token_2, token_2);
     }
     static async getPairContractToken0(pairContract) {
-        return eth_pair_price_tools_1.eth_pair_price_tools.getPairContractToken0(pairContract);
+        return web3_pair_price_tools_1.web3_pair_price_tools.getPairContractToken0(pairContract);
     }
     static async getPairContractToken1(pairContract) {
-        return eth_pair_price_tools_1.eth_pair_price_tools.getPairContractToken1(pairContract);
+        return web3_pair_price_tools_1.web3_pair_price_tools.getPairContractToken1(pairContract);
     }
     static async getPairInfo(pairContract) {
-        return eth_pair_price_tools_1.eth_pair_price_tools.getPairInfo(pairContract);
+        return web3_pair_price_tools_1.web3_pair_price_tools.getPairInfo(pairContract);
     }
     static async getLogsByBlockNumber(blockNumber) {
         const db_logs = new eth_receipt_logs_1.eth_receipt_logs();
