@@ -14,6 +14,7 @@ enum ORDER{
     ASC="ASC",
     DESC="DESC"
 }
+export { ORDER }
 
 interface getDetailsArgument {
     from_time?:number,
@@ -23,12 +24,15 @@ interface getDetailsArgument {
     limit?:number,
 }
 
+/**
+ * This class is exclusive for price retrieval or computation via db only
+ */
 export class eth_price_track_details_tools{
 
     private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
         if(config.getConfig().verbose_log || force_display){
-            console.log(`${this.name}|${method}|${msg}`);
-            if(end) console.log(tools.LINE);
+            console.log(`eth_price_track_details_tools|${method}|${msg}`);
+            if(end) console.log(`eth_price_track_details_tools|${method}|${tools.LINE}`);
         }
     }
 
@@ -73,6 +77,16 @@ export class eth_price_track_details_tools{
                     where += " AND blockTime<=:to ";
                     param["to"] = to_time;
                 }
+                else{
+                    if(log){
+                        const toTimeInfo = time_helper.getTime(log.blockTime,"UTC");
+                        this.log(`no to time info specified, using time in db_log `,method);
+                        this.log(`to ${toTimeInfo.format(TIME_FORMATS.READABLE)}`,method);
+                        where += " AND blockTime<=:to ";
+                        param["to"] = toTimeInfo.unix();
+                    }
+                }
+                this.log(`current query ${where}`,method);
                 await details.list(where,param,orderString);
             }
         }catch (e){
@@ -183,11 +197,8 @@ export class eth_price_track_details_tools{
     public static async getBnbTokenPrice(time_or_log:number|string|eth_receipt_logs,token:string|ContractInfo):Promise<string>{
         const method = "getBnbTokenPrice";
         let price = "0.00";
-        this.log("retrieving bnb price of a token",method);
-        if(typeof token === "string") token = await eth_contract_data_tools.getContractViaAddressStrict(token);
-
-
-        this.log(`token symbol:${token.symbol}`,method);
+        token = await eth_contract_data_tools.getContractDynamicStrict(token);
+        this.log(`token symbol:${token.symbol} ${token.address}`,method);
         const tokenBnbPair = await eth_price_track_header_tools.getViaTokenContracts(eth_config.getEthContract(),token.address,false);
         if(!tokenBnbPair){
             this.log(`BNB${token.symbol.toUpperCase()} pair does not exists`,method);
@@ -198,21 +209,15 @@ export class eth_price_track_details_tools{
         }
         return assert.isNumeric<string>(price);
     }
-    // public static async getBnbTokenValue(time_or_log:number|string|eth_receipt_logs,token:string|ContractInfo,token_amount:string):Promise<string>{
-    //     const method = "getBnbTokenValue";
-    //     let value = "0.00";
-    //     try{
-    //         if(typeof token === "string") token = await eth_contract_data_tools.getContractViaAddressStrict(token);
-    //         this.log(`retrieving bnb token value of ${token.symbol} with amount ${token_amount}`,method);
-    //         const bnb_price = await this.getBnbTokenPrice(time_or_log,token);
-    //         this.log(`bnb price of token is ${bnb_price}`,method);
-    //     }catch (e){
-    //
-    //     }
-    // }
-    //
-    // public static async getBnbMainTokenPrice(){}
-    // public static async getBnbMainTokenValue(){}
+    public static async getBnbTokenValue(time_or_log:number|string|eth_receipt_logs,token:string|ContractInfo,token_amount:string):Promise<string>{
+        const method = "getBnbTokenValue";
+        token_amount = assert.isNumeric<string>(token_amount);
+        token = await eth_contract_data_tools.getContractDynamicStrict(token);
+        this.log(`retrieving bnb token value of ${token_amount} ${token.symbol}`,method);
+        const bnbTokenPrice = await this.getBnbTokenPrice(time_or_log,token);
+        return tools.toBn(bnbTokenPrice).multipliedBy(tools.toBn(token_amount)).toFixed(eth_config.getEthDecimal());
+    }
+
 }
 
 class eth_price_track_details_tools_error extends Error{

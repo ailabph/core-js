@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.eth_price_track_details_tools = void 0;
+exports.eth_price_track_details_tools = exports.ORDER = void 0;
 const eth_price_track_details_1 = require("./build/eth_price_track_details");
 const assert_1 = require("./assert");
 const config_1 = require("./config");
@@ -14,12 +14,16 @@ var ORDER;
     ORDER["ASC"] = "ASC";
     ORDER["DESC"] = "DESC";
 })(ORDER || (ORDER = {}));
+exports.ORDER = ORDER;
+/**
+ * This class is exclusive for price retrieval or computation via db only
+ */
 class eth_price_track_details_tools {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
-            console.log(`${this.name}|${method}|${msg}`);
+            console.log(`eth_price_track_details_tools|${method}|${msg}`);
             if (end)
-                console.log(tools_1.tools.LINE);
+                console.log(`eth_price_track_details_tools|${method}|${tools_1.tools.LINE}`);
         }
     }
     static async getDetails(header, { from_time = 0, to_time = 0, log = undefined, order = ORDER.DESC, limit = 1 }, strict = false) {
@@ -55,6 +59,16 @@ class eth_price_track_details_tools {
                     where += " AND blockTime<=:to ";
                     param["to"] = to_time;
                 }
+                else {
+                    if (log) {
+                        const toTimeInfo = time_helper_1.time_helper.getTime(log.blockTime, "UTC");
+                        this.log(`no to time info specified, using time in db_log `, method);
+                        this.log(`to ${toTimeInfo.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
+                        where += " AND blockTime<=:to ";
+                        param["to"] = toTimeInfo.unix();
+                    }
+                }
+                this.log(`current query ${where}`, method);
                 await details.list(where, param, orderString);
             }
         }
@@ -175,10 +189,8 @@ class eth_price_track_details_tools {
     static async getBnbTokenPrice(time_or_log, token) {
         const method = "getBnbTokenPrice";
         let price = "0.00";
-        this.log("retrieving bnb price of a token", method);
-        if (typeof token === "string")
-            token = await eth_contract_data_tools_1.eth_contract_data_tools.getContractViaAddressStrict(token);
-        this.log(`token symbol:${token.symbol}`, method);
+        token = await eth_contract_data_tools_1.eth_contract_data_tools.getContractDynamicStrict(token);
+        this.log(`token symbol:${token.symbol} ${token.address}`, method);
         const tokenBnbPair = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaTokenContracts(eth_config_1.eth_config.getEthContract(), token.address, false);
         if (!tokenBnbPair) {
             this.log(`BNB${token.symbol.toUpperCase()} pair does not exists`, method);
@@ -188,6 +200,14 @@ class eth_price_track_details_tools {
             price = await this.getBnbPrice(tokenBnbPair, time_or_log, false);
         }
         return assert_1.assert.isNumeric(price);
+    }
+    static async getBnbTokenValue(time_or_log, token, token_amount) {
+        const method = "getBnbTokenValue";
+        token_amount = assert_1.assert.isNumeric(token_amount);
+        token = await eth_contract_data_tools_1.eth_contract_data_tools.getContractDynamicStrict(token);
+        this.log(`retrieving bnb token value of ${token_amount} ${token.symbol}`, method);
+        const bnbTokenPrice = await this.getBnbTokenPrice(time_or_log, token);
+        return tools_1.tools.toBn(bnbTokenPrice).multipliedBy(tools_1.tools.toBn(token_amount)).toFixed(eth_config_1.eth_config.getEthDecimal());
     }
 }
 exports.eth_price_track_details_tools = eth_price_track_details_tools;
