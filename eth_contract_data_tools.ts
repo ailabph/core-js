@@ -17,7 +17,7 @@ export class eth_contract_data_tools{
     //region READ
     public static async getContractViaAddress(contract_address:string,strict:boolean=false):Promise<ContractInfo|false>{
         const method = "getContractViaAddress";
-        if(tools.isEmpty(contract_address)) throw new eth_contract_data_tools_error(`contract_address must not be empty in ${method}`);
+        contract_address = assert.stringNotEmpty(contract_address,`${method} contract_address`);
 
         this.log(`retrieving db contract ${contract_address}`,method);
         const contractInfo = eth_types.getDefaultContractInfo();
@@ -28,33 +28,37 @@ export class eth_contract_data_tools{
             this.log(`contract not on db, retrieving on chain`,method);
             db_contract.contract = contract_address;
 
-            const token_name = await web3_token.getName(contract_address,strict);
-            db_contract.name = token_name ? token_name : "";
+            const token_name = await web3_token.getNameWeb3(contract_address,strict);
+            if(!token_name) return false;
+            db_contract.name = token_name;
 
-            const token_symbol = await web3_token.getSymbol(contract_address,strict);
-            db_contract.symbol = token_symbol ? token_symbol : "";
+            const token_symbol = await web3_token.getSymbolWeb3(contract_address,strict);
+            if(!token_symbol) return false;
+            db_contract.symbol = token_symbol;
 
-            const token_decimals = tools.parseIntSimple(await web3_token.getDecimals(contract_address,strict));
-            db_contract.decimals = token_decimals ? tools.parseIntSimple(token_decimals.toString()) : -1;
+            const token_decimalsBn = await web3_token.getDecimalsWeb3(contract_address,strict);
+            if(!token_decimalsBn) return false;
+            db_contract.decimals = tools.parseIntSimple(token_decimalsBn.toString(),"token_decimalsBn.toString");
 
-            if(db_contract.decimals < 0){
-                const errorMessage = `unable to retrieve token name,symbol,decimals info on chain with address:${contract_address}`;
-                this.log(errorMessage,method,true,true);
-                if(strict) throw new eth_contract_data_tools_error(errorMessage);
-                return false;
-            }
-            else{
-                this.log(`retrieved contract info on chain, saving on db`,method,true);
-                await db_contract.save();
-            }
+            await db_contract.save();
+            this.log(`...saved contract on db with id ${db_contract.id}`,method);
         }
-        contractInfo.name = assert.stringNotEmpty(db_contract.name);
-        contractInfo.symbol = assert.stringNotEmpty(db_contract.symbol);
-        contractInfo.decimals = assert.naturalNumber(db_contract.decimals);
+        else{
+            this.log(`...record on db`,method);
+        }
+        contractInfo.name = db_contract.name;
+        contractInfo.symbol = db_contract.symbol;
+        contractInfo.decimals = assert.naturalNumber(db_contract.decimals,`${method} db_contract.decimals`);
+        contractInfo.address = assert.stringNotEmpty(db_contract.contract,`${method} contract_address`);
+        this.log(`...returning ${contractInfo.name} ${contractInfo.symbol} ${contractInfo.decimals}`,method);
         return contractInfo;
     }
     public static async getContractViaAddressStrict(contract_address:string):Promise<ContractInfo>{
         return await this.getContractViaAddress(contract_address,true) as ContractInfo;
+    }
+    public static async getContractDynamicStrict(contract:string|ContractInfo):Promise<ContractInfo>{
+        if(typeof contract !== "string") return contract;
+        return this.getContractViaAddressStrict(contract);
     }
     //endregion READ
 }
