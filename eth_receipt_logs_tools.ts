@@ -578,7 +578,7 @@ export class eth_receipt_logs_tools{
                     const decoded_log = await web3_log_decoder.decodeLog(eth_worker.convertDbLogToWeb3Log(log));
                     if(
                         decoded_log.method_name.toLowerCase() === "SwapAndLiquify".toLowerCase()
-                        || decoded_log.method_name.toLowerCase() === "Swap".toLowerCase()
+                        // || decoded_log.method_name.toLowerCase() === "Swap".toLowerCase()
                     ){
                         to_return = "0";
                     }
