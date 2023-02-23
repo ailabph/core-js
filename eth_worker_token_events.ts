@@ -9,7 +9,7 @@ import {tools} from "./tools";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {eth_contract_events} from "./build/eth_contract_events";
 import {eth_transaction} from "./build/eth_transaction";
-import {eth_worker_price} from "./eth_worker_price";
+import {worker_price} from "./worker_price";
 import base = Mocha.reporters.base;
 import {Log} from "web3-core";
 

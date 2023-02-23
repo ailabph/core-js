@@ -1,7 +1,7 @@
 import {eth_trade} from "./build/eth_trade";
 import {SwapLog} from "./web3_log_decoder";
 import {undefined} from "io-ts";
-import {eth_worker_price} from "./eth_worker_price";
+import {worker_price} from "./worker_price";
 import {assert} from "./assert";
 import {eth_config} from "./eth_config";
 import {eth_worker} from "./eth_worker";
@@ -132,7 +132,7 @@ export class eth_worker_trade{
     }
 
     public static async getBaseQuoteAmount(swapLog:SwapLog, blockTime:number):Promise<BaseQuoteAmountInfo>{
-        const pairInfo = await eth_worker_price.getPairInfo(swapLog.ContractInfo.address);
+        const pairInfo = await worker_price.getPairInfo(swapLog.ContractInfo.address);
         const result = this.getDefaultBaseQuoteAmount();
         // result.trade_type = this.getTradeType(swapLog);
         result.token0_contract= pairInfo.token0_contract;
@@ -162,7 +162,7 @@ export class eth_worker_trade{
 
 
         if(result.token1_contract.toLowerCase() === eth_config.getEthContract().toLowerCase()){
-            const bnb_usd_price = await eth_worker_price.getBnbUsdPrice(blockTime);
+            const bnb_usd_price = await worker_price.getBnbUsdPrice(blockTime);
             result.usd_value = tools.toBn(bnb_usd_price).multipliedBy(result.token1_amount).toFixed(18);
         }
         if(result.token1_contract.toLowerCase() === eth_config.getBusdContract().toLowerCase()){
@@ -226,7 +226,7 @@ export class eth_worker_trade{
             tradePairInfo.to_value = baseQuoteInfo.token1_value;
         }
         tradePairInfo.usd_value = baseQuoteInfo.usd_value;
-        tradePairInfo.bnb_usd_price = await eth_worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
+        tradePairInfo.bnb_usd_price = await worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
         // tradePairInfo.bnb_value =
 
         return tradePairInfo;
