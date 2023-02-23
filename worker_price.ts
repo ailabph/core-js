@@ -7,83 +7,114 @@ import {web3_log_decoder, SwapLog, SyncLog} from "./web3_log_decoder";
 import {eth_receipt_logs} from "./build/eth_receipt_logs";
 import {eth_price_track_header} from "./build/eth_price_track_header";
 import {eth_price_track_details} from "./build/eth_price_track_details";
-import {TRADE_TYPE} from "./eth_worker_trade";
+import {PAIR_INFO, TRADE_TYPE} from "./eth_worker_trade";
 import {undefined} from "io-ts";
 import {eth_contract_data} from "./build/eth_contract_data";
-import {eth_pair_price_tools} from "./eth_pair_price_tools";
+import {web3_pair_price_tools} from "./web3_pair_price_tools";
 import {eth_price_track_header_tools} from "./eth_price_track_header_tools";
 import {eth_worker} from "./eth_worker";
+import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
+import {SwapTradeInfo} from "./eth_receipt_logs_tools";
+import {config} from "./config";
+import {web3_pancake_pair} from "./web3_pancake_pair";
 
 
-const batchLimit = 1000;
-let lastTransactionHash = "", lastLogIndex = 0, lastDbLogId = 0;
-export class eth_worker_price{
+const batchLimit = 100;
+let lastTransactionHash = "", lastLogIndex = 0, lastDbLogId = 0, retryDelayMultiplier = 0;
+export class worker_price {
+
+    private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
+        if(config.getConfig().verbose_log || force_display){
+            console.log(`worker_price|${method}|${msg}`);
+            if(end) console.log(`worker_price|${method}|${tools.LINE}`);
+        }
+    }
 
     public static async run(){
+        const method = "run";
         await connection.startTransaction();
         try{
             const unProcessedLogs = new eth_receipt_logs();
             await unProcessedLogs.list(" WHERE id>:last_id AND time_processed_price IS NULL "
                 ,{last_id:lastDbLogId},` ORDER BY blockTime ASC LIMIT ${batchLimit} `)
-            if(unProcessedLogs.count() > 0) console.log(`${unProcessedLogs.count()} unprocessed logs for sync price computation`);
+            if(unProcessedLogs.count() > 0) this.log(`${unProcessedLogs.count()} unprocessed logs for sync price computation`,method);
+            const logCount = unProcessedLogs.count();
+            let currentCount = 0;
             for(const log of unProcessedLogs._dataList as eth_receipt_logs[]){
-                lastTransactionHash = assert.stringNotEmpty(log.transactionHash);
+                currentCount++;
+                this.log(`${currentCount}/${logCount}|processing log address ${log.address}`,method,false);
+                lastTransactionHash = assert.stringNotEmpty(log.transactionHash,`${method} log.transactionHash`);
                 lastLogIndex = assert.positiveInt(log.logIndex);
                 lastDbLogId = assert.positiveInt(log.id);
                 const web3Log = eth_worker.convertDbLogToWeb3Log(log);
                 const sync = await web3_log_decoder.getSyncLog(web3Log);
                 if(sync){
-                    // get pair header
-                    const pairHeader = new eth_price_track_header();
-                    pairHeader.pair_contract = sync.ContractInfo.address;
-                    await pairHeader.fetch();
-                    // if new, create
-                    if(pairHeader.isNew()){
-                        pairHeader.token0_contract = await eth_worker.getPairContractToken0(sync.ContractInfo.address);
-                        const token0Info = await eth_worker.getContractMetaData(pairHeader.token0_contract);
-                        pairHeader.token0_symbol = token0Info.symbol;
-                        pairHeader.token0_decimal = tools.parseInt({val:token0Info.decimals,name:"token0Info.decimals",strict:true});
-                        pairHeader.token1_contract = await eth_worker.getPairContractToken1(sync.ContractInfo.address);
-                        const token1Info = await eth_worker.getContractMetaData(pairHeader.token1_contract);
-                        pairHeader.token1_symbol = token1Info.symbol;
-                        pairHeader.token1_decimal = tools.parseInt({val:token1Info.decimals,name:"token1Info.decimals",strict:true});
-                        await pairHeader.save();
+                    this.log(`sync found, retrieving pair info`,method);
+
+                    const pairHeader = await eth_price_track_header_tools.getViaIdOrContract(sync.ContractInfo.address,false);
+                    if(!pairHeader){
+                        this.log(`pair contract info cannot be retrieved, skipping...`,method,false,true);
                     }
-                    // add new detail
-                    const newDetail = new eth_price_track_details();
-                    newDetail.header_id = tools.parseInt({val:pairHeader.id,name:"pairHeader.id",strict:true});
-                    newDetail.reserve0 = sync.reserve0.toString();
-                    newDetail.reserve1 = sync.reserve1.toString();
-                    newDetail.transactionHash = assert.isString({val:log.transactionHash,prop_name:"log.transactionHash",strict:true});
-                    newDetail.logIndex = tools.parseInt({val:log.logIndex,name:"log.logIndex",strict:true});
-                    newDetail.blockNumber = tools.parseInt({val:log.blockNumber,name:"log.blockNumber",strict:true});
-                    newDetail.blockTime = tools.parseInt({val:log.blockTime,name:"log.blockTime",strict:true});
-                    newDetail.price = await eth_worker_price.computePriceByReserve(sync);
-                    if(pairHeader.token1_contract.toLowerCase() === eth_config.getEthContract().toLowerCase()){
-                        const bnb_usd_price = await eth_worker_price.getBnbUsdPrice(newDetail.blockTime);
-                        newDetail.price_usd = tools.toBn(newDetail.price).multipliedBy(tools.toBn(bnb_usd_price)).toFixed(18);
+                    else{
+                        const pairInfo = web3_pair_price_tools.convertDbPairHeaderToPairInfo(pairHeader);
+
+                        this.log(`creating new price detail`,method);
+                        const newDetail = new eth_price_track_details();
+                        newDetail.header_id = tools.parseInt({val:pairHeader.id,name:"pairHeader.id",strict:true});
+                        newDetail.reserve0 = sync.reserve0.toString();
+                        newDetail.reserve1 = sync.reserve1.toString();
+                        newDetail.transactionHash = assert.isString({val:log.transactionHash,prop_name:"log.transactionHash",strict:true});
+                        newDetail.logIndex = tools.parseInt({val:log.logIndex,name:"log.logIndex",strict:true});
+                        newDetail.blockNumber = tools.parseInt({val:log.blockNumber,name:"log.blockNumber",strict:true});
+                        newDetail.blockTime = tools.parseInt({val:log.blockTime,name:"log.blockTime",strict:true});
+                        newDetail.price = await web3_pair_price_tools.computePriceByReserve(sync);
+                        newDetail.price_bnb = "0.00";
+                        newDetail.price_usd = "0.00";
+                        if(
+                            pairHeader.pair_contract.toLowerCase() === eth_config.getBnbUsdPairContract().toLowerCase()
+                            || (await web3_pair_price_tools.pairIsUsd(pairInfo))
+                        ){
+                            newDetail.price_usd = newDetail.price;
+                        }
+                        else if(await web3_pair_price_tools.pairIsBnb(pairInfo)){
+                            newDetail.price_bnb = newDetail.price;
+                            // estimate usd_price
+                            const usd_bnb_price = await eth_price_track_details_tools.getBnbUsdPrice(log);
+                            newDetail.price_usd = tools.toBn(usd_bnb_price).multipliedBy(tools.toBn(newDetail.price_bnb)).toFixed(eth_config.getBusdDecimal());
+                        }
+                        if(tools.toBn(newDetail.price).comparedTo(tools.toBn("0")) < 0){
+                            throw new Error(`price <= 0, double check if not error ${log.transactionHash} ${log.logIndex}`);
+                        }
+                        await newDetail.save();
+                        const dateTime = tools.getTime(newDetail.blockTime).format();
+                        this.log(`${currentCount}/${logCount}|${eth_price_track_header_tools.getPairSymbol(pairHeader)} price ${newDetail.price} bnb ${newDetail.price_bnb} usd ${newDetail.price_usd} as of ${dateTime} at ${log.blockNumber} ${log.logIndex}`,method,false,true);
                     }
-                    if(pairHeader.token1_contract.toLowerCase() === eth_config.getBusdContract().toLowerCase()){
-                        newDetail.price_usd = newDetail.price;
-                    }
-                    await newDetail.save();
-                    const dateTime = tools.getTime(newDetail.blockTime).format();
-                    console.log(`${pairHeader.token0_symbol}${pairHeader.token1_symbol} price ${newDetail.price} as of ${dateTime}`);
                 }
                 log.time_processed_price = tools.getCurrentTimeStamp();
                 await log.save();
+                this.log(``,method,true);
             }
             await connection.commit();
             const used = process.memoryUsage().heapUsed / 1024 / 1024;
-            if(unProcessedLogs.count() > 0) console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
-            await tools.sleep(100);
+            // if(unProcessedLogs.count() > 0) this.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`,method,false,true);
+            await tools.sleep(10);
+            retryDelayMultiplier = 0;
             setImmediate(()=>{
-                eth_worker_price.run();
+                worker_price.run();
             });
         }catch (e) {
             await connection.rollback();
-            console.log(e);
-            console.log(`last transactionHash ${lastTransactionHash} logIndex ${lastLogIndex} logDb_id ${lastDbLogId}`);
+            retryDelayMultiplier++;
+            this.log(`ERROR`,method,false,true);
+            this.log(`last transactionHash ${lastTransactionHash} logIndex ${lastLogIndex} logDb_id ${lastDbLogId}`,method,false,true);
+            if(e instanceof Error){
+                this.log(e.message,method,false,true);
+            }
+            let secondDelay = 10 * retryDelayMultiplier;
+            this.log(`...retrying after ${secondDelay} seconds`,method,true,true);
+            setTimeout(()=>{
+                worker_price.run();
+            },secondDelay * 1000);
         }
     }
 
@@ -175,7 +206,7 @@ export class eth_worker_price{
     //endregion BUSD
 
     public static async computePriceByReserve(syncLog:SyncLog):Promise<string>{
-        return eth_pair_price_tools.computePriceByReserve(syncLog);
+        return web3_pair_price_tools.computePriceByReserve(syncLog);
     }
 
     public static async getBnbUsdPrice(fromTime:number):Promise<string>{
@@ -191,7 +222,13 @@ export class eth_worker_price{
 
 }
 
-if(argv.includes("run")){
+class worker_price_error extends Error{
+    constructor(m:string) {
+        super(m);
+    }
+}
+
+if(argv.includes("run_worker_price")){
     console.log(`running worker to track and save token prices`);
-    eth_worker_price.run().finally();
+    worker_price.run().finally();
 }
