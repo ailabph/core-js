@@ -1,6 +1,6 @@
 import { assert } from "./assert";
 import { tools } from "./tools";
-import {eth_worker_price} from "./eth_worker_price";
+import {worker_price} from "./worker_price";
 import {eth_price_track_details} from "./build/eth_price_track_details";
 import {INTERVAL, INTERVAL_DATA, TIME_FORMATS, time_helper} from "./time_helper";
 import {eth_contract_events} from "./build/eth_contract_events";
