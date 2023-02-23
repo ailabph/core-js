@@ -11,7 +11,7 @@ export class web3_pancake_factory{
     private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
         if(config.getConfig().verbose_log || force_display){
             console.log(`web3_pancake_factory|${method}|${msg}`);
-            if(end) console.log(tools.LINE);
+            if(end) console.log(`web3_pancake_factory|${method}|${tools.LINE}`);
         }
     }
     private static retryWaitDuration():number{

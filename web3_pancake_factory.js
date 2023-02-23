@@ -11,7 +11,7 @@ class web3_pancake_factory {
         if (config_1.config.getConfig().verbose_log || force_display) {
             console.log(`web3_pancake_factory|${method}|${msg}`);
             if (end)
-                console.log(tools_1.tools.LINE);
+                console.log(`web3_pancake_factory|${method}|${tools_1.tools.LINE}`);
         }
     }
     static retryWaitDuration() {
