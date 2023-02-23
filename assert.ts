@@ -1,6 +1,7 @@
+
 import {connection} from "./connection";
-import {dataObject} from "./dataObject";
 import {tools} from "./tools";
+import { dataObject } from "./dataObject";
 import * as fs from "fs";
 import _ from "lodash";
 
@@ -59,22 +60,23 @@ export class assert{
         return assert.isString({val:val,prop_name:prop_name,strict:true});
     }
 
-    public static positiveInt(val:any):number{
-        return tools.parseInt({val:val,strict:true});
+    public static positiveInt(val:any,prop_name:string=""):number{
+        return tools.parseInt({val:val,name:prop_name,strict:true});
     }
 
-    public static positiveNumber(val:any):number{
+    public static positiveNumber(val:any,prop_name:string=""):number{
         if(typeof val !== "number"){
-            if(!tools.isNumeric(val)) throw new Error(`${val} is not numeric`);
+            if(!tools.isNumeric(val)) throw new Error(`${prop_name} ${val} is not numeric`);
             val = Number.parseFloat(val);
         }
-        if(!(val > 0)) throw new Error(`${val} must be greater than zero`);
+        if(!(val > 0)) throw new Error(`${prop_name} ${val} must be greater than zero`);
         return val;
     }
 
-    public static naturalNumber(val:any):number{
-        val = tools.parseIntSimple(val);
-        if(val < 0) throw new Error(`${val} must not be lesser than zero`);
+    public static naturalNumber(val:any,prop_name:string=""):number{
+        val = tools.parseIntSimple(val,prop_name);
+        prop_name = tools.isEmpty(prop_name) ? "" : `(${prop_name})`;
+        if(val < 0) throw new Error(`${val}${prop_name} must not be lesser than zero`);
         return val;
     }
 

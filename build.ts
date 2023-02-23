@@ -9,7 +9,7 @@ import * as d from "fp-ts/Either";
 import * as fs from "fs";
 import * as handlebars from "handlebars";
 import {argv} from "process";
-import {eth_worker_price} from "./eth_worker_price";
+import {worker_price} from "./worker_price";
 const readline = require('readline');
 
 type TableDataHeader = {

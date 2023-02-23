@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { meta_options } from "./build/meta_options";
 import * as assert from "assert";
 import { connection } from "./connection";
-import { tools } from "./tools";
+import { tools  } from "./tools";
 
 let timeStamp = tools.getCurrentTimeStamp();
 

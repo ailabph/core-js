@@ -75,23 +75,24 @@ class assert {
     static stringNotEmpty(val, prop_name = "") {
         return assert.isString({ val: val, prop_name: prop_name, strict: true });
     }
-    static positiveInt(val) {
-        return tools_1.tools.parseInt({ val: val, strict: true });
+    static positiveInt(val, prop_name = "") {
+        return tools_1.tools.parseInt({ val: val, name: prop_name, strict: true });
     }
-    static positiveNumber(val) {
+    static positiveNumber(val, prop_name = "") {
         if (typeof val !== "number") {
             if (!tools_1.tools.isNumeric(val))
-                throw new Error(`${val} is not numeric`);
+                throw new Error(`${prop_name} ${val} is not numeric`);
             val = Number.parseFloat(val);
         }
         if (!(val > 0))
-            throw new Error(`${val} must be greater than zero`);
+            throw new Error(`${prop_name} ${val} must be greater than zero`);
         return val;
     }
-    static naturalNumber(val) {
-        val = tools_1.tools.parseIntSimple(val);
+    static naturalNumber(val, prop_name = "") {
+        val = tools_1.tools.parseIntSimple(val, prop_name);
+        prop_name = tools_1.tools.isEmpty(prop_name) ? "" : `(${prop_name})`;
         if (val < 0)
-            throw new Error(`${val} must not be lesser than zero`);
+            throw new Error(`${val}${prop_name} must not be lesser than zero`);
         return val;
     }
     static isNumber(value, property_name = "", greaterThan) {
