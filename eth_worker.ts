@@ -94,17 +94,23 @@ export class eth_worker{
 
     //region UTILITIES
 
-    static convertValueToAmount(_value: number | string, _decimals:number|string): string {
-        BigNumber.config({DECIMAL_PLACES: Number(_decimals)});
-        BigNumber.config({EXPONENTIAL_AT: 1e+9});
-        let toReturn = new BigNumber(Number(_value));
-        if (_decimals > 0) {
-            let valueBN = new BigNumber(_value);
-            let tenBN = new BigNumber(10);
-            let decimalsBN = new BigNumber(_decimals);
-            let powBN = tenBN.pow(decimalsBN);
-            let amountBN = valueBN.dividedBy(powBN);
-            return amountBN.toString();
+    static convertValueToAmount(_value: number | string, _decimals:number|string, desc:string = ""): string {
+        let toReturn = new BigNumber(0);
+        try{
+            BigNumber.config({DECIMAL_PLACES: Number(_decimals)});
+            BigNumber.config({EXPONENTIAL_AT: 1e+9});
+            toReturn = new BigNumber(Number(_value));
+            if (_decimals > 0) {
+                let valueBN = new BigNumber(_value);
+                let tenBN = new BigNumber(10);
+                let decimalsBN = new BigNumber(_decimals);
+                let powBN = tenBN.pow(decimalsBN);
+                let amountBN = valueBN.dividedBy(powBN);
+                return amountBN.toString();
+            }
+        }catch (e) {
+            console.log(`ERROR convertValueToAmount value ${_value} decimals ${_decimals} on ${desc}`);
+            throw e;
         }
         return toReturn.toString();
     }

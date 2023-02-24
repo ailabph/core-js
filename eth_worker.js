@@ -71,17 +71,24 @@ class eth_worker {
     }
     //endregion
     //region UTILITIES
-    static convertValueToAmount(_value, _decimals) {
-        bignumber_js_1.default.config({ DECIMAL_PLACES: Number(_decimals) });
-        bignumber_js_1.default.config({ EXPONENTIAL_AT: 1e+9 });
-        let toReturn = new bignumber_js_1.default(Number(_value));
-        if (_decimals > 0) {
-            let valueBN = new bignumber_js_1.default(_value);
-            let tenBN = new bignumber_js_1.default(10);
-            let decimalsBN = new bignumber_js_1.default(_decimals);
-            let powBN = tenBN.pow(decimalsBN);
-            let amountBN = valueBN.dividedBy(powBN);
-            return amountBN.toString();
+    static convertValueToAmount(_value, _decimals, desc = "") {
+        let toReturn = new bignumber_js_1.default(0);
+        try {
+            bignumber_js_1.default.config({ DECIMAL_PLACES: Number(_decimals) });
+            bignumber_js_1.default.config({ EXPONENTIAL_AT: 1e+9 });
+            toReturn = new bignumber_js_1.default(Number(_value));
+            if (_decimals > 0) {
+                let valueBN = new bignumber_js_1.default(_value);
+                let tenBN = new bignumber_js_1.default(10);
+                let decimalsBN = new bignumber_js_1.default(_decimals);
+                let powBN = tenBN.pow(decimalsBN);
+                let amountBN = valueBN.dividedBy(powBN);
+                return amountBN.toString();
+            }
+        }
+        catch (e) {
+            console.log(`ERROR convertValueToAmount value ${_value} decimals ${_decimals} on ${desc}`);
+            throw e;
         }
         return toReturn.toString();
     }
