@@ -27,9 +27,19 @@ class worker_events_trade {
                 console.log(`worker_events_trade|${method}|${tools_1.tools.LINE}`);
         }
     }
+    //region SETTINGS
     static getBatch() {
         return 500;
     }
+    static getRetryWaitInSeconds() {
+        return 10;
+    }
+    static resetPointers() {
+        this.last_id = 0;
+        this.lastTransactionHash = "";
+        this.lastLogIndex = 0;
+    }
+    //endregion SETTINGS
     static async run() {
         const method = "run";
         await connection_1.connection.startTransaction();
@@ -123,8 +133,10 @@ class worker_events_trade {
                 log.time_processed_events = tools_1.tools.getCurrentTimeStamp();
                 await log.save();
                 this.last_id = assert_1.assert.positiveInt(log.id, "log.id");
+                this.log('', method, true, false);
             }
             await connection_1.connection.commit();
+            this.retryMultiplier = 0;
             await tools_1.tools.sleep(50);
             setImmediate(() => {
                 worker_events_trade.run();
@@ -133,8 +145,18 @@ class worker_events_trade {
         catch (e) {
             await connection_1.connection.rollback();
             this.log(`ERROR`, method, false, true);
-            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`, method, true, true);
-            throw e;
+            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`, method, false, true);
+            if (e instanceof Error)
+                this.log(e.message, method, false, true);
+            else
+                console.log(e);
+            this.retryMultiplier++;
+            const retryInSeconds = this.getRetryWaitInSeconds() * this.retryMultiplier;
+            this.log(`retrying in ${retryInSeconds} seconds...`, method, true, true);
+            setTimeout(() => {
+                this.resetPointers();
+                worker_events_trade.run();
+            }, retryInSeconds * 1000);
         }
     }
     static async getSwapSummary(db_log, target_token, swapLog, pairInfo) {
@@ -208,6 +230,7 @@ exports.worker_events_trade = worker_events_trade;
 worker_events_trade.last_id = 0;
 worker_events_trade.lastTransactionHash = "";
 worker_events_trade.lastLogIndex = 0;
+worker_events_trade.retryMultiplier = 0;
 class worker_events_trade_error extends Error {
     constructor(m) {
         super(m);

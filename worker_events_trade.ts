@@ -43,13 +43,23 @@ export class worker_events_trade{
         }
     }
 
+    //region SETTINGS
     private static getBatch():number{
         return 500;
     }
-
+    private static getRetryWaitInSeconds():number{
+        return 10;
+    }
+    private static resetPointers(){
+        this.last_id = 0;
+        this.lastTransactionHash = "";
+        this.lastLogIndex = 0;
+    }
     private static last_id:number = 0;
     private static lastTransactionHash:string|null = "";
     private static lastLogIndex:number|null = 0;
+    private static retryMultiplier:number = 0;
+    //endregion SETTINGS
     public static async run(){
         const method = "run";
         await connection.startTransaction();
@@ -149,8 +159,10 @@ export class worker_events_trade{
                 log.time_processed_events = tools.getCurrentTimeStamp();
                 await log.save();
                 this.last_id = assert.positiveInt(log.id,"log.id");
+                this.log('',method,true,false);
             }
             await connection.commit();
+            this.retryMultiplier = 0;
             await tools.sleep(50);
             setImmediate(()=>{
                 worker_events_trade.run();
@@ -158,8 +170,16 @@ export class worker_events_trade{
         }catch (e){
             await connection.rollback();
             this.log(`ERROR`,method,false,true);
-            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`,method,true,true);
-            throw e;
+            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`,method,false,true);
+            if(e instanceof Error) this.log(e.message,method,false,true);
+            else console.log(e);
+            this.retryMultiplier++;
+            const retryInSeconds = this.getRetryWaitInSeconds() * this.retryMultiplier;
+            this.log(`retrying in ${retryInSeconds} seconds...`,method,true,true);
+            setTimeout(()=>{
+                this.resetPointers();
+                worker_events_trade.run();
+            },retryInSeconds * 1000);
         }
     }
 
