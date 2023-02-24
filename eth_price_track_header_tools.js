@@ -85,15 +85,25 @@ class eth_price_track_header_tools {
                 if (!pairAddress)
                     throw new Error(`unable to retrieve pair address of ${token0} and ${token1}`);
                 this.log(`pair address found on chain: ${pairAddress}`, method);
-                pairToReturn.pair_contract = pairAddress;
-                pairToReturn.token0_contract = token0Info.address;
-                pairToReturn.token0_symbol = token0Info.symbol;
-                pairToReturn.token0_decimal = assert_1.assert.naturalNumber(token0Info.decimals);
-                pairToReturn.token1_contract = token1Info.address;
-                pairToReturn.token1_symbol = token1Info.symbol;
-                pairToReturn.token1_decimal = assert_1.assert.naturalNumber(token1Info.decimals);
-                this.log(`saving new pair`, method);
-                await pairToReturn.save();
+                this.log(`checking if pair contract on db`, method);
+                const checkPairExists = new eth_price_track_header_1.eth_price_track_header();
+                checkPairExists.pair_contract = pairAddress;
+                await checkPairExists.fetch();
+                if (checkPairExists.recordExists()) {
+                    this.log(`pair in db`, method);
+                    pairToReturn = checkPairExists;
+                }
+                else {
+                    pairToReturn.pair_contract = pairAddress;
+                    pairToReturn.token0_contract = token0Info.address;
+                    pairToReturn.token0_symbol = token0Info.symbol;
+                    pairToReturn.token0_decimal = assert_1.assert.naturalNumber(token0Info.decimals);
+                    pairToReturn.token1_contract = token1Info.address;
+                    pairToReturn.token1_symbol = token1Info.symbol;
+                    pairToReturn.token1_decimal = assert_1.assert.naturalNumber(token1Info.decimals);
+                    this.log(`saving new pair`, method);
+                    await pairToReturn.save();
+                }
             }
             catch (e) {
                 if (e instanceof Error) {
