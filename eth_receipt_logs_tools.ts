@@ -548,6 +548,7 @@ export class eth_receipt_logs_tools{
     }
 
     public static async getTotalTransferOfSwap(db_log:eth_receipt_logs,token_contract:string):Promise<string>{
+        const method = "getTotalTransferOfSwap";
         let to_return = "0";
         const web3_log = eth_worker.convertDbLogToWeb3Log(db_log);
         const swapLog = await web3_log_decoder.getSwapLog(web3_log);
@@ -576,9 +577,11 @@ export class eth_receipt_logs_tools{
                 if(log.id === db_log.id) continue;
                 try{
                     const decoded_log = await web3_log_decoder.decodeLog(eth_worker.convertDbLogToWeb3Log(log));
+                    const swapPreviouslyBySamePair = decoded_log.method_name.toLowerCase() === "Swap".toLowerCase() && decoded_log.ContractInfo.address.toLowerCase() === swapLog.ContractInfo.address.toLowerCase();
                     if(
                         decoded_log.method_name.toLowerCase() === "SwapAndLiquify".toLowerCase()
-                        // || decoded_log.method_name.toLowerCase() === "Swap".toLowerCase()
+                        || swapPreviouslyBySamePair
+                        || decoded_log.method_name.toLowerCase() === "Burn".toLowerCase()
                     ){
                         to_return = "0";
                     }
