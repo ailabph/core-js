@@ -29,7 +29,7 @@ class worker_events_trade {
     }
     //region SETTINGS
     static getBatch() {
-        return 500;
+        return 200;
     }
     static getRetryWaitInSeconds() {
         return 10;

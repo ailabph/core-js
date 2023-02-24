@@ -45,7 +45,7 @@ export class worker_events_trade{
 
     //region SETTINGS
     private static getBatch():number{
-        return 500;
+        return 200;
     }
     private static getRetryWaitInSeconds():number{
         return 10;
