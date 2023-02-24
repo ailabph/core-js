@@ -112,8 +112,7 @@ fabric.properties
 /build/
 /config.ini.php
 /.idea/*
-/scratch.js
-/scratch.ts
+/scratch*
 /.env
 /package-lock.json
 /core-js.iml
