@@ -48,6 +48,8 @@ export class worker_events_trade{
     }
 
     private static last_id:number = 0;
+    private static lastTransactionHash:string|null = "";
+    private static lastLogIndex:number|null = 0;
     public static async run(){
         const method = "run";
         await connection.startTransaction();
@@ -63,6 +65,8 @@ export class worker_events_trade{
             const dexLogsCount = dexLogs.count();
             let count = 0;
             for(const log of dexLogs._dataList as eth_receipt_logs[]){
+                this.lastTransactionHash = log.transactionHash;
+                this.lastLogIndex = log.logIndex;
                 count++;
                 const timeLog = time_helper.getAsFormat(assert.positiveNumber(log.blockTime),TIME_FORMATS.ISO);
                 const web3Log = eth_worker.convertDbLogToWeb3Log(log);
@@ -154,14 +158,8 @@ export class worker_events_trade{
         }catch (e){
             await connection.rollback();
             this.log(`ERROR`,method,false,true);
-            if(e instanceof Error){
-                this.log(e.message,method,false,true);
-                throw new worker_events_trade_error(e.message+"|"+e.stack);
-            }
-            else{
-                console.log(e);
-            }
-            this.log(``,method,true,true);
+            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`,method,true,true);
+            throw e;
         }
     }
 

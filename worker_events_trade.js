@@ -42,6 +42,8 @@ class worker_events_trade {
             const dexLogsCount = dexLogs.count();
             let count = 0;
             for (const log of dexLogs._dataList) {
+                this.lastTransactionHash = log.transactionHash;
+                this.lastLogIndex = log.logIndex;
                 count++;
                 const timeLog = time_helper_1.time_helper.getAsFormat(assert_1.assert.positiveNumber(log.blockTime), time_helper_1.TIME_FORMATS.ISO);
                 const web3Log = eth_worker_1.eth_worker.convertDbLogToWeb3Log(log);
@@ -131,14 +133,8 @@ class worker_events_trade {
         catch (e) {
             await connection_1.connection.rollback();
             this.log(`ERROR`, method, false, true);
-            if (e instanceof Error) {
-                this.log(e.message, method, false, true);
-                throw new worker_events_trade_error(e.message + "|" + e.stack);
-            }
-            else {
-                console.log(e);
-            }
-            this.log(``, method, true, true);
+            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`, method, true, true);
+            throw e;
         }
     }
     static async getSwapSummary(db_log, target_token, swapLog, pairInfo) {
@@ -210,6 +206,8 @@ class worker_events_trade {
 }
 exports.worker_events_trade = worker_events_trade;
 worker_events_trade.last_id = 0;
+worker_events_trade.lastTransactionHash = "";
+worker_events_trade.lastLogIndex = 0;
 class worker_events_trade_error extends Error {
     constructor(m) {
         super(m);
