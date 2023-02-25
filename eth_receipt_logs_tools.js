@@ -17,6 +17,7 @@ const worker_price_1 = require("./worker_price");
 const eth_contract_events_1 = require("./build/eth_contract_events");
 const eth_contract_events_tools_1 = require("./eth_contract_events_tools");
 const web3_pair_price_tools_1 = require("./web3_pair_price_tools");
+const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools");
 //endregion TYPES
 class eth_receipt_logs_tools {
     //region GETTERS
@@ -198,7 +199,7 @@ class eth_receipt_logs_tools {
     //endregion GET DEFAULTS
     //region UTILITIES
     static async findValueInLogs(txn_hash, find_value) {
-        assert_1.assert.notEmpty(find_value);
+        assert_1.assert.notEmpty(find_value, "findValueInLogs");
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
         let receipt = await eth_worker_1.eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash);
         for (const log of receipt.logs) {
@@ -343,7 +344,7 @@ class eth_receipt_logs_tools {
                 if (tools_1.tools.getNumber(tokenAmountDifference, mainTokenDecimals) > 0) {
                     fees_percentage = tools_1.tools.toBn(tokenAmountDifference).dividedBy(tools_1.tools.toBn(mainTokenInfo.swapAmount)).toFixed(4);
                 }
-                const bnb_usd_price = await worker_price_1.worker_price.getBnbUsdPrice(blockTime);
+                const bnb_usd_price = await eth_price_track_details_tools_1.eth_price_track_details_tools.getBnbUsdPrice(blockTime);
                 const token_usd_price = await worker_price_1.worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
                 const token_bnb_price = await worker_price_1.worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address, blockTime);
                 const token_usd_value = await worker_price_1.worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address, blockTime, mainTokenInfo.transferAmount);

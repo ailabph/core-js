@@ -16,6 +16,7 @@ import {worker_price} from "./worker_price";
 import {eth_contract_events} from "./build/eth_contract_events";
 import {eth_contract_events_tools} from "./eth_contract_events_tools";
 import {web3_pair_price_tools} from "./web3_pair_price_tools";
+import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 
 //region TYPES
 type SwapTradeInfo = {
@@ -204,7 +205,7 @@ export class eth_receipt_logs_tools{
 
     //region UTILITIES
     public static async findValueInLogs(txn_hash:string|AnalyzeLogsResult,find_value:string):Promise<boolean>{
-        assert.notEmpty(find_value);
+        assert.notEmpty(find_value,"findValueInLogs");
         const analyzeLogsResult = typeof txn_hash === "string" ? await eth_receipt_logs_tools.getReceiptLogs(txn_hash) : txn_hash;
 
         let receipt = await eth_worker.getReceiptByTxnHash(analyzeLogsResult.receipt.transactionHash) as TransactionReceipt;
@@ -355,7 +356,7 @@ export class eth_receipt_logs_tools{
                     fees_percentage = tools.toBn(tokenAmountDifference).dividedBy(tools.toBn(mainTokenInfo.swapAmount)).toFixed(4);
                 }
 
-                const bnb_usd_price = await worker_price.getBnbUsdPrice(blockTime);
+                const bnb_usd_price = await eth_price_track_details_tools.getBnbUsdPrice(blockTime);
                 const token_usd_price = await worker_price.getUsdPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
                 const token_bnb_price = await worker_price.getBnbPriceOfToken(mainTokenInfo.contractInfo.address,blockTime);
                 const token_usd_value = await worker_price.getUsdValueOfToken(mainTokenInfo.contractInfo.address,blockTime,mainTokenInfo.transferAmount);
