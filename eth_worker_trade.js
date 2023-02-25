@@ -6,6 +6,7 @@ const assert_1 = require("./assert");
 const eth_config_1 = require("./eth_config");
 const eth_worker_1 = require("./eth_worker");
 const tools_1 = require("./tools");
+const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools");
 var POSITION_TYPE;
 (function (POSITION_TYPE) {
     POSITION_TYPE["OPEN"] = "open";
@@ -95,7 +96,7 @@ class eth_worker_trade {
         result.token0_amount = eth_worker_1.eth_worker.convertValueToAmount(result.token0_value, pairInfo.token0_decimal);
         result.token1_amount = eth_worker_1.eth_worker.convertValueToAmount(result.token1_value, pairInfo.token1_decimal);
         if (result.token1_contract.toLowerCase() === eth_config_1.eth_config.getEthContract().toLowerCase()) {
-            const bnb_usd_price = await worker_price_1.worker_price.getBnbUsdPrice(blockTime);
+            const bnb_usd_price = await eth_price_track_details_tools_1.eth_price_track_details_tools.getBnbUsdPrice(blockTime);
             result.usd_value = tools_1.tools.toBn(bnb_usd_price).multipliedBy(result.token1_amount).toFixed(18);
         }
         if (result.token1_contract.toLowerCase() === eth_config_1.eth_config.getBusdContract().toLowerCase()) {
@@ -155,7 +156,7 @@ class eth_worker_trade {
             tradePairInfo.to_value = baseQuoteInfo.token1_value;
         }
         tradePairInfo.usd_value = baseQuoteInfo.usd_value;
-        tradePairInfo.bnb_usd_price = await worker_price_1.worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
+        // tradePairInfo.bnb_usd_price = await worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
         // tradePairInfo.bnb_value =
         return tradePairInfo;
     }

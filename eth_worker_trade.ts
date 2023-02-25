@@ -6,6 +6,7 @@ import {assert} from "./assert";
 import {eth_config} from "./eth_config";
 import {eth_worker} from "./eth_worker";
 import {tools} from "./tools";
+import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 
 enum POSITION_TYPE {
     OPEN = "open",
@@ -162,7 +163,7 @@ export class eth_worker_trade{
 
 
         if(result.token1_contract.toLowerCase() === eth_config.getEthContract().toLowerCase()){
-            const bnb_usd_price = await worker_price.getBnbUsdPrice(blockTime);
+            const bnb_usd_price = await eth_price_track_details_tools.getBnbUsdPrice(blockTime);
             result.usd_value = tools.toBn(bnb_usd_price).multipliedBy(result.token1_amount).toFixed(18);
         }
         if(result.token1_contract.toLowerCase() === eth_config.getBusdContract().toLowerCase()){
@@ -226,7 +227,7 @@ export class eth_worker_trade{
             tradePairInfo.to_value = baseQuoteInfo.token1_value;
         }
         tradePairInfo.usd_value = baseQuoteInfo.usd_value;
-        tradePairInfo.bnb_usd_price = await worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
+        // tradePairInfo.bnb_usd_price = await worker_price.getBnbUsdPrice(baseQuoteInfo.time_traded);
         // tradePairInfo.bnb_value =
 
         return tradePairInfo;
