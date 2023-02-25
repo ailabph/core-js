@@ -231,13 +231,13 @@ export class tools{
     public static parseIntSimple(val:any,prop_name:string=""):number{
         return this.parseInt({val:val,name:prop_name,strict:true});
     }
-    public static parseNumber({val,name="",strict=true}:{val:unknown,name?:string,strict?:boolean}):number{
+    public static parseNumber(val:unknown,desc:string="",strict:boolean=false):number{
         let result:number = 0;
         if(tools.isNumeric(val)){
             result = Number(val);
         }
         else{
-            if(strict) throw new Error(`${name} is not numeric`);
+            if(strict) throw new Error(`${desc} is not numeric`);
         }
         return result;
     }
@@ -306,6 +306,9 @@ export class tools{
         if(last_len > val.length) throw new Error(`last len ${last_len} is greater than string length ${val.length}`);
         return val.substr(val.length-last_len, val.length);
     }
+    public static convertBoolToYesNo(val:boolean):string{
+        return val ? "yes" : "no";
+    }
     //endregion
 
     //region MATH
@@ -329,6 +332,9 @@ export class tools{
     }
     public static greaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
+    }
+    public static notGreaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
+        return !tools.greaterThan(from,to);
     }
     public static lesserThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;

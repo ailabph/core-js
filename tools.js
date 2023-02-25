@@ -239,14 +239,14 @@ class tools {
     static parseIntSimple(val, prop_name = "") {
         return this.parseInt({ val: val, name: prop_name, strict: true });
     }
-    static parseNumber({ val, name = "", strict = true }) {
+    static parseNumber(val, desc = "", strict = false) {
         let result = 0;
         if (tools.isNumeric(val)) {
             result = Number(val);
         }
         else {
             if (strict)
-                throw new Error(`${name} is not numeric`);
+                throw new Error(`${desc} is not numeric`);
         }
         return result;
     }
@@ -317,6 +317,9 @@ class tools {
             throw new Error(`last len ${last_len} is greater than string length ${val.length}`);
         return val.substr(val.length - last_len, val.length);
     }
+    static convertBoolToYesNo(val) {
+        return val ? "yes" : "no";
+    }
     //endregion
     //region MATH
     static toBn(value) {
@@ -339,6 +342,9 @@ class tools {
     }
     static greaterThan(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
+    }
+    static notGreaterThan(from, to) {
+        return !tools.greaterThan(from, to);
     }
     static lesserThan(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;
