@@ -1,25 +1,16 @@
-
 import {assert} from "./assert";
 import {config} from "./config";
 import {eth_config} from "./eth_config";
-import {eth_rpc} from "./eth_rpc";
 import {eth_worker} from "./eth_worker";
 import {tools} from "./tools";
-import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
-import {web3_log_decoder,SwapLog,SyncLog} from "./web3_log_decoder";
+import {eth_receipt_logs_tools, SwapTradeInfo} from "./eth_receipt_logs_tools";
+import {SyncLog, web3_log_decoder} from "./web3_log_decoder";
 import {PAIR_INFO} from "./eth_worker_trade";
 import {eth_price_track_header} from "./build/eth_price_track_header";
-import {SwapTradeInfo} from "./eth_receipt_logs_tools";
-import {eth_receipt_logs} from "./build/eth_receipt_logs";
-import {time_helper} from "./time_helper";
-import {eth_price_track_details} from "./build/eth_price_track_details";
-import {worker_price} from "./worker_price";
-import {top_up_request_detail} from "./build/top_up_request_detail";
-import {web3_pancake_factory} from "./web3_pancake_factory";
-import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
+import {TIME_FORMATS, time_helper} from "./time_helper";
 import {eth_price_track_header_tools} from "./eth_price_track_header_tools";
 import {web3_pancake_pair} from "./web3_pancake_pair";
-import {eth_contract_data_tools} from "./eth_contract_data_tools";
+import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 
 //region TYPES
 type WhereParamOrder = {
@@ -27,7 +18,20 @@ type WhereParamOrder = {
     param:{[key:string]:string|number},
     order:string,
 }
+type BASE_PRICES_INFO = {
+    pair_contract:string,
+    orderedSymbol:string,
+    has_bnb:boolean,
+    has_usd:boolean,
+    bnb_price:string,
+    usd_price:string,
+    bnb_usd:string,
+}
+export { BASE_PRICES_INFO }
 //endregion
+
+
+
 
 /**
  * This class is exclusive for computation without accessing price_track_details
@@ -236,6 +240,99 @@ export class web3_pair_price_tools {
         const price = tools.toBn(quoteAmount).dividedBy(tools.toBn(baseAmount)).toFixed(quoteDecimal);
         this.log(`...computed price:${price}`,method,true);
         return price;
+    }
+
+    public static async processBasePriceOfPairFromLog(pair_address:string|null, transactionHash:string|null, logIndex:number|null):Promise<BASE_PRICES_INFO|false>{
+        const method = "processBasePriceFromLog";
+        pair_address = assert.stringNotEmpty(pair_address,`${method}|pair_address arg`);
+        transactionHash = assert.stringNotEmpty(transactionHash,`${method}|transactionHash arg`);
+        logIndex = assert.naturalNumber(logIndex,`${method}|logIndex arg`);
+        let blockDateTimeUtc = "not_set";
+
+        const basePrices:BASE_PRICES_INFO = {
+            pair_contract: pair_address,
+            orderedSymbol: "",
+            has_bnb: false,
+            has_usd: false,
+            bnb_price: "0",
+            usd_price: "0",
+            bnb_usd: "0",
+        };
+
+        const pairHeader = await eth_price_track_header_tools.getViaIdOrContract(basePrices.pair_contract,false);
+        if(!pairHeader) {
+            this.log(`unable to process, address ${basePrices.pair_contract} pair not found on db or chain`, method);
+            return false;
+        }
+        const pairInfo = this.convertDbPairHeaderToPairInfo(pairHeader);
+        basePrices.orderedSymbol = pairInfo.orderedPairSymbol;
+        basePrices.pair_contract = pairInfo.address;
+        this.log(`processing pair ${basePrices.orderedSymbol} ...${tools.lastSubstring(basePrices.pair_contract,6)} `,method);
+
+        const dbLog = await eth_receipt_logs_tools.getDbLog(transactionHash,logIndex);
+        const log = eth_worker.convertDbLogToWeb3Log(dbLog);
+        const blockTime = assert.positiveInt(dbLog.blockTime,`${method}|dbLog.blockTime`);
+        blockDateTimeUtc = time_helper.getAsFormat(blockTime,TIME_FORMATS.ISO,"UTC");
+        this.log(`...checking prices during log ${dbLog.blockNumber} ${dbLog.transactionHash} ${dbLog.logIndex} during ${blockDateTimeUtc}`,method);
+
+        basePrices.has_bnb = await this.pairIsBnb(pairInfo);
+        basePrices.has_usd = await this.pairIsUsd(pairInfo);
+
+        const syncLog = await web3_log_decoder.getSyncLog(log);
+        if(syncLog){
+            this.log(`...sync detected, computing price using reserve method`,method);
+            const priceComputed = await this.computePriceByReserve(syncLog);
+            if(basePrices.has_bnb && basePrices.has_usd) {
+                this.log(`...bnb_usd sync detected`,method);
+                basePrices.bnb_usd = priceComputed;
+                basePrices.usd_price = priceComputed;
+                basePrices.bnb_price = tools.divide(1,basePrices.usd_price,eth_config.getEthDecimal(),`${method}| 1 divide by basePrice.usd_price`);
+            }
+            else{
+                this.log(`...other token sync detected, retrieving historical bnb_usd price`,method);
+                basePrices.bnb_usd = await eth_price_track_details_tools.getBnbUsdPrice(dbLog);
+                this.log(`...bnb_usd ${basePrices.bnb_usd}`,method);
+                assert.isNumericString(basePrices.bnb_usd,`${method}|basePrices.bnb_usd`,0);
+                if(basePrices.has_bnb){
+                    basePrices.bnb_price = priceComputed;
+                    basePrices.usd_price = tools.multiply(basePrices.bnb_usd,basePrices.bnb_price,eth_config.getBusdDecimal());
+                }
+                else if(basePrices.has_usd){
+                    basePrices.usd_price = priceComputed;
+                    basePrices.bnb_price = tools.divide(basePrices.usd_price,basePrices.bnb_usd,eth_config.getEthDecimal());
+                }
+            }
+        }
+        else{
+            this.log(`...not sync, computing price using historical data`,method);
+            this.log(`...retrieving bnb_usd price`,method);
+            basePrices.bnb_usd = await eth_price_track_details_tools.getBnbUsdPrice(dbLog);
+            this.log(`...bnb_usd ${basePrices.bnb_usd}`,method);
+            assert.isNumericString(basePrices.bnb_usd,`${method}|basePrices.bnb_usd`,0);
+            if(basePrices.has_bnb && basePrices.has_usd){
+                this.log(`...bnb_usd detected`,method);
+                basePrices.usd_price = basePrices.bnb_usd;
+                basePrices.bnb_price = tools.divide(1,basePrices.usd_price,eth_config.getEthDecimal(),`${method}| 1 divide by basePrice.usd_price`);
+            }
+            else if(basePrices.has_bnb){
+                this.log(`...token_bnb detected`,method);
+                basePrices.bnb_price = await eth_price_track_details_tools.getPrice(pairHeader,dbLog);
+                basePrices.usd_price = tools.multiply(basePrices.bnb_usd,basePrices.bnb_price,eth_config.getBusdDecimal());
+            }
+            else if(basePrices.has_usd){
+                this.log(`...token_usd detected`,method);
+                basePrices.usd_price = await eth_price_track_details_tools.getPrice(pairHeader,dbLog);
+                basePrices.bnb_price = tools.divide(basePrices.usd_price,basePrices.bnb_usd,eth_config.getEthDecimal());
+            }
+        }
+
+        this.log(`result for ${basePrices.orderedSymbol} bnb_usd ${basePrices.bnb_usd} bnb_price ${basePrices.bnb_price} usd_price ${basePrices.usd_price} on ${blockDateTimeUtc}`,method);
+        // final checks
+        const bnb_usdNumber = tools.parseNumber(basePrices.bnb_usd,`${method}|basePrices.bnb_usd`,true);
+        if(!(bnb_usdNumber > 0)) throw new web3_pair_price_tools_error(`${method}|abnormal behaviour found, no bnb_usd`);
+        if(basePrices.has_bnb && basePrices.bnb_price === "0") throw new web3_pair_price_tools_error(`${method}|abnormal behaviour found, has_bnb but no bnb_price`);
+        if(basePrices.has_usd && basePrices.usd_price === "0") throw new web3_pair_price_tools_error(`${method}|abnormal behaviour found, has_usd but no usd_price`);
+        return basePrices;
     }
     //endregion
 
