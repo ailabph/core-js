@@ -108,9 +108,16 @@ class assert {
         }
         return value;
     }
-    static isNumeric(value, desc = "") {
+    static isNumeric(value, desc = "", greaterThan) {
         if (!tools_1.tools.isNumeric(value)) {
-            throw new Error(tools_1.tools.isEmpty(desc) ? `${value} is not numeric` : desc);
+            throw new Error(`${desc} ${value} is not numeric`);
+        }
+        return value;
+    }
+    static isNumericString(value, desc = "", greaterThan) {
+        assert.isNumeric(value, desc);
+        if (typeof greaterThan === "number" && tools_1.tools.notGreaterThan(value, greaterThan)) {
+            throw new Error(`${desc} is not greater than ${greaterThan}`);
         }
         return value;
     }

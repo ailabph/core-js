@@ -80,7 +80,7 @@ export class assert{
         return val;
     }
 
-    public static isNumber(value:any, property_name:string = "", greaterThan:number|undefined):number{
+    public static isNumber(value:any, property_name:string = "", greaterThan?:number|undefined):number{
         const value_type = typeof value;
         if(value_type !== "number") {
             const stack = new Error().stack;
@@ -93,9 +93,17 @@ export class assert{
         return value;
     }
 
-    public static isNumeric<T>(value:T, desc:string=""):T{
+    public static isNumeric<T>(value:T, desc:string="", greaterThan?:number|undefined):T{
         if(!tools.isNumeric(value)){
-            throw new Error(tools.isEmpty(desc) ? `${value} is not numeric` : desc);
+            throw new Error(`${desc} ${value} is not numeric`);
+        }
+        return value;
+    }
+
+    public static isNumericString(value:string, desc:string="", greaterThan?:number|undefined):string{
+        assert.isNumeric<string>(value,desc);
+        if(typeof greaterThan === "number" && tools.notGreaterThan(value,greaterThan)){
+            throw new Error(`${desc} is not greater than ${greaterThan}`);
         }
         return value;
     }
