@@ -195,18 +195,18 @@ class web3_pair_price_tools {
             this.log(`...pair has usd`, method);
             const oppositeToken = await this.getOppositeContractPairOf(pairInfo, eth_config_1.eth_config.getBusdContract());
             baseReserve = await this.getReserveByToken(syncLog, oppositeToken.contractInfo.address, pairInfo);
-            baseDecimal = assert_1.assert.naturalNumber(oppositeToken.contractInfo.decimals);
-            baseSymbol = assert_1.assert.stringNotEmpty(oppositeToken.contractInfo.symbol);
+            baseDecimal = assert_1.assert.naturalNumber(oppositeToken.contractInfo.decimals, `${method} oppositeToken.contractInfo.decimals`);
+            baseSymbol = tools_1.tools.isEmpty(oppositeToken.contractInfo.symbol) ? "unknown" : assert_1.assert.stringNotEmpty(oppositeToken.contractInfo.symbol, `${method} oppositeToken.contractInfo.symbol`);
             quoteReserve = await this.getUsdReserve(syncLog, pairInfo);
-            quoteDecimal = assert_1.assert.naturalNumber(eth_config_1.eth_config.getBusdDecimal());
-            quoteSymbol = assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getBusdSymbol());
+            quoteDecimal = assert_1.assert.naturalNumber(eth_config_1.eth_config.getBusdDecimal(), `${method} eth_config.getBusdDecimal`);
+            quoteSymbol = assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getBusdSymbol(), `${method} eth_config.getBusdSymbol`);
         }
         else if (await this.pairIsBnb(pairInfo)) {
             this.log(`...pair has bnb`, method);
             const oppositeToken = await this.getOppositeContractPairOf(pairInfo, eth_config_1.eth_config.getEthContract());
             baseReserve = await this.getReserveByToken(syncLog, oppositeToken.contractInfo.address, pairInfo);
-            baseDecimal = assert_1.assert.naturalNumber(oppositeToken.contractInfo.decimals);
-            baseSymbol = assert_1.assert.stringNotEmpty(oppositeToken.contractInfo.symbol);
+            baseDecimal = assert_1.assert.naturalNumber(oppositeToken.contractInfo.decimals, `${method} oppositeToken.contractInfo.decimals`);
+            baseSymbol = tools_1.tools.isEmpty(oppositeToken.contractInfo.symbol) ? "unknown" : assert_1.assert.stringNotEmpty(oppositeToken.contractInfo.symbol, `${method} oppositeToken.contractInfo.symbol`);
             quoteReserve = await this.getBnbReserve(syncLog, pairInfo);
             quoteDecimal = eth_config_1.eth_config.getEthDecimal();
             quoteSymbol = eth_config_1.eth_config.getEthSymbol();
@@ -220,8 +220,8 @@ class web3_pair_price_tools {
         this.log(`...computed price:${price}`, method, true);
         return price;
     }
-    static async processBasePriceOfPairFromLog(pair_address, transactionHash, logIndex) {
-        const method = "processBasePriceFromLog";
+    static async processBasePriceOfPairFromLog(pair_address, transactionHash, logIndex, strictBnbUsd = true) {
+        const method = "processBasePriceOfPairFromLog";
         pair_address = assert_1.assert.stringNotEmpty(pair_address, `${method}|pair_address arg`);
         transactionHash = assert_1.assert.stringNotEmpty(transactionHash, `${method}|transactionHash arg`);
         logIndex = assert_1.assert.naturalNumber(logIndex, `${method}|logIndex arg`);
@@ -265,7 +265,8 @@ class web3_pair_price_tools {
                 this.log(`...other token sync detected, retrieving historical bnb_usd price`, method);
                 basePrices.bnb_usd = await eth_price_track_details_tools_1.eth_price_track_details_tools.getBnbUsdPrice(dbLog);
                 this.log(`...bnb_usd ${basePrices.bnb_usd}`, method);
-                assert_1.assert.isNumericString(basePrices.bnb_usd, `${method}|basePrices.bnb_usd`, 0);
+                if (strictBnbUsd)
+                    assert_1.assert.isNumericString(basePrices.bnb_usd, `${method}|basePrices.bnb_usd`, 0);
                 if (basePrices.has_bnb) {
                     basePrices.bnb_price = priceComputed;
                     basePrices.usd_price = tools_1.tools.multiply(basePrices.bnb_usd, basePrices.bnb_price, eth_config_1.eth_config.getBusdDecimal());
@@ -281,7 +282,8 @@ class web3_pair_price_tools {
             this.log(`...retrieving bnb_usd price`, method);
             basePrices.bnb_usd = await eth_price_track_details_tools_1.eth_price_track_details_tools.getBnbUsdPrice(dbLog);
             this.log(`...bnb_usd ${basePrices.bnb_usd}`, method);
-            assert_1.assert.isNumericString(basePrices.bnb_usd, `${method}|basePrices.bnb_usd`, 0);
+            if (strictBnbUsd)
+                assert_1.assert.isNumericString(basePrices.bnb_usd, `${method}|basePrices.bnb_usd`, 0);
             if (basePrices.has_bnb && basePrices.has_usd) {
                 this.log(`...bnb_usd detected`, method);
                 basePrices.usd_price = basePrices.bnb_usd;
@@ -301,7 +303,7 @@ class web3_pair_price_tools {
         this.log(`result for ${basePrices.orderedSymbol} bnb_usd ${basePrices.bnb_usd} bnb_price ${basePrices.bnb_price} usd_price ${basePrices.usd_price} on ${blockDateTimeUtc}`, method);
         // final checks
         const bnb_usdNumber = tools_1.tools.parseNumber(basePrices.bnb_usd, `${method}|basePrices.bnb_usd`, true);
-        if (!(bnb_usdNumber > 0))
+        if (!(bnb_usdNumber > 0) && strictBnbUsd)
             throw new web3_pair_price_tools_error(`${method}|abnormal behaviour found, no bnb_usd`);
         if (basePrices.has_bnb && basePrices.bnb_price === "0")
             throw new web3_pair_price_tools_error(`${method}|abnormal behaviour found, has_bnb but no bnb_price`);
