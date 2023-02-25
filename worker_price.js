@@ -87,12 +87,13 @@ class worker_price {
                 throw new Error(`unable to run worker_price without lastProcessedBlockNumber(${this.lastProcessedBlockNumber})`);
             const blockFrom = this.lastProcessedBlockNumber;
             const blockTo = this.lastProcessedBlockNumber + this.getBatch();
-            this.log(`retrieving logs between ${blockFrom} to ${blockTo} with time_processed_price IS NULL`, method, false, true);
+            this.log(`retrieving logs between ${blockFrom} to ${blockTo} with time_processed_price IS NULL`, method, false, false);
             const unProcessedLogs = new eth_receipt_logs_1.eth_receipt_logs();
-            let logsWhere = " WHERE blockNumber>=:from AND blockNumber<=:to AND time_processed_price IS NULL ";
+            let logsWhere = " WHERE blockNumber>=:from AND blockNumber<=:to AND time_processed_price IS NULL AND (has_bnb_usd=:y OR has_token_dex=:y OR has_token=:y) ";
             let logsParam = {};
             logsParam["from"] = blockFrom;
             logsParam["to"] = blockTo;
+            logsParam["y"] = "y";
             const logsOrder = ` ORDER BY blockNumber ASC, logIndex ASC `;
             await unProcessedLogs.list(logsWhere, logsParam, logsOrder);
             if (unProcessedLogs.count() === 0) {
