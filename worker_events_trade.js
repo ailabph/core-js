@@ -27,17 +27,27 @@ class worker_events_trade {
                 console.log(`worker_events_trade|${method}|${tools_1.tools.LINE}`);
         }
     }
-    //region SETTINGS
-    static getBatch() {
-        return 200;
-    }
-    static getRetryWaitInSeconds() {
-        return 10;
-    }
     static resetPointers() {
-        this.last_id = 0;
-        this.lastTransactionHash = "";
-        this.lastLogIndex = 0;
+        this.lastProcessedTransactionHash = "";
+        this.lastProcessedBlockNumber = 0;
+        this.lastProcessedLogIndex = 0;
+        this.lastProcessedDbLogId = 0;
+    }
+    static getStartingDelayInSeconds() {
+        let delay = 10;
+        const delayOverride = config_1.config.getCustomOption("worker_events_trade_retry_delay", false);
+        if (typeof delayOverride === "number") {
+            delay = assert_1.assert.positiveInt(delayOverride, `getStartingDelayInSeconds|delayOverride`);
+        }
+        return delay;
+    }
+    static getBatch() {
+        let batch = 500;
+        const batchOverride = config_1.config.getCustomOption("worker_events_trade_batch", false);
+        if (typeof batchOverride === "number") {
+            batch = assert_1.assert.positiveInt(batchOverride, "getBatch|batchOverride");
+        }
+        return batch;
     }
     //endregion SETTINGS
     static async run() {
@@ -45,15 +55,17 @@ class worker_events_trade {
         await connection_1.connection.startTransaction();
         try {
             const dexLogs = new eth_receipt_logs_1.eth_receipt_logs();
-            await dexLogs.list(" WHERE id>:last_id AND time_processed_price>:zero AND has_token_dex=:y AND time_processed_events IS NULL ", { last_id: this.last_id, zero: 0, y: "y" }, ` ORDER BY blockTime ASC, logIndex ASC LIMIT ${this.getBatch()} `);
+            await dexLogs.list(" WHERE blockNumber>=:blockNumber AND time_processed_price>:zero AND has_token_dex=:y AND time_processed_events IS NULL ", { blockNumber: this.lastProcessedBlockNumber, zero: 0, y: "y" }, ` ORDER BY blockNumber ASC, logIndex ASC LIMIT ${this.getBatch()} `);
             if (dexLogs.count() > 0) {
                 this.log(`${dexLogs.count()} dex logs to process`, method, false, true);
             }
             const dexLogsCount = dexLogs.count();
             let count = 0;
             for (const log of dexLogs._dataList) {
-                this.lastTransactionHash = log.transactionHash;
-                this.lastLogIndex = log.logIndex;
+                this.currentTransactionHash = assert_1.assert.stringNotEmpty(log.transactionHash, `${method} log.transactionHash to this.lastTransactionHash`);
+                this.currentLogIndex = assert_1.assert.naturalNumber(log.logIndex, `${method}|log.logIndex to this.lastLogIndex`);
+                this.currentDbLogId = assert_1.assert.positiveInt(log.id, `${method}|log.id to this.lastDbLogId`);
+                this.currentBlockNumber = assert_1.assert.positiveInt(log.blockNumber, `${method}|log.blockNumber to this.lastBlockNumber`);
                 count++;
                 const timeLog = time_helper_1.time_helper.getAsFormat(assert_1.assert.positiveNumber(log.blockTime), time_helper_1.TIME_FORMATS.ISO);
                 const web3Log = eth_worker_1.eth_worker.convertDbLogToWeb3Log(log);
@@ -132,11 +144,14 @@ class worker_events_trade {
                 }
                 log.time_processed_events = tools_1.tools.getCurrentTimeStamp();
                 await log.save();
-                this.last_id = assert_1.assert.positiveInt(log.id, "log.id");
                 this.log('', method, true, false);
             }
             await connection_1.connection.commit();
-            this.retryMultiplier = 0;
+            this.lastProcessedTransactionHash = this.currentTransactionHash;
+            this.lastProcessedBlockNumber = this.currentBlockNumber;
+            this.lastProcessedLogIndex = this.currentLogIndex;
+            this.lastProcessedDbLogId = this.currentDbLogId;
+            this.retryDelayMultiplier = 0;
             await tools_1.tools.sleep(50);
             setImmediate(() => {
                 worker_events_trade.run();
@@ -145,13 +160,13 @@ class worker_events_trade {
         catch (e) {
             await connection_1.connection.rollback();
             this.log(`ERROR`, method, false, true);
-            this.log(`current hash ${this.lastTransactionHash} logIndex ${this.lastLogIndex}`, method, false, true);
+            this.log(`current hash ${this.currentTransactionHash} logIndex ${this.currentLogIndex}`, method, false, true);
             if (e instanceof Error)
                 this.log(e.message, method, false, true);
             else
                 console.log(e);
-            this.retryMultiplier++;
-            const retryInSeconds = this.getRetryWaitInSeconds() * this.retryMultiplier;
+            this.retryDelayMultiplier++;
+            const retryInSeconds = this.getStartingDelayInSeconds() * this.retryDelayMultiplier;
             this.log(`retrying in ${retryInSeconds} seconds...`, method, true, true);
             setTimeout(() => {
                 this.resetPointers();
@@ -227,10 +242,16 @@ class worker_events_trade {
     }
 }
 exports.worker_events_trade = worker_events_trade;
-worker_events_trade.last_id = 0;
-worker_events_trade.lastTransactionHash = "";
-worker_events_trade.lastLogIndex = 0;
-worker_events_trade.retryMultiplier = 0;
+//region SETTINGS
+worker_events_trade.currentTransactionHash = "";
+worker_events_trade.currentBlockNumber = 0;
+worker_events_trade.currentLogIndex = 0;
+worker_events_trade.currentDbLogId = 0;
+worker_events_trade.lastProcessedTransactionHash = "";
+worker_events_trade.lastProcessedBlockNumber = 0;
+worker_events_trade.lastProcessedLogIndex = 0;
+worker_events_trade.lastProcessedDbLogId = 0;
+worker_events_trade.retryDelayMultiplier = 0;
 class worker_events_trade_error extends Error {
     constructor(m) {
         super(m);
