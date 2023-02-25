@@ -111,13 +111,13 @@ class worker_events_trade {
                     newEvent.fromAddress = swapLog.sender;
                     newEvent.fromContract = swapSummary.from.contractInfo.address;
                     newEvent.fromSymbol = swapSummary.from.contractInfo.symbol;
-                    newEvent.fromDecimal = assert_1.assert.naturalNumber(swapSummary.from.contractInfo.decimals);
+                    newEvent.fromDecimal = assert_1.assert.naturalNumber(swapSummary.from.contractInfo.decimals, `${method}|swapSummary.from.contractInfo.decimals`);
                     newEvent.fromAmountGross = swapSummary.from.swapAmount;
                     newEvent.fromAmount = swapSummary.from.transferAmount;
                     newEvent.toAddress = swapLog.to;
                     newEvent.toContract = swapSummary.to.contractInfo.address;
                     newEvent.toSymbol = swapSummary.to.contractInfo.symbol;
-                    newEvent.toDecimal = assert_1.assert.naturalNumber(swapSummary.to.contractInfo.decimals, "swapSummary.to.contractInfo.decimals");
+                    newEvent.toDecimal = assert_1.assert.naturalNumber(swapSummary.to.contractInfo.decimals, `${method}|swapSummary.to.contractInfo.decimals`);
                     newEvent.toAmountGross = swapSummary.to.swapAmount;
                     newEvent.toAmount = swapSummary.to.transferAmount;
                     newEvent.tax_amount = swapSummary.tax_amount;
