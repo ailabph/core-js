@@ -90,7 +90,7 @@ export class worker_events_token{
 
                     newEvent.fromAddress = transferLog.from;
                     newEvent.toAddress = transferLog.to;
-                    newEvent.fromAmountGross = eth_worker.convertValueToAmount(transferLog.value.toString(),assert.naturalNumber(transferLog.ContractInfo.decimals,"transferLog.ContractInfo.decimals"));
+                    newEvent.fromAmountGross = eth_worker.convertValueToAmount(transferLog.value.toString(),transferLog.ContractInfo.decimals);
                     newEvent.fromAmount = newEvent.fromAmountGross;
                     newEvent.toAmountGross = newEvent.fromAmountGross;
                     newEvent.toAmount = newEvent.fromAmountGross;
@@ -100,7 +100,7 @@ export class worker_events_token{
                             transferTransaction.recipient.toLowerCase() === newEvent.fromAddress.toLowerCase()
                             || transferTransaction.recipient.toLowerCase() === newEvent.toAddress.toLowerCase()
                         ){
-                            newEvent.fromAmountGross = eth_worker.convertValueToAmount(transferTransaction.amount.toString(),assert.naturalNumber(transferLog.ContractInfo.decimals,"transferLog.ContractInfo.decimals"));
+                            newEvent.fromAmountGross = eth_worker.convertValueToAmount(transferTransaction.amount.toString(),transferLog.ContractInfo.decimals);
                             this.log(`${logFormat}---- setting from amount gross value based on transaction method amount ${newEvent.fromAmountGross}`,method,false,true);
                         }
                     }

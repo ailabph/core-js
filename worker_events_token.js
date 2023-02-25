@@ -79,7 +79,7 @@ class worker_events_token {
                     newEvent.toDecimal = assert_1.assert.naturalNumber(tokenContractInfo.decimals, `tokenContractInfo.decimals`);
                     newEvent.fromAddress = transferLog.from;
                     newEvent.toAddress = transferLog.to;
-                    newEvent.fromAmountGross = eth_worker_1.eth_worker.convertValueToAmount(transferLog.value.toString(), assert_1.assert.naturalNumber(transferLog.ContractInfo.decimals, "transferLog.ContractInfo.decimals"));
+                    newEvent.fromAmountGross = eth_worker_1.eth_worker.convertValueToAmount(transferLog.value.toString(), transferLog.ContractInfo.decimals);
                     newEvent.fromAmount = newEvent.fromAmountGross;
                     newEvent.toAmountGross = newEvent.fromAmountGross;
                     newEvent.toAmount = newEvent.fromAmountGross;
@@ -87,7 +87,7 @@ class worker_events_token {
                         this.log(`${logFormat}---- transfer transaction detected, checking if the same sender or receiver`, method, false, true);
                         if (transferTransaction.recipient.toLowerCase() === newEvent.fromAddress.toLowerCase()
                             || transferTransaction.recipient.toLowerCase() === newEvent.toAddress.toLowerCase()) {
-                            newEvent.fromAmountGross = eth_worker_1.eth_worker.convertValueToAmount(transferTransaction.amount.toString(), assert_1.assert.naturalNumber(transferLog.ContractInfo.decimals, "transferLog.ContractInfo.decimals"));
+                            newEvent.fromAmountGross = eth_worker_1.eth_worker.convertValueToAmount(transferTransaction.amount.toString(), transferLog.ContractInfo.decimals);
                             this.log(`${logFormat}---- setting from amount gross value based on transaction method amount ${newEvent.fromAmountGross}`, method, false, true);
                         }
                     }
