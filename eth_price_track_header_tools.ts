@@ -23,23 +23,23 @@ export class eth_price_track_header_tools{
     //region UTILITIES
     public static getPairSymbol(header:eth_price_track_header,separator:string=""):string{
         const method = "getPairSymbol";
-        const token0_symbol = assert.stringNotEmpty(header.token0_symbol,`${method} header.token0_symbol`);
-        const token1_symbol = assert.stringNotEmpty(header.token1_symbol,`${method} header.token0_symbol`);
+        const token0_symbol = tools.isEmpty(header.token0_symbol) ? "unknown" :  assert.stringNotEmpty(header.token0_symbol,`${method} header.token0_symbol`);
+        const token1_symbol = tools.isEmpty(header.token1_symbol) ? "unknown" : assert.stringNotEmpty(header.token1_symbol,`${method} header.token0_symbol`);
         return `${token0_symbol.toUpperCase()}${separator}${token1_symbol}`;
     }
     public static getOrderedPairSymbol(header:eth_price_track_header,separator:string=""):string{
         const method = "getOrderedPairSymbol";
         let base_position = 0;
         if(this.pairHasBusd(header)){
-            this.log("has BUSD token in pair",method,true);
+            // this.log("...has BUSD token in pair",method);
             base_position = this.pairBusdPosition(header);
         }
         else if(this.pairHasBnb(header)){
-            this.log("has BNB token in pair",method,true);
+            // this.log("...has BNB token in pair",method);
             base_position = this.pairBnbPosition(header);
         }
         else{
-            this.log("has no BNB or BUSD token in pair",method,true);
+            // this.log("...has no BNB or BUSD token in pair",method);
         }
         return web3_tools.getOrderedPair(header.token0_symbol,header.token1_symbol,base_position,separator);
     }
@@ -156,12 +156,12 @@ export class eth_price_track_header_tools{
 
                 const token0_info = await eth_contract_data_tools.getContractViaAddress(header.token0_contract,false);
                 if(!token0_info) throw new Error(`unable to retrieve token0 info on db or chain`);
-                header.token0_symbol = token0_info.symbol;
+                header.token0_symbol = tools.isEmpty(token0_info.symbol) ? "unknown" : token0_info.symbol;
                 header.token0_decimal = assert.naturalNumber(token0_info.decimals,`${method} token0_info.decimals`);
 
                 const token1_info = await eth_contract_data_tools.getContractViaAddress(header.token1_contract,false);
                 if(!token1_info) throw new Error(`unable to retrieve token0 info on db or chain`);
-                header.token1_symbol = token1_info.symbol;
+                header.token1_symbol = tools.isEmpty(token1_info.symbol) ? "unknown" : token1_info.symbol;
                 header.token1_decimal = assert.naturalNumber(token1_info.decimals,`${method} token1_info.decimals`);
 
                 await header.save();
@@ -174,7 +174,7 @@ export class eth_price_track_header_tools{
                 return false;
             }
         }
-        this.log(`...retrieved header with id:${header.id} pair_contract:${header.pair_contract}`,method,true);
+        this.log(`...retrieved header with id:${header.id} pair_contract:${header.pair_contract}`,method);
         return header;
     }
     public static async getViaIdOrContractStrict(header_id_or_contract:number|string|eth_price_track_header):Promise<eth_price_track_header>{
