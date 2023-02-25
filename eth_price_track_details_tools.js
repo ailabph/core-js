@@ -35,7 +35,9 @@ class eth_price_track_details_tools {
             const orderString = ` ORDER BY blockNumber ${order}, logIndex ${order} LIMIT ${limit} `;
             if (log) {
                 this.log(`db log passed, retrieving via blockNumber(${log.blockNumber}) and logIndex(${log.logIndex})`, method);
-                await details.list(" WHERE header_id=:header_id AND blockNumber=:blockNumber AND logIndex<=:logIndex ", { header_id: retrievedHeader.id, blockNumber: assert_1.assert.positiveNumber(log.blockNumber), logIndex: assert_1.assert.naturalNumber(log.logIndex) }, orderString);
+                const blockNumber = assert_1.assert.positiveNumber(log.blockNumber, `${method}|log.blockNumber`);
+                const logIndex = assert_1.assert.naturalNumber(log.logIndex, `${method}|log.logIndex`);
+                await details.list(" WHERE header_id=:header_id AND blockNumber=:blockNumber AND logIndex<=:logIndex ", { header_id: retrievedHeader.id, blockNumber: blockNumber, logIndex: logIndex }, orderString);
             }
             if (details.count() === 0) {
                 if (log) {
@@ -80,6 +82,10 @@ class eth_price_track_details_tools {
             }
             return false;
         }
+        if (details.count() === 1) {
+            const item = details._dataList[0];
+            this.log(`found blockNumber ${item.blockNumber} logIndex ${item.logIndex}`, method);
+        }
         this.log(`found:${details.count()}`, method, true);
         return details;
     }
@@ -88,7 +94,7 @@ class eth_price_track_details_tools {
         let detail = new eth_price_track_details_1.eth_price_track_details();
         try {
             header = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaIdOrContractStrict(header);
-            this.log(`retrieving price for ${eth_price_track_header_tools_1.eth_price_track_header_tools.getOrderedPairSymbol(header)}`, method);
+            this.log(`retrieving price detail for ${eth_price_track_header_tools_1.eth_price_track_header_tools.getOrderedPairSymbol(header)} ${tools_1.tools.lastSubstring(header.pair_contract, 6)}`, method);
             const arg = {};
             arg["order"] = ORDER.DESC;
             arg["limit"] = 1;
@@ -119,16 +125,19 @@ class eth_price_track_details_tools {
     }
     static async getPrice(header, time_or_log, strict = false) {
         const method = "getPrice";
+        this.log(`retrieving price`, method);
         let price = "0.00";
         try {
             header = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaIdOrContractStrict(header);
-            this.log(`retrieving price of pair ${eth_price_track_header_tools_1.eth_price_track_header_tools.getOrderedPairSymbol(header)} ${header.pair_contract}`, method);
+            this.log(`...on pair ${eth_price_track_header_tools_1.eth_price_track_header_tools.getOrderedPairSymbol(header)} ${header.pair_contract}`, method);
             const detail = await this.getDetail(header, time_or_log, strict);
             if (detail.isNew())
                 throw new Error(`no price detail found`);
+            this.log(`...price retrieved ${detail.price} on ${detail.blockNumber} ${detail.transactionHash} ${detail.logIndex} during ${time_helper_1.time_helper.getAsFormat(detail.blockTime, time_helper_1.TIME_FORMATS.ISO, "UTC")}`, method);
             price = assert_1.assert.isNumeric(detail.price, `eth_price_track_detail.price(${detail.price}) is not numeric`);
         }
         catch (e) {
+            this.log(`ERROR`, method, false, true);
             if (e instanceof Error) {
                 this.log(e.message, method, true, true);
                 if (strict)
@@ -193,13 +202,13 @@ class eth_price_track_details_tools {
         this.log(`token symbol:${token.symbol} ${token.address}`, method);
         const tokenBnbPair = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaTokenContracts(eth_config_1.eth_config.getEthContract(), token.address, false);
         if (!tokenBnbPair) {
-            this.log(`BNB${token.symbol.toUpperCase()} pair does not exists`, method);
+            this.log(`WBNB${token.symbol.toUpperCase()} pair does not exists`, method);
         }
         else {
             this.log(`bnb pair found:${tokenBnbPair.pair_contract}`, method);
             price = await this.getBnbPrice(tokenBnbPair, time_or_log, false);
         }
-        return assert_1.assert.isNumeric(price);
+        return assert_1.assert.isNumeric(price, `${method}|price`);
     }
     static async getBnbTokenValue(time_or_log, token, token_amount) {
         const method = "getBnbTokenValue";
