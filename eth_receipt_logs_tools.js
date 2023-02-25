@@ -539,23 +539,8 @@ class eth_receipt_logs_tools {
         }
         const previousLogs = new eth_receipt_logs_1.eth_receipt_logs();
         await previousLogs.list(" WHERE transactionHash=:hash AND logIndex<:logIndex ", { hash: assert_1.assert.stringNotEmpty(db_log.transactionHash), logIndex: assert_1.assert.positiveInt(db_log.logIndex) }, " ORDER BY logIndex ASC ");
-        const swapType = await this.getTradeTypeOfSwap(swapLog, token_contract);
         for (const log of previousLogs._dataList) {
             const transferLog = await web3_log_decoder_1.web3_log_decoder.getTransferLog(eth_worker_1.eth_worker.convertDbLogToWeb3Log(log));
-            // change logic to transfer contract = token, and transfer.from = swap.from and transfer.to = swap.to
-            // if(!transferLog) continue;
-            // const isBuySwap = transferLog.from.toLowerCase() === swapLog.sender.toLowerCase() && transferLog.to.toLowerCase() === swapLog.to.toLowerCase();
-            // const isSellSwap = transferLog.from.toLowerCase() === swapLog.to.toLowerCase() && transferLog.to.toLowerCase() === swapLog.sender.toLowerCase();
-            // if(
-            //     transferLog.ContractInfo.address.toLowerCase() === token_contract.toLowerCase()
-            //     && (isBuySwap || isSellSwap)
-            // ){
-            //     const contract_decimals = assert.naturalNumber(transferLog.ContractInfo.decimals,`${method}|transferLog.ContractInfo.decimals`)
-            //     const valueToAmount = eth_worker.convertValueToAmount(
-            //         transferLog.value.toString(),contract_decimals,
-            //         `${method} transferLog.value`);
-            //     to_return = tools.toBn(to_return).plus(tools.toBn(valueToAmount)).toFixed(contract_decimals);
-            // }
             if (transferLog && transferLog.ContractInfo.address.toLowerCase() === token_contract.toLowerCase()
                 && (transferLog.from.toLowerCase() === pairInfo.address.toLowerCase() || transferLog.to.toLowerCase() === pairInfo.address.toLowerCase())) {
                 to_return = tools_1.tools.toBn(to_return).plus(tools_1.tools.toBn(eth_worker_1.eth_worker.convertValueToAmount(transferLog.value.toString(), transferLog.ContractInfo.decimals))).toFixed(tools_1.tools.parseIntSimple(transferLog.ContractInfo.decimals));
@@ -569,8 +554,7 @@ class eth_receipt_logs_tools {
                     if (decoded_log.method_name.toLowerCase() === "SwapAndLiquify".toLowerCase()
                         || swapPreviouslyBySamePair
                         || decoded_log.method_name.toLowerCase() === "Burn".toLowerCase()) {
-                        if (tools_1.tools.greaterThan(to_return, 0))
-                            to_return = "0";
+                        to_return = "0";
                     }
                 }
                 catch (e) { }

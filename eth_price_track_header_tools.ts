@@ -81,7 +81,7 @@ export class eth_price_track_header_tools{
         const pair = new eth_price_track_header();
         await pair.list(
             " WHERE (token0_contract=:token0 AND token1_contract=:token1) "+
-            " OR (token1_contract=:token1 AND token0_contract=:token1) ",
+            " OR (token1_contract=:token0 AND token0_contract=:token1) ",
             {token0:token0,token1:token1}," LIMIT 1 ");
         if(pair.count() === 0){
             this.log(`pair not on db, retrieving pair info on chain`,method);
