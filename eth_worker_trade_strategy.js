@@ -152,7 +152,7 @@ class eth_worker_trade_strategy {
                 buy_tax = 0;
             }
             else {
-                buy_tax = tools_1.tools.parseNumber({ val: buyEvent.tax_percentage, name: "tax_percentage", strict: true });
+                buy_tax = tools_1.tools.parseNumber(buyEvent.tax_percentage, "tax_percentage", true);
             }
         }
         return buy_tax;
@@ -167,7 +167,7 @@ class eth_worker_trade_strategy {
                 sell_tax = 0;
             }
             else {
-                sell_tax = tools_1.tools.parseNumber({ val: sellEvent.tax_percentage, name: "tax_percentage", strict: true });
+                sell_tax = tools_1.tools.parseNumber(sellEvent.tax_percentage, "tax_percentage", true);
             }
         }
         return sell_tax;
