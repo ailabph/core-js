@@ -34,14 +34,14 @@ class eth_price_track_details_tools {
             const retrievedHeader = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaIdOrContractStrict(header);
             const orderString = ` ORDER BY blockNumber ${order}, logIndex ${order} LIMIT ${limit} `;
             if (log) {
-                this.log(`db log passed, retrieving via blockNumber(${log.blockNumber}) and logIndex(${log.logIndex})`, method);
+                this.log(`...db log passed, retrieving via blockNumber(${log.blockNumber}) and logIndex(${log.logIndex})`, method);
                 const blockNumber = assert_1.assert.positiveNumber(log.blockNumber, `${method}|log.blockNumber`);
                 const logIndex = assert_1.assert.naturalNumber(log.logIndex, `${method}|log.logIndex`);
                 await details.list(" WHERE header_id=:header_id AND blockNumber=:blockNumber AND logIndex<=:logIndex ", { header_id: retrievedHeader.id, blockNumber: blockNumber, logIndex: logIndex }, orderString);
             }
             if (details.count() === 0) {
                 if (log) {
-                    this.log(`no details found via logs method, retrieving via timestamp`, method);
+                    this.log(`...no details found via logs method, retrieving via timestamp`, method);
                 }
                 let where = " WHERE header_id=:header_id ";
                 let param = {};
@@ -53,7 +53,7 @@ class eth_price_track_details_tools {
                     param["from"] = from_time;
                 }
                 else {
-                    this.log(`no from_time info`, method);
+                    this.log(`...no from_time info`, method);
                 }
                 if (to_time > 0) {
                     const toTimeInfo = time_helper_1.time_helper.getTime(to_time, "UTC");
@@ -64,19 +64,19 @@ class eth_price_track_details_tools {
                 else {
                     if (log) {
                         const toTimeInfo = time_helper_1.time_helper.getTime(log.blockTime, "UTC");
-                        this.log(`no to time info specified, using time in db_log `, method);
-                        this.log(`to ${toTimeInfo.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
+                        this.log(`...no to time info specified, using time in db_log `, method);
+                        this.log(`...to ${toTimeInfo.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
                         where += " AND blockTime<=:to ";
                         param["to"] = toTimeInfo.unix();
                     }
                 }
-                this.log(`current query ${where}`, method);
+                this.log(`...current query ${where}`, method);
                 await details.list(where, param, orderString);
             }
         }
         catch (e) {
             if (e instanceof Error) {
-                this.log(e.message, method, true, true);
+                this.log("ERROR... " + e.message, method, false, true);
                 if (strict)
                     throw new eth_price_track_details_tools_error(e.message);
             }
@@ -84,9 +84,9 @@ class eth_price_track_details_tools {
         }
         if (details.count() === 1) {
             const item = details._dataList[0];
-            this.log(`found blockNumber ${item.blockNumber} logIndex ${item.logIndex}`, method);
+            this.log(`...found blockNumber ${item.blockNumber} logIndex ${item.logIndex}`, method);
         }
-        this.log(`found:${details.count()}`, method, true);
+        this.log(`...found:${details.count()}`, method);
         return details;
     }
     static async getDetail(header, time_or_log, strict = false) {
@@ -99,12 +99,12 @@ class eth_price_track_details_tools {
             arg["order"] = ORDER.DESC;
             arg["limit"] = 1;
             if (typeof time_or_log === "number" || typeof time_or_log === "string") {
-                this.log(`time argument passed:${time_or_log}`, method);
+                this.log(`...time argument passed:${time_or_log}`, method);
                 const timeInfo = time_helper_1.time_helper.getTime(time_or_log, "UTC");
                 arg["to_time"] = timeInfo.unix();
             }
             else {
-                this.log(`db log argument passed`, method);
+                this.log(`...db log argument passed`, method);
                 arg["log"] = time_or_log;
             }
             const details = await this.getDetails(header, arg, strict);
@@ -116,7 +116,7 @@ class eth_price_track_details_tools {
         }
         catch (e) {
             if (e instanceof Error) {
-                this.log(e.message, method, true, true);
+                this.log("ERROR..." + e.message, method, false, true);
                 if (strict)
                     throw new eth_price_track_details_tools_error(e.message);
             }
@@ -139,7 +139,7 @@ class eth_price_track_details_tools {
         catch (e) {
             this.log(`ERROR`, method, false, true);
             if (e instanceof Error) {
-                this.log(e.message, method, true, true);
+                this.log(e.message, method, false, true);
                 if (strict)
                     throw new eth_price_track_details_tools_error(e.message);
             }
