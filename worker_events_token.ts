@@ -22,37 +22,65 @@ export class worker_events_token{
         }
     }
 
-    private static getBatch():number{
-        return 250;
-    }
+    //region CONFIG
+    private static currentTransactionHash:string = "";
+    private static currentBlockNumber:number = 0;
+    private static currentLogIndex:number = 0;
+    private static currentDbLogId:number = 0;
+    private static lastProcessedTransactionHash:string = "";
+    private static lastProcessedBlockNumber:number = 0;
+    private static lastProcessedLogIndex:number = 0;
+    private static lastProcessedDbLogId:number = 0;
 
-    private static last_id:number = 0;
-    private static last_hash:string = "";
-    private static last_logIndex:number=0;
+    private static resetPointers(){
+        this.lastProcessedTransactionHash = "";
+        this.lastProcessedBlockNumber = 0;
+        this.lastProcessedLogIndex = 0;
+        this.lastProcessedDbLogId = 0;
+    }
+    private static retryDelayMultiplier:number = 0;
+    private static getStartingDelayInSeconds():number{
+        let delay = 10;
+        const delayOverride = config.getCustomOption("worker_events_token_retry_delay",false);
+        if(typeof delayOverride === "number") {
+            delay = assert.positiveInt(delayOverride, `getStartingDelayInSeconds|delayOverride`);
+        }
+        return delay;
+    }
+    private static getBatch():number{
+        let batch = 500;
+        const batchOverride = config.getCustomOption("worker_events_token_batch",false);
+        if(typeof batchOverride === "number"){
+            batch = assert.positiveInt(batchOverride,"getBatch|batchOverride");
+        }
+        return batch;
+    }
+    //endregion CONFIG
+
     public static async run(){
         const method = "run";
         await connection.startTransaction();
         try{
             const unprocessedTokenEvents = new eth_receipt_logs();
             await unprocessedTokenEvents.list(
-                " WHERE id>:last_id AND time_processed_price>:zero AND has_token=:y AND  time_processed_events IS NULL ",
-                {last_id:this.last_id,zero:0,y:"y"},
+                " WHERE blockNumber>=:blockNumber AND time_processed_price>:zero AND has_token=:y AND  time_processed_events IS NULL ",
+                {blockNumber:this.lastProcessedBlockNumber,zero:0,y:"y"},
                 ` ORDER BY blockNumber ASC, logIndex ASC LIMIT ${this.getBatch()} `);
             const total = unprocessedTokenEvents.count();
             let count = 0;
 
             for(const log of unprocessedTokenEvents._dataList as eth_receipt_logs[]){
-                const transactionHash = assert.stringNotEmpty(log.transactionHash,"log.transactionHash");
-                this.last_hash = transactionHash;
-                const logIndex = assert.positiveInt(log.logIndex,"log.logIndex");
-                this.last_logIndex = logIndex;
                 count++;
                 const logFormat = `${count}/${total}|${time_helper.getAsFormat(assert.positiveInt(log.blockTime,"log.blockTime"),TIME_FORMATS.ISO)}|`;
-                this.log(`${logFormat} ${this.last_hash} ${this.last_logIndex}`,method,false,true);
+                this.log(`${logFormat} ${this.currentTransactionHash} ${this.currentLogIndex}`,method,false,true);
+                this.currentTransactionHash = assert.stringNotEmpty(log.transactionHash,`${method} log.transactionHash to this.lastTransactionHash`);
+                this.currentLogIndex = assert.naturalNumber(log.logIndex,`${method}|log.logIndex to this.lastLogIndex`);
+                this.currentDbLogId = assert.positiveInt(log.id,`${method}|log.id to this.lastDbLogId`);
+                this.currentBlockNumber = assert.positiveInt(log.blockNumber,`${method}|log.blockNumber to this.lastBlockNumber`);
 
                 // check if already on event
                 const checkEvent = new eth_contract_events();
-                await checkEvent.list(" WHERE txn_hash=:hash AND logIndex=:logIndex ",{hash:transactionHash,logIndex:logIndex});
+                await checkEvent.list(" WHERE txn_hash=:hash AND logIndex=:logIndex ",{hash:this.currentTransactionHash,logIndex:this.currentLogIndex});
                 if(checkEvent.count() > 0){
                     this.log(`${logFormat}---- already on db, updating log`,method,false,true);
                     log.time_processed_events = tools.getCurrentTimeStamp();
@@ -60,7 +88,7 @@ export class worker_events_token{
                 }
 
                 // get txn and decode
-                const transaction = await eth_worker.getDbTxnByHash(transactionHash);
+                const transaction = await eth_worker.getDbTxnByHash(this.currentTransactionHash);
                 const decodedTransaction = await web3_abi_decoder.decodeAbiObject(transaction.input);
                 const txnMethod = decodedTransaction ? decodedTransaction.abi.name : "unknown";
                 const transferTransaction = await web3_abi_decoder.getTransferAbi(decodedTransaction);
@@ -72,7 +100,7 @@ export class worker_events_token{
                 const tokenContractInfo = await eth_contract_data_tools.getContractDynamicStrict(eth_config.getTokenContract());
 
                 const newEvent = new eth_contract_events();
-                newEvent.txn_hash = transactionHash;
+                newEvent.txn_hash = log.transactionHash;
                 newEvent.blockNumber = log.blockNumber;
                 newEvent.block_time = log.blockTime;
                 newEvent.logIndex = log.logIndex;
@@ -159,18 +187,21 @@ export class worker_events_token{
                 log.time_processed_events = time_helper.getCurrentTimeStamp();
                 await log.save();
                 this.log(`${logFormat}---- db log updated`,method,false,true);
-                this.last_id = assert.positiveInt(log.id,"log.id for last_id");
             }
 
             // process
             await connection.commit();
+            this.lastProcessedTransactionHash = this.currentTransactionHash;
+            this.lastProcessedBlockNumber = this.currentBlockNumber;
+            this.lastProcessedLogIndex = this.currentLogIndex;
+            this.lastProcessedDbLogId = this.currentDbLogId;
             await tools.sleep(50);
             setImmediate(()=>{
                 worker_events_token.run();
             });
         }catch (e){
             await connection.rollback();
-            this.log(`ERROR on hash ${this.last_hash} ${this.last_logIndex}`,method,false,true);
+            this.log(`ERROR on hash ${this.currentTransactionHash} ${this.currentLogIndex}`,method,false,true);
             console.log(e);
             this.log(`worker stopped`,method,true,true);
         }
