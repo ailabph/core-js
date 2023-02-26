@@ -100,12 +100,17 @@ export class assert{
         return value;
     }
 
-    public static isNumericString(value:string, desc:string="", greaterThan?:number|undefined):string{
-        assert.isNumeric<string>(value,desc);
-        if(typeof greaterThan === "number" && tools.notGreaterThan(value,greaterThan)){
-            throw new Error(`${desc} is not greater than ${greaterThan}`);
+    public static isNumericString(value:unknown, desc:string="", greaterThan?:number|undefined):string{
+        if(typeof value === "string"){
+            assert.isNumeric<string>(value,desc);
+            if(typeof greaterThan === "number" && tools.notGreaterThan(value,greaterThan)){
+                throw new Error(`${desc} is not greater than ${greaterThan}`);
+            }
+            return value;
         }
-        return value;
+        else{
+            throw new Error(`${desc} is not a numeric string`);
+        }
     }
 
     public static isValidDate(val:string):string{
@@ -114,7 +119,7 @@ export class assert{
     }
 
     public static recordExist(db:dataObject,moreInfo:string = "record does not exist"):boolean{
-        if(db.isNew()) throw new Error(moreInfo);
+        if(db.isNew()) throw new Error(`${moreInfo} is not a db record`);
         return true;
     }
 

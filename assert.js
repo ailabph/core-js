@@ -115,11 +115,16 @@ class assert {
         return value;
     }
     static isNumericString(value, desc = "", greaterThan) {
-        assert.isNumeric(value, desc);
-        if (typeof greaterThan === "number" && tools_1.tools.notGreaterThan(value, greaterThan)) {
-            throw new Error(`${desc} is not greater than ${greaterThan}`);
+        if (typeof value === "string") {
+            assert.isNumeric(value, desc);
+            if (typeof greaterThan === "number" && tools_1.tools.notGreaterThan(value, greaterThan)) {
+                throw new Error(`${desc} is not greater than ${greaterThan}`);
+            }
+            return value;
         }
-        return value;
+        else {
+            throw new Error(`${desc} is not a numeric string`);
+        }
     }
     static isValidDate(val) {
         if (!tools_1.tools.isValidDate(val))
@@ -128,7 +133,7 @@ class assert {
     }
     static recordExist(db, moreInfo = "record does not exist") {
         if (db.isNew())
-            throw new Error(moreInfo);
+            throw new Error(`${moreInfo} is not a db record`);
         return true;
     }
     static recordsFound(db, moreInfo = "records do not exist") {
