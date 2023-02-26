@@ -33,6 +33,7 @@ const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
 const lodash_1 = __importDefault(require("lodash"));
 const time_helper_1 = require("./time_helper");
+//endregion TYPES
 class tools {
     //region TIME
     static getTime(time = null) {
@@ -351,6 +352,21 @@ class tools {
     }
     static equalTo(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
+    }
+    static getGrossNetInfo(gross, net, desc = "", decimal = 18) {
+        const toReturn = { diff: "0", gross: "0", net: "0", percentage: 0 };
+        if (typeof gross === "number")
+            gross = gross.toString();
+        toReturn.gross = assert_1.assert.isNumericString(gross, desc);
+        if (typeof net === "number")
+            net = net.toString();
+        toReturn.net = assert_1.assert.isNumericString(net, desc);
+        if (tools.greaterThan(toReturn.net, toReturn.gross))
+            throw new Error(`${desc} net ${toReturn.net} is greater than gross ${toReturn.gross}`);
+        toReturn.diff = tools.deduct(toReturn.gross, toReturn.net, decimal, desc);
+        const percentage = tools.divide(toReturn.diff, toReturn.gross, decimal, desc);
+        toReturn.percentage = tools.parseNumber(percentage, desc);
+        return toReturn;
     }
 }
 exports.tools = tools;

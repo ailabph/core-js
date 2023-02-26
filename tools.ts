@@ -10,6 +10,16 @@ import utc from 'dayjs/plugin/utc';
 import _ from "lodash";
 import {time_helper} from "./time_helper";
 
+//region TYPES
+type GROSS_NET_INFO = {
+    gross:string,
+    net:string,
+    diff:string,
+    percentage:number,
+}
+export { GROSS_NET_INFO }
+//endregion TYPES
+
 export class tools{
 
     public static BASE_DIR = "..";
@@ -342,5 +352,18 @@ export class tools{
     public static equalTo(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
     }
+    public static getGrossNetInfo(gross:unknown,net:unknown,desc:string="",decimal:number=18):GROSS_NET_INFO {
+        const toReturn:GROSS_NET_INFO = {diff: "0", gross: "0", net: "0", percentage: 0};
+        if (typeof gross === "number") gross = gross.toString();
+        toReturn.gross = assert.isNumericString(gross, desc);
+        if (typeof net === "number") net = net.toString();
+        toReturn.net = assert.isNumericString(net, desc);
+        if (tools.greaterThan(toReturn.net, toReturn.gross)) throw new Error(`${desc} net ${toReturn.net} is greater than gross ${toReturn.gross}`);
+        toReturn.diff = tools.deduct(toReturn.gross,toReturn.net,decimal,desc);
+        const percentage:string = tools.divide(toReturn.diff,toReturn.gross,decimal,desc);
+        toReturn.percentage = tools.parseNumber(percentage,desc);
+        return toReturn;
+    }
+
     //endregion MATH
 }
