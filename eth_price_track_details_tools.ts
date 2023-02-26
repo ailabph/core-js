@@ -128,10 +128,16 @@ export class eth_price_track_details_tools{
             if(details.count() === 0)  throw new Error(`no price details found`);
             detail = details.getItem();
         }catch (e){
-            if(e instanceof Error){
-                this.log("ERROR..."+e.message,method,false,true);
-                if(strict) throw new eth_price_track_details_tools_error(e.message);
+            if(strict){
+                if(e instanceof Error){
+                    this.log("ERROR..."+e.message,method,false,true);
+                    throw new eth_price_track_details_tools_error(e.message);
+                }
+                else{
+                    throw e;
+                }
             }
+
         }
         return detail;
     }
@@ -147,10 +153,15 @@ export class eth_price_track_details_tools{
             this.log(`...price retrieved ${detail.price} on ${detail.blockNumber} ${detail.transactionHash} ${detail.logIndex} during ${time_helper.getAsFormat(detail.blockTime,TIME_FORMATS.ISO,"UTC")}`,method);
             price = assert.isNumeric<string>(detail.price,`eth_price_track_detail.price(${detail.price}) is not numeric`);
         }catch (e){
-            this.log(`ERROR`,method,false,true);
-            if(e instanceof Error){
-                this.log(e.message,method,false,true);
-                if(strict) throw new eth_price_track_details_tools_error(e.message);
+            if(strict){
+                this.log(`ERROR`,method,false,true);
+                if(e instanceof Error){
+                    this.log(e.message,method,false,true);
+                    throw new eth_price_track_details_tools_error(e.message);
+                }
+                else{
+                    throw e;
+                }
             }
         }
         return price;
@@ -167,10 +178,16 @@ export class eth_price_track_details_tools{
             bnb_price = assert.isNumeric<string>(price_bnb,`eth_price_track_detail.price_bnb(${detail.price_bnb}) is not numeric`);
         }
         catch (e) {
-            if(e instanceof Error){
-                this.log(e.message,method,true,true);
-                if(strict) throw new eth_price_track_details_tools_error(e.message);
+            if(strict){
+                if(e instanceof Error){
+                    this.log(e.message,method,true,true);
+                    throw new eth_price_track_details_tools_error(e.message);
+                }
+                else{
+                    throw e;
+                }
             }
+
         }
         return bnb_price;
 
@@ -187,9 +204,14 @@ export class eth_price_track_details_tools{
             usd_price = assert.isNumeric<string>(price_usd,`eth_price_track_detail.price_usd(${detail.price_usd}) is not numeric`);
         }
         catch (e){
-            if(e instanceof Error){
-                this.log(e.message,method,true,true);
-                if(strict) throw new eth_price_track_details_tools_error(e.message);
+            if(strict){
+                if(e instanceof Error){
+                    this.log(e.message,method,true,true);
+                    throw new eth_price_track_details_tools_error(e.message);
+                }
+                else{
+                    throw e;
+                }
             }
         }
         return usd_price;
