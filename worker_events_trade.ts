@@ -209,7 +209,7 @@ export class worker_events_trade{
 
     public static async getSwapSummary(db_log:eth_receipt_logs,target_token:string,swapLog?:SwapLog,pairInfo?:PAIR_INFO):Promise<SWAP_SUMMARY>{
         const method = "getSwapSummary";
-        assert.recordExist(db_log,`${method} db_log does not exist`);
+        assert.recordExist(db_log,`${method} db_log`);
         target_token = assert.stringNotEmpty(target_token,`${method} target_token`);
         if(!swapLog) swapLog = await web3_log_decoder.getSwapLog(eth_worker.convertDbLogToWeb3Log(db_log)) as SwapLog;
         if(!pairInfo) pairInfo = await web3_pair_price_tools.getPairInfo(swapLog.ContractInfo.address);
@@ -252,16 +252,10 @@ export class worker_events_trade{
         // TAX
         const gross = type === TRADE_TYPE.BUY ? swapSummary.to.swapAmount : swapSummary.from.swapAmount;
         const net = type === TRADE_TYPE.BUY ? swapSummary.to.transferAmount : swapSummary.from.transferAmount;
-        const zeroBn = tools.toBn("0");
-        const grossBn = tools.toBn(gross);
-        const netBn = tools.toBn(net);
-        const taxAmountBn = grossBn.minus(netBn);
-        if(taxAmountBn.comparedTo(zeroBn) < 0) throw new worker_events_trade_error(`unexpected tax amount < 0 on txn ${db_log.transactionHash} logIndex ${db_log.logIndex} gross ${grossBn.toFixed(8)} net ${netBn.toFixed(8)}`);
-        if(taxAmountBn.comparedTo(zeroBn) > 0){
-            swapSummary.tax_percentage = tools.getNumber(taxAmountBn.dividedBy(grossBn).toFixed(4),4);
-        }
-        swapSummary.tax_amount = taxAmountBn.toFixed(eth_config.getTokenDecimal());
-        if(swapSummary.tax_percentage >= 0.4)throw new worker_events_trade_error(`unexpected tax amount >= 0.4 on txn ${db_log.transactionHash} logIndex ${db_log.logIndex} gross ${grossBn.toFixed(8)} net ${netBn.toFixed(8)}`);
+        const grossNetInfo = tools.getGrossNetInfo(gross,net,`${method} type:${type} gross ${gross} net ${net}`);
+        swapSummary.tax_amount = grossNetInfo.diff
+        swapSummary.tax_percentage = grossNetInfo.percentage;
+        if(swapSummary.tax_percentage >= 0.4) throw new worker_events_trade_error(`unexpected tax amount >= 0.4 on txn ${db_log.transactionHash} logIndex ${db_log.logIndex} gross ${grossNetInfo.gross} net ${grossNetInfo.net}`);
 
         //PRICE
         const amount_for_value = type === TRADE_TYPE.BUY ? tokenInfo.transferAmount : tokenInfo.swapAmount;

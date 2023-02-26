@@ -130,18 +130,9 @@ class worker_events_token {
                     }
                     this.log(`${logFormat}---- TO AMOUNT GROSS ${newEvent.toAmountGross} NET ${newEvent.toAmount} ${toUsername}`, method, false, true);
                     // TAX
-                    if (tools_1.tools.greaterThan(newEvent.fromAmount, newEvent.fromAmountGross))
-                        throw new Error(`unexpected fromAmount(${newEvent.fromAmount}) > fromAmountGross(${newEvent.fromAmountGross})`);
-                    if (tools_1.tools.greaterThan(newEvent.toAmount, newEvent.toAmountGross))
-                        throw new Error(`unexpected toAmount(${newEvent.toAmount}) > toAmountGross(${newEvent.toAmountGross})`);
-                    if (tools_1.tools.greaterThan(newEvent.toAmount, newEvent.fromAmount))
-                        throw new Error(`unexpected toAmount(${newEvent.toAmount}) > fromAmount(${newEvent.fromAmount})`);
-                    newEvent.tax_amount = tools_1.tools.deduct(newEvent.fromAmountGross, newEvent.toAmount, tokenContractInfo.decimals, `fromAmountGross(${newEvent.fromAmountGross}) - toAmount(${newEvent.toAmount}) = tax_amount`);
-                    newEvent.tax_percentage = 0;
-                    if (tools_1.tools.greaterThan(newEvent.tax_amount, "0")) {
-                        const tax_perc = tools_1.tools.divide(newEvent.tax_amount, newEvent.fromAmountGross, tokenContractInfo.decimals);
-                        newEvent.tax_percentage = tools_1.tools.getNumber(tax_perc, 4);
-                    }
+                    const grossNetInfo = tools_1.tools.getGrossNetInfo(newEvent.fromAmountGross, newEvent.toAmount, `${method} newEvent.fromAmountGross newEvent.toAmount`);
+                    newEvent.tax_amount = grossNetInfo.diff;
+                    newEvent.tax_percentage = grossNetInfo.percentage;
                     if (newEvent.tax_percentage && newEvent.tax_percentage >= 0.4)
                         throw new Error(`unexpected tax >= 0.4`);
                     this.log(`${logFormat}---- TAX AMOUNT ${newEvent.tax_amount} ${newEvent.tax_percentage}%`, method, false, true);
