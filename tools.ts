@@ -343,14 +343,29 @@ export class tools{
     public static greaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
     }
+    public static greaterThanOrEqualTo(from:null|string|number|BigNumber,to:null|string|number|BigNumber,desc:string=""):boolean{
+        if(from === null) throw new Error(`${desc} is null`);
+        if(to === null) throw new Error(`${desc} is null`);
+        return tools.toBn(from).comparedTo(to) >= 0;
+    }
     public static notGreaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return !tools.greaterThan(from,to);
     }
     public static lesserThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;
     }
+    public static lesserThanOrEqualTo(from:null|string|number|BigNumber,to:null|string|number|BigNumber,desc:string=""):boolean{
+        if(from === null) throw new Error(`${desc}`);
+        if(to === null) throw new Error(`${desc}`);
+        return tools.toBn(from).comparedTo(tools.toBn(to)) <= 0;
+    }
     public static equalTo(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
         return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
+    }
+    public static notEqualTo(from:null|string|number|BigNumber,to:null|string|number|BigNumber,desc:string=""):boolean{
+        if(from === null) throw new Error(`${desc} is null`);
+        if(to === null) throw new Error(`${desc} is null`);
+        return tools.toBn(from).comparedTo(tools.toBn(to)) !== 0;
     }
     public static getGrossNetInfo(gross:unknown,net:unknown,desc:string="",decimal:number=18):GROSS_NET_INFO {
         const toReturn:GROSS_NET_INFO = {diff: "0", gross: "0", net: "0", percentage: 0};

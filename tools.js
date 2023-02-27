@@ -344,14 +344,35 @@ class tools {
     static greaterThan(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
     }
+    static greaterThanOrEqualTo(from, to, desc = "") {
+        if (from === null)
+            throw new Error(`${desc} is null`);
+        if (to === null)
+            throw new Error(`${desc} is null`);
+        return tools.toBn(from).comparedTo(to) >= 0;
+    }
     static notGreaterThan(from, to) {
         return !tools.greaterThan(from, to);
     }
     static lesserThan(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) < 0;
     }
+    static lesserThanOrEqualTo(from, to, desc = "") {
+        if (from === null)
+            throw new Error(`${desc}`);
+        if (to === null)
+            throw new Error(`${desc}`);
+        return tools.toBn(from).comparedTo(tools.toBn(to)) <= 0;
+    }
     static equalTo(from, to) {
         return tools.toBn(from).comparedTo(tools.toBn(to)) === 0;
+    }
+    static notEqualTo(from, to, desc = "") {
+        if (from === null)
+            throw new Error(`${desc} is null`);
+        if (to === null)
+            throw new Error(`${desc} is null`);
+        return tools.toBn(from).comparedTo(tools.toBn(to)) !== 0;
     }
     static getGrossNetInfo(gross, net, desc = "", decimal = 18) {
         const toReturn = { diff: "0", gross: "0", net: "0", percentage: 0 };
