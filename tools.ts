@@ -9,6 +9,7 @@ import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import _ from "lodash";
 import {time_helper} from "./time_helper";
+import Bottleneck from 'bottleneck';
 
 //region TYPES
 type GROSS_NET_INFO = {
@@ -18,9 +19,31 @@ type GROSS_NET_INFO = {
     percentage:number,
 }
 export { GROSS_NET_INFO }
+
+enum RATE_LIMIT_INTERVAL {
+    SECOND = "second",
+    MINUTE ="minute",
+    HOUR = "hour",
+    DAY = "day",
+}
+export { RATE_LIMIT_INTERVAL }
+
+type LIMITER_INFO = {
+    type:RATE_LIMIT_INTERVAL,
+    maxCalls:number,
+    limiter:Bottleneck,
+}
+export { LIMITER_INFO }
 //endregion TYPES
 
 export class tools{
+
+    private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
+        if(config.getConfig().verbose_log || force_display){
+            console.log(`tools|${method}|${msg}`);
+            if(end) console.log(`tools|${method}|${tools.LINE}`);
+        }
+    }
 
     public static BASE_DIR = "..";
     public static readonly LINE = "---------------------";
@@ -340,7 +363,9 @@ export class tools{
     public static divide(from:string|number|BigNumber,to:string|number|BigNumber,decimal:number|string=18,desc:string=""):string{
         return tools.toBn(from).dividedBy(tools.toBn(to)).toFixed(assert.naturalNumber(decimal,desc));
     }
-    public static greaterThan(from:string|number|BigNumber,to:string|number|BigNumber):boolean{
+    public static greaterThan(from:null|string|number|BigNumber,to:null|string|number|BigNumber):boolean{
+        if(from === null) return false;
+        if(to === null) return true;
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
     }
     public static greaterThanOrEqualTo(from:null|string|number|BigNumber,to:null|string|number|BigNumber,desc:string=""):boolean{
@@ -381,4 +406,47 @@ export class tools{
     }
 
     //endregion MATH
+
+    //region LIMITER
+
+    public static createLimiter(maxCalls: number, intervalType: RATE_LIMIT_INTERVAL, maxConcurrent:number=25, minTime:number=50): LIMITER_INFO {
+        const method = "createLimiter";
+        maxCalls = assert.positiveInt(maxCalls,`${method} maxCalls`);
+        let refreshInterval = 1000;
+        if(intervalType === RATE_LIMIT_INTERVAL.SECOND){
+            this.log(`limit ${maxCalls} every second`,method);
+        }
+        else if(intervalType === RATE_LIMIT_INTERVAL.MINUTE){
+            refreshInterval = 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every minute`,method);
+        }
+        else if(intervalType === RATE_LIMIT_INTERVAL.HOUR){
+            refreshInterval = 60 * 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every hour`,method);
+        }
+        else if(intervalType === RATE_LIMIT_INTERVAL.DAY){
+            refreshInterval = 24 * 60 * 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every day`,method);
+        }
+
+        const limiter =  new Bottleneck({
+            reservoir: maxCalls,
+            reservoirRefreshAmount: maxCalls,
+            reservoirRefreshInterval: refreshInterval,
+            maxConcurrent: maxConcurrent,
+            minTime: minTime,
+        });
+        return {limiter: limiter, maxCalls: maxCalls, type: intervalType};
+    }
+
+    public static async useCallLimiter(limiterInfo:LIMITER_INFO):Promise<void> {
+        const method = "useCallLimiter";
+        let currentReservoir = await limiterInfo.limiter.currentReservoir();
+        this.log(`running tasks, allowed calls ${currentReservoir}/${limiterInfo.maxCalls} per ${limiterInfo.type}`,method);
+        if (currentReservoir === 0) this.log(`${limiterInfo.maxCalls} calls limit reached for every ${limiterInfo.type}, waiting next ${limiterInfo.type} before continuing`, method, false, true);
+        await limiterInfo.limiter.schedule(()=>this.placeholderFunction());
+    }
+    private static async placeholderFunction(){}
+
+    //endregion LIMITER
 }

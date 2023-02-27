@@ -26,15 +26,32 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tools = void 0;
+exports.tools = exports.RATE_LIMIT_INTERVAL = void 0;
 const assert_1 = require("./assert");
+const config_1 = require("./config");
 const fs = __importStar(require("fs"));
 const promises_1 = __importDefault(require("fs/promises"));
 const bignumber_js_1 = __importDefault(require("bignumber.js"));
 const lodash_1 = __importDefault(require("lodash"));
 const time_helper_1 = require("./time_helper");
+const bottleneck_1 = __importDefault(require("bottleneck"));
+var RATE_LIMIT_INTERVAL;
+(function (RATE_LIMIT_INTERVAL) {
+    RATE_LIMIT_INTERVAL["SECOND"] = "second";
+    RATE_LIMIT_INTERVAL["MINUTE"] = "minute";
+    RATE_LIMIT_INTERVAL["HOUR"] = "hour";
+    RATE_LIMIT_INTERVAL["DAY"] = "day";
+})(RATE_LIMIT_INTERVAL || (RATE_LIMIT_INTERVAL = {}));
+exports.RATE_LIMIT_INTERVAL = RATE_LIMIT_INTERVAL;
 //endregion TYPES
 class tools {
+    static log(msg, method, end = false, force_display = false) {
+        if (config_1.config.getConfig().verbose_log || force_display) {
+            console.log(`tools|${method}|${msg}`);
+            if (end)
+                console.log(`tools|${method}|${tools.LINE}`);
+        }
+    }
     //region TIME
     static getTime(time = null) {
         return time_helper_1.time_helper.getTime(time);
@@ -342,6 +359,10 @@ class tools {
         return tools.toBn(from).dividedBy(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
     }
     static greaterThan(from, to) {
+        if (from === null)
+            return false;
+        if (to === null)
+            return true;
         return tools.toBn(from).comparedTo(tools.toBn(to)) > 0;
     }
     static greaterThanOrEqualTo(from, to, desc = "") {
@@ -389,6 +410,45 @@ class tools {
         toReturn.percentage = tools.parseNumber(percentage, desc);
         return toReturn;
     }
+    //endregion MATH
+    //region LIMITER
+    static createLimiter(maxCalls, intervalType, maxConcurrent = 25, minTime = 50) {
+        const method = "createLimiter";
+        maxCalls = assert_1.assert.positiveInt(maxCalls, `${method} maxCalls`);
+        let refreshInterval = 1000;
+        if (intervalType === RATE_LIMIT_INTERVAL.SECOND) {
+            this.log(`limit ${maxCalls} every second`, method);
+        }
+        else if (intervalType === RATE_LIMIT_INTERVAL.MINUTE) {
+            refreshInterval = 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every minute`, method);
+        }
+        else if (intervalType === RATE_LIMIT_INTERVAL.HOUR) {
+            refreshInterval = 60 * 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every hour`, method);
+        }
+        else if (intervalType === RATE_LIMIT_INTERVAL.DAY) {
+            refreshInterval = 24 * 60 * 60 * refreshInterval;
+            this.log(`limit ${maxCalls} every day`, method);
+        }
+        const limiter = new bottleneck_1.default({
+            reservoir: maxCalls,
+            reservoirRefreshAmount: maxCalls,
+            reservoirRefreshInterval: refreshInterval,
+            maxConcurrent: maxConcurrent,
+            minTime: minTime,
+        });
+        return { limiter: limiter, maxCalls: maxCalls, type: intervalType };
+    }
+    static async useCallLimiter(limiterInfo) {
+        const method = "useCallLimiter";
+        let currentReservoir = await limiterInfo.limiter.currentReservoir();
+        this.log(`running tasks, allowed calls ${currentReservoir}/${limiterInfo.maxCalls} per ${limiterInfo.type}`, method);
+        if (currentReservoir === 0)
+            this.log(`${limiterInfo.maxCalls} calls limit reached for every ${limiterInfo.type}, waiting next ${limiterInfo.type} before continuing`, method, false, true);
+        await limiterInfo.limiter.schedule(() => this.placeholderFunction());
+    }
+    static async placeholderFunction() { }
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";
