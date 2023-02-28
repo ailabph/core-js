@@ -9,6 +9,7 @@ import {eth_token_balance} from "./build/eth_token_balance";
 import {user} from "./build/user";
 import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
+import {TIME_FORMATS, time_helper} from "./time_helper";
 
 
 //region TYPES
@@ -226,5 +227,30 @@ export class eth_token_balance_tools{
     }
 
 
+    //region GETTERS
+    public static async getBalanceDetailAsOf(address:null|string,during:number):Promise<eth_token_balance|false>{
+        const method = "getBalanceDetailAsOf";
+        this.log(`retrieving balance of ${address} on ${during}`,method);
+        if(tools.isNullish(address)){
+            this.log(`...address ${address} passed is null`,method);
+            return false;
+        }
+        address = assert.stringNotEmpty(address,`${method} address`);
+        during = assert.positiveInt(during,`${method} during`);
+        const timeFormat = time_helper.getAsFormat(during,TIME_FORMATS.READABLE);
+        const balances = new eth_token_balance();
+        await balances.list(
+            " WHERE address=:address AND blockTime <= :time ",
+            {address:address,time:during},
+            " ORDER BY blockNumber DESC, logIndex DESC LIMIT 1 ");
+        if(balances.count() > 0){
+            const balance = balances.getItem();
+            this.log(`...found balance ${balance.token_amount} as of ${timeFormat}`,method);
+            return balance;
+        }
+        this.log(`...no balance info found on db as of ${timeFormat}`,method);
+        return false;
+    }
+    //endregion GETTERS
 
 }

@@ -11,6 +11,7 @@ const eth_token_balance_1 = require("./build/eth_token_balance");
 const user_1 = require("./build/user");
 const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools");
 const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
+const time_helper_1 = require("./time_helper");
 //region TYPES
 var ENTRY_TYPE;
 (function (ENTRY_TYPE) {
@@ -209,6 +210,27 @@ class eth_token_balance_tools {
         await balanceHeader.save();
         this.log(`...updated balance detail ${transferDetail.id} logIndex from ${originalLogIndex} to ${transferDetail.logIndex}, updated type to ${event.type}`, method);
         return transferDetail;
+    }
+    //region GETTERS
+    static async getBalanceDetailAsOf(address, during) {
+        const method = "getBalanceDetailAsOf";
+        this.log(`retrieving balance of ${address} on ${during}`, method);
+        if (tools_1.tools.isNullish(address)) {
+            this.log(`...address ${address} passed is null`, method);
+            return false;
+        }
+        address = assert_1.assert.stringNotEmpty(address, `${method} address`);
+        during = assert_1.assert.positiveInt(during, `${method} during`);
+        const timeFormat = time_helper_1.time_helper.getAsFormat(during, time_helper_1.TIME_FORMATS.READABLE);
+        const balances = new eth_token_balance_1.eth_token_balance();
+        await balances.list(" WHERE address=:address AND blockTime <= :time ", { address: address, time: during }, " ORDER BY blockNumber DESC, logIndex DESC LIMIT 1 ");
+        if (balances.count() > 0) {
+            const balance = balances.getItem();
+            this.log(`...found balance ${balance.token_amount} as of ${timeFormat}`, method);
+            return balance;
+        }
+        this.log(`...no balance info found on db as of ${timeFormat}`, method);
+        return false;
     }
 }
 exports.eth_token_balance_tools = eth_token_balance_tools;
