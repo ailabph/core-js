@@ -6,26 +6,244 @@ import {assert} from "./assert";
 import {argv} from "process";
 import {user} from "./build/user";
 import {tools} from "./tools";
-import {eth_worker} from "./eth_worker";
 import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 import {eth_config} from "./eth_config";
 import {points_log} from "./build/points_log";
 import {eth_send_token} from "./build/eth_send_token";
+import {eth_token_balance} from "./build/eth_token_balance";
+import {config} from "./config";
+import {account_tools} from "./account_tools";
+import {eth_token_balance_tools} from "./eth_token_balance_tools";
 
 export class worker_complan{
 
+    private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
+        if(config.getConfig().verbose_log || force_display){
+            console.log(`worker_complan|${method}|${msg}`);
+            if(end) console.log(`worker_complan|${method}|${tools.LINE}`);
+        }
+    }
+
+    private static addLog(msg:string,method:string,log:string[]):string[]{
+        this.log(msg,method,false,true);
+        log.push(msg);
+        return log;
+    }
+
+    //region CONFIG
     public static getBatch():number{
-        return 100;
+        const method = "getBatch";
+        let batch = 1;
+        const overrideBatch = config.getCustomOption("complan_batch");
+        if(overrideBatch){
+            batch = assert.positiveInt(overrideBatch,`${method} overrideBatch`);
+        }
+        return batch;
+    }
+    public static getCommunityBonusLevelLimit():number{
+        return 5;
+    }
+    public static getCommunityBonusPercentage(level:number):number{
+        switch (level) {
+            case 1:
+                return 0.05;
+            case 2:
+                return 0.02;
+            case 3:
+                return 0.01;
+            case 4:
+                return 0.01;
+            case 5:
+                return 0.01;
+            default:
+                throw new Error(`no community bonus for level ${level}`);
+        }
+    }
+    //endregion CONFIG
+
+    //region CHECKS
+    public static assertBuyTrade(balanceDetail:eth_token_balance, desc:string=""){
+        if(balanceDetail.type !== "buy"){
+            throw new Error(`${desc} balance detail id ${balanceDetail.id} blockNumber ${balanceDetail.blockNumber} logIndex ${balanceDetail.logIndex} hash ${balanceDetail.transactionHash} is not buy type, found ${balanceDetail.type}`);
+        }
+    }
+    public static assertCommunityBonusLevelLimit(buyer:account,bonus_receiver:account){
+        const method = "assertCommunityBonusLevelLimit";
+        account_tools.assertSponsorRelated(bonus_receiver,buyer);
+        const buyer_sponsor_level = assert.naturalNumber(buyer.sponsor_level,`${method} buyer.sponsor_level`);
+        const bonus_receiver_level = assert.naturalNumber(bonus_receiver.sponsor_level,`${method} bonus_receiver.sponsor_level`);
+        const community_bonus_level = buyer_sponsor_level - bonus_receiver_level;
+        if(community_bonus_level > this.getCommunityBonusLevelLimit()){
+            throw new Error(`${method} community bonus level ${community_bonus_level} > community bonus limit ${this.getCommunityBonusLevelLimit()}`);
+        }
+    }
+    //endregion CHECKS
+
+    public static async run2(){
+        /**
+         * every token_balance, save log also time_processed_complan
+         *
+         */
+        const method = "run";
+        await connection.startTransaction();
+        try{
+            const buyTrades = await this.getTradesForProcessing();
+            for(const buyTrade of buyTrades._dataList as eth_token_balance[]){
+                await this.processBuyTradeComplan(buyTrade);
+            }
+
+            await connection.commit();
+        }catch (e){
+            await connection.rollback();
+        }
+    }
+
+    public static async processBuyTradeComplan(buyTrade:eth_token_balance):Promise<eth_token_balance>{
+        const method = "processBuyTradeComplan";
+        this.log(`processing buy trade complan logic`,method);
+        assert.inTransaction();
+        this.assertBuyTrade(buyTrade);
+        const buy_amount = assert.isNumericString(buyTrade.debit,`${method} buyTrade.debit`);
+        const address_buyer = assert.stringNotEmpty(buyTrade.address,`${method} buyTrade.address`);
+        const blockNumber = assert.positiveInt(buyTrade.blockNumber,`${method} buyTrade.blockNumber`);
+        const logIndex = assert.positiveInt(buyTrade.logIndex,`${method} buyTrade.logIndex`);
+        const transactionHash = assert.stringNotEmpty(buyTrade.transactionHash,`${method} buyTrade.transactionHash`);
+        let logs:string[] = [];
+
+        let traverseLevel = 0;
+        const communityBonusLevelLimit = this.getCommunityBonusLevelLimit();
+        /**
+         * get account of address_buyer
+         */
+        const buyer_account = await account_tools.getAccount(address_buyer);
+        if(!buyer_account){
+            logs.push(`${address_buyer} has no registered account in db`);
+            this.log(logs[logs.length-1],method);
+        }
+        else{
+            // traverse upline
+            const uplineCount = account_tools.countSponsorUplinesByDna(buyer_account.sponsor_dna);
+            logs.push(`${address_buyer} has ${uplineCount} sponsor uplines`);
+            this.log(logs[logs.length-1],method);
+
+            const sponsorStructureCheck = await account_tools.verifySponsorLineOfDownline(buyer_account);
+            if(typeof sponsorStructureCheck === "string"){
+                throw new Error(sponsorStructureCheck);
+            }
+
+            let sponsor_id = buyer_account.sponsor_id;
+            while(sponsor_id > 0){
+                logs.push(`retrieving upline sponsor via sponsor_id ${sponsor_id}`);
+                this.log(logs[logs.length-1],method);
+                traverseLevel++;
+                const sponsor = await account_tools.getAccount(sponsor_id);
+                if(!sponsor){
+                    logs.push(`unable to retrieve account via sponsor_id ${sponsor_id}`);
+                    this.log(logs[logs.length-1],method);
+                }
+                else{
+                    logs.push(`traverse level ${traverseLevel}/${communityBonusLevelLimit}, upline ${sponsor.account_code} sponsor_level ${sponsor.sponsor_level}`);
+                    this.log(logs[logs.length-1],method);
+
+                    if(traverseLevel > communityBonusLevelLimit){
+                        // add skip point here
+                    }
+                    else{
+                        //
+                    }
+                }
+            }
+        }
+
+        buyTrade.time_processsed_complan = tools.getCurrentTimeStamp();
+        buyTrade.logs = JSON.stringify(logs);
+        await buyTrade.save();
+        return buyTrade;
+    }
+
+    private static getDefaultPoint(receiverAccount:account,buyerAccount:account,buyTrade:eth_token_balance):points_log{
+        const method = "getDefaultPoint";
+        this.assertBuyTrade(buyTrade,method);
+        const point = new points_log();
+        point.seq_no = 1;
+        point.user_id = assert.naturalNumber(receiverAccount.user_id,`${method} receiverAccount.user_id`);
+        point.account_code = assert.stringNotEmpty(receiverAccount.account_code,`${method} receiverAccount.account_code`);
+        point.account_rank = assert.stringNotEmpty(receiverAccount.account_type,`${method} receiverAccount.account_type`);
+        point.account_id = assert.positiveInt(receiverAccount.id,`${method} receiverAccount.id`);
+        point.sponsor_level = assert.positiveInt(receiverAccount.sponsor_level,`${method} receiverAccount.sponsor_level`);
+        point.time_added = assert.positiveInt(buyTrade.blockTime,`${method} buyTrade.blockTime`);
+        point.date_added = time_helper.getTime(point.time_added,"UTC").format("Y-m-d");
+        point.code_source = assert.stringNotEmpty(buyerAccount.account_code,`${method} buyerAccount.account_code`);
+        point.code_source_account_id = assert.positiveInt(buyerAccount.id,`${method} buyerAccount.id`);
+        point.code_source_owner_user_id = assert.positiveInt(buyerAccount.user_id,`${method} buyerAccount.user_id`);
+        const bonus_receiver_sponsor_level = assert.naturalNumber(receiverAccount.sponsor_level,`${method} bonusReceiver.sponsor_level`);
+        const buyer_sponsor_level = assert.naturalNumber(buyerAccount.sponsor_level,`${method} buyerAccount.sponsor_level`);
+        point.gen_level = buyer_sponsor_level - bonus_receiver_sponsor_level;
+        point.eth_source_hash = buyTrade.transactionHash;
+        point.eth_token_amount_source = assert.isNumericString(buyTrade.debit, `${method} buyTrade.debit for token_bought`, 0);
+        point.eth_token_bnb_price = assert.isNumericString(buyTrade.bnb_price,`${method} buyTrade.bnb_price`);
+        point.eth_token_usd_rate = assert.isNumericString(buyTrade.usd_price,`${method} buyTrade.usd_price`);
+        return point;
+    }
+
+    private static async addSkipCommunityBonus(){
+
+    }
+
+    private static async addCommunityBonus(bonusReceiver:account,buyerAccount:account,buyTrade:eth_token_balance,log:string[]):Promise<{points_log:points_log,log:string[]}>{
+        const method = "addCommunityBonus";
+        assert.inTransaction();
+        const pointLogs:string[] = [];
+        log = this.addLog(`adding community bonus to ${bonusReceiver.account_code} sponsor_level ${bonusReceiver.sponsor_level} from buyer ${buyerAccount.account_code} sponsor_level ${buyerAccount.sponsor_level}`,method,log);
+        pointLogs.push(log[log.length-1]);
+
+        this.assertBuyTrade(buyTrade);
+        this.assertCommunityBonusLevelLimit(buyerAccount,bonusReceiver);
+
+        const bonus_receiver_sponsor_level = assert.naturalNumber(bonusReceiver.sponsor_level,`${method} bonusReceiver.sponsor_level`);
+        const buyer_sponsor_level = assert.naturalNumber(buyerAccount.sponsor_level,`${method} buyerAccount.sponsor_level`);
+        const community_level = buyer_sponsor_level - bonus_receiver_sponsor_level;
+        const token_bought = assert.isNumericString(buyTrade.debit,`${method} buyTrade.debit for token_bought`,0);
+        const bonusPercentage = this.getCommunityBonusPercentage(community_level);
+        const communityBonus = tools.multiply(token_bought,bonusPercentage);
+
+        log = this.addLog(`community_level ${community_level} token_bought ${token_bought} bonus_percentage ${bonusPercentage} community_bonus ${communityBonus}`,method,log);
+        pointLogs.push(log[log.length-1]);
+
+        const timeFormat = time_helper.getAsFormat(buyTrade.blockTime,TIME_FORMATS.ISO,"UTC");
+        const tokenBalanceAtPurchaseInfo = await eth_token_balance_tools.getBalanceDetailAsOf(bonusReceiver.account_code,buyTrade.blockTime);
+        let tokenBalanceAtPurchase = "0";
+        let tokenBnbPriceAtPurchase = "0";
+        let tokenBnbValueAtPurchase = "0";
+        if(tokenBalanceAtPurchaseInfo){
+
+        }else{
+            const tokenBalanceValueAtPurchase = await eth_price_track_details_tools.getBnbTokenValue(buyTrade.blockTime,eth_config.getTokenContract(),tokenBalanceAtPurchase);
+        }
+
+        let currentTokenBalance = "0";
+        let currentTokenBnbPrice = "0";
+        let currentTokenBnbValue = "0";
+
+        const point = this.getDefaultPoint(bonusReceiver,buyerAccount,buyTrade);
+        point.action = "eth_community_bonus";
+        point.eth_token_bonus = communityBonus;
+        point.eth_perc = bonusPercentage;
+
+
+        point.eth_data = JSON.stringify(pointLogs);
+        await point.save();
+        log = this.addLog(`saved point with id ${point.id}`,method,log);
+        return {log: log, points_log: point};
     }
 
     public static async run(){
         await connection.startTransaction();
         try{
-
             const unprocessedTrades = new eth_contract_events();
             await unprocessedTrades.list(
-                " WHERE tag=:trade AND time_processed IS NULL ",
-                {trade:"trade"},
+                " WHERE tag=:trade AND time_processed IS NULL AND time_balance_processed>:zero ",
+                {trade:"trade",zero:0},
                 ` ORDER BY blockNumber ASC, logIndex ASC LIMIT ${this.getBatch()} `);
 
             for(const trade of unprocessedTrades._dataList as eth_contract_events[]){
@@ -138,6 +356,18 @@ export class worker_complan{
             await connection.rollback();
             console.log(e);
         }
+    }
+
+    public static async getTradesForProcessing():Promise<eth_token_balance>{
+        const method = "getTradesForProcessing";
+        this.log(`retrieving identified buy trades for complan process...`,method);
+        const buyTrades = new eth_token_balance();
+        await buyTrades.list(
+            " WHERE type=:sell AND time_processed_complan IS NULL ",
+            {sell:"sell"},
+            ` ORDER BY blockNumber ASC, logIndex ASC `);
+        this.log(`...${buyTrades.count()} buy trades found`,method);
+        return buyTrades;
     }
 
     public static async getBalanceFrom(wallet:string, time:number):Promise<string>{
