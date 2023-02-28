@@ -2,6 +2,7 @@
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
 import {TransferLog} from "./web3_log_decoder";
+import {tools} from "./tools";
 
 //region TYPES
 const SingleFlightErrorCodec = t.type({
@@ -91,7 +92,7 @@ type Receipt = t.TypeOf<typeof ReceiptCodec>;
 export { Receipt }
 
 const SingleFlightBlockResultCodec = t.type({
-    receipts:t.array(ReceiptCodec),
+    receipts:t.union([t.null,t.array(ReceiptCodec)]),
     block:BlockCodec
 });
 type SingleFlightBlockResult = t.TypeOf<typeof SingleFlightBlockResultCodec>;
@@ -121,7 +122,31 @@ export class worker_blocks_tools{
         if(typeof response !== "object") return false;
         const decodedData = SingleFlightBlockCodec.decode(response);
         if(d.isRight(decodedData)){
-            return decodedData.right as SingleFlightBlock;
+            const blockInfo = decodedData.right as SingleFlightBlock;
+            blockInfo.result.block.number = blockInfo.result.block.number ? tools.hexToNumberAsString(blockInfo.result.block.number) : blockInfo.result.block.number;
+            blockInfo.result.block.baseFeePerGas = tools.hexToNumberAsString(blockInfo.result.block.baseFeePerGas);
+            blockInfo.result.block.difficulty = tools.hexToNumberAsString(blockInfo.result.block.difficulty);
+            blockInfo.result.block.gasLimit = tools.hexToNumberAsString(blockInfo.result.block.gasLimit);
+            blockInfo.result.block.gasUsed = tools.hexToNumberAsString(blockInfo.result.block.gasUsed);
+            blockInfo.result.block.timestamp = tools.hexToNumberAsString(blockInfo.result.block.timestamp);
+            for(const transaction of blockInfo.result.block.transactions){
+                transaction.blockNumber = tools.hexToNumberAsString(transaction.blockNumber);
+                transaction.gas = tools.hexToNumberAsString(transaction.gas);
+                transaction.gasPrice = tools.hexToNumberAsString(transaction.gasPrice);
+                transaction.maxFeePerGas = tools.hexToNumberAsString(transaction.maxFeePerGas);
+                transaction.maxPriorityFeePerGas = tools.hexToNumberAsString(transaction.maxPriorityFeePerGas);
+                transaction.value = tools.hexToNumberAsString(transaction.value);
+                if(transaction.transactionIndex) transaction.transactionIndex = tools.hexToNumberAsString(transaction.transactionIndex);
+            }
+            if(blockInfo.result.receipts){
+                for(const receipt of blockInfo.result.receipts){
+                    receipt.blockNumber = tools.hexToNumberAsString(receipt.blockNumber);
+                    receipt.cumulativeGasUsed = tools.hexToNumberAsString(receipt.cumulativeGasUsed);
+                    receipt.effectiveGasPrice = tools.hexToNumberAsString(receipt.effectiveGasPrice);
+                    receipt.gasUsed = tools.hexToNumberAsString(receipt.gasUsed);
+                }
+            }
+            return blockInfo;
         }
         return false;
     }
