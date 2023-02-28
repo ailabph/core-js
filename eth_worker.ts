@@ -300,7 +300,7 @@ export class eth_worker{
     public static async getLatestBlock():Promise<number>{
         let latestBlock = -1;
         const lastBlock = new eth_block();
-        await lastBlock.list(" WHERE 1 ",{}," ORDER BY id DESC, blockNumber DESC LIMIT 1 ");
+        await lastBlock.list(" WHERE 1 ",{}," ORDER BY blockNumber DESC LIMIT 1 ");
         if(lastBlock.count() > 0){
             latestBlock = lastBlock.getItem().blockNumber;
         }

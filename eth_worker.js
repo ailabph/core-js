@@ -269,7 +269,7 @@ class eth_worker {
     static async getLatestBlock() {
         let latestBlock = -1;
         const lastBlock = new eth_block_1.eth_block();
-        await lastBlock.list(" WHERE 1 ", {}, " ORDER BY id DESC, blockNumber DESC LIMIT 1 ");
+        await lastBlock.list(" WHERE 1 ", {}, " ORDER BY blockNumber DESC LIMIT 1 ");
         if (lastBlock.count() > 0) {
             latestBlock = lastBlock.getItem().blockNumber;
         }
