@@ -9,6 +9,8 @@ import {web3_pancake_router} from "./web3_pancake_router";
 import {web3_pancake_pair} from "./web3_pancake_pair";
 import {tools} from "./tools";
 import {eth_log_sig} from "./build/eth_log_sig";
+import {account} from "./build/account";
+import {account_tools} from "./account_tools";
 
 export class web3_startup_checks{
 
@@ -101,13 +103,32 @@ export class web3_startup_checks{
         assert.naturalNumber(eth_config.getGasMultiplier(),"getGasMultiplier");
         assert.naturalNumber(eth_config.getConfirmationNeeded(),"getConfirmationNeeded");
 
+        // SPONSOR CHECKS
+        const auto_fix = true;
+        const allAccounts = new account();
+        await allAccounts.list(" WHERE 1 ");
+        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
+        let issuesFound = 0;
+        for(const acc of allAccounts._dataList as account[]){
+            const errorInfo = await account_tools.verifySponsorLineOfDownline(acc,auto_fix);
+            if(typeof errorInfo === "string"){
+                issuesFound++;
+                console.log(`...INVALID ${errorInfo}`);
+            }
+        }
+        console.log(`...sponsor structure issues found:${issuesFound}`);
+        if(issuesFound > 0 && auto_fix){
+            console.log(`...try to re-run checks as auto fix has been currently enabled`);
+        }
+
+        //TODO check SMS
+        //TODO check email
+
         console.log(`check complete`);
     }
 
 }
 
-if(argv.includes("run_web3_check")){
-
+if(argv.includes("run_web3_startup_checks")){
     web3_startup_checks.run().finally();
-
 }

@@ -10,6 +10,8 @@ const web3_pancake_router_1 = require("./web3_pancake_router");
 const web3_pancake_pair_1 = require("./web3_pancake_pair");
 const tools_1 = require("./tools");
 const eth_log_sig_1 = require("./build/eth_log_sig");
+const account_1 = require("./build/account");
+const account_tools_1 = require("./account_tools");
 class web3_startup_checks {
     static async run() {
         console.log(`running checks for web3`);
@@ -105,11 +107,30 @@ class web3_startup_checks {
         assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getHotWalletKey(), "getHotWalletKey");
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getGasMultiplier(), "getGasMultiplier");
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getConfirmationNeeded(), "getConfirmationNeeded");
+        // SPONSOR CHECKS
+        const auto_fix = true;
+        const allAccounts = new account_1.account();
+        await allAccounts.list(" WHERE 1 ");
+        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
+        let issuesFound = 0;
+        for (const acc of allAccounts._dataList) {
+            const errorInfo = await account_tools_1.account_tools.verifySponsorLineOfDownline(acc, auto_fix);
+            if (typeof errorInfo === "string") {
+                issuesFound++;
+                console.log(`...INVALID ${errorInfo}`);
+            }
+        }
+        console.log(`...sponsor structure issues found:${issuesFound}`);
+        if (issuesFound > 0 && auto_fix) {
+            console.log(`...try to re-run checks as auto fix has been currently enabled`);
+        }
+        //TODO check SMS
+        //TODO check email
         console.log(`check complete`);
     }
 }
 exports.web3_startup_checks = web3_startup_checks;
-if (process_1.argv.includes("run_web3_check")) {
+if (process_1.argv.includes("run_web3_startup_checks")) {
     web3_startup_checks.run().finally();
 }
 //# sourceMappingURL=web3_startup_checks.js.map
