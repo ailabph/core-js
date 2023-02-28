@@ -225,6 +225,13 @@ class tools {
     static isStringAndNotEmpty(value) {
         return typeof value === "string" && !this.isEmpty(value);
     }
+    static isNullish(value) {
+        if (value === null)
+            return true;
+        if (typeof value === "string" && value.toLowerCase() === "null")
+            return true;
+        return false;
+    }
     //endregion CHECK
     //region GETTER
     static parseInt({ val, name = "", strict = true }) {
@@ -295,6 +302,17 @@ class tools {
     }
     static convertNumberToHex(num) {
         return "0x" + num.toString(16);
+    }
+    static hexToNumber(hexString) {
+        // remove "0x" prefix if present
+        if (hexString.startsWith("0x")) {
+            hexString = hexString.slice(2);
+        }
+        // parse hex string to integer
+        return parseInt(hexString, 16);
+    }
+    static hexToNumberAsString(hexString) {
+        return tools.hexToNumber(hexString).toString();
     }
     static getPropertyValue(obj, propName, object_name = "object") {
         if (!(propName in obj)) {

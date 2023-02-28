@@ -4,9 +4,7 @@ import {config} from "./config";
 import * as fs from "fs";
 import fsPromise from "fs/promises";
 import BigNumber from "bignumber.js";
-import dayjs, {Dayjs} from "dayjs";
-import timezone from 'dayjs/plugin/timezone';
-import utc from 'dayjs/plugin/utc';
+import {Dayjs} from "dayjs";
 import _ from "lodash";
 import {time_helper} from "./time_helper";
 import Bottleneck from 'bottleneck';
@@ -234,6 +232,11 @@ export class tools{
     public static isStringAndNotEmpty(value:any):boolean {
         return typeof value === "string" && !this.isEmpty(value);
     }
+    public static isNullish(value:any):boolean{
+        if(value === null) return true;
+        if(typeof value === "string" && value.toLowerCase() === "null") return true;
+        return false;
+    }
     //endregion CHECK
 
     //region GETTER
@@ -299,6 +302,18 @@ export class tools{
     }
     public static convertNumberToHex(num:number):string{
         return "0x"+num.toString(16);
+    }
+    public static hexToNumber(hexString: string): number {
+        // remove "0x" prefix if present
+        if (hexString.startsWith("0x")) {
+            hexString = hexString.slice(2);
+        }
+
+        // parse hex string to integer
+        return parseInt(hexString, 16);
+    }
+    public static hexToNumberAsString(hexString:string):string{
+        return tools.hexToNumber(hexString).toString();
     }
     public static getPropertyValue<T>(obj: {[key:string]:any}, propName: string, object_name:string="object"): T {
         if (!(propName in obj)) {
