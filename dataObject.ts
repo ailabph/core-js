@@ -339,7 +339,8 @@ export abstract class dataObject{
         if(this.hasNonAutoIncIntPrimaryKey()){
             let primaryKey = this.getPrimaryKey();
             if(!primaryKey) throw new Error("expected to have primary key");
-            this[primaryKey] = Date.now();
+            const generatePrimaryKey = performance.now()+"";
+            this[primaryKey] = tools.parseNumber(generatePrimaryKey.replace(".",""));
         }
 
         for(let i=0; i<this._data_properties.length; i++){
