@@ -95,7 +95,7 @@ class worker_token_balance {
             await connection_1.connection.commit();
             await tools_1.tools.sleep(50);
             setImmediate(() => {
-                worker_token_balance.run();
+                worker_token_balance.run().finally();
             });
         }
         catch (e) {

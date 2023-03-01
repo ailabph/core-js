@@ -112,7 +112,7 @@ export class worker_token_balance{
             await connection.commit();
             await tools.sleep(50);
             setImmediate(()=>{
-                worker_token_balance.run();
+                worker_token_balance.run().finally();
             });
         }catch (e) {
             await connection.rollback();
