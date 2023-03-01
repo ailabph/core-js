@@ -1042,7 +1042,10 @@ export class eth_config {
 
     //region GAS SETTINGS
     public static getGasMultiplier(): number {
-        return 7;
+        return 5;
+    }
+    public static getGasMultiplierForBnb(): number {
+        return 2;
     }
 
     public static getConfirmationNeeded(): number {

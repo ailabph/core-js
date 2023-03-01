@@ -1023,7 +1023,10 @@ class eth_config {
     //endregion
     //region GAS SETTINGS
     static getGasMultiplier() {
-        return 7;
+        return 5;
+    }
+    static getGasMultiplierForBnb() {
+        return 2;
     }
     static getConfirmationNeeded() {
         return 2;
