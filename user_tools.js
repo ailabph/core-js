@@ -37,6 +37,15 @@ class user_tools {
         this.log(`...user found with id ${queryUser.id} username ${queryUser.username}`, method);
         return queryUser;
     }
+    static async getUserByWallet(wallet_address) {
+        const method = "getUserByWallet";
+        wallet_address = assert_1.assert.stringNotEmpty(wallet_address, `${method} wallet_address`);
+        const queryUser = new user_1.user();
+        await queryUser.list(" WHERE walletAddress=:address AND usergroup!=:claimed ", { address: wallet_address, claimed: "claimed" });
+        if (queryUser.count() > 1)
+            throw new Error(`multiple users found ${queryUser.count()}, with address ${wallet_address}`);
+        return queryUser.getItem();
+    }
 }
 exports.user_tools = user_tools;
 //# sourceMappingURL=user_tools.js.map
