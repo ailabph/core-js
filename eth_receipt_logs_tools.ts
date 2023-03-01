@@ -26,21 +26,37 @@ type SwapTradeInfo = {
     transferAmount:string
 }
 export { SwapTradeInfo }
+
+type AnalyzeLogsInvolvementSummary = {
+    blockNumber:number,
+    has_bnb_usd:boolean,
+    has_token:boolean,
+    has_token_dex:boolean,
+}
+export { AnalyzeLogsInvolvementSummary }
 //endregion TYPES
 
 export class eth_receipt_logs_tools{
+
+    private static log(msg:string,method:string,end:boolean=false,force_display:boolean=false):void{
+        if(config.getConfig().verbose_log || force_display){
+            console.log(`receipt_logs_tools|${method}|${msg}`);
+            if(end) console.log(`receipt_logs_tools|${method}|${tools.LINE}`);
+        }
+    }
 
     private static verbose = false;
 
     //region GETTERS
     public static async getReceiptLogs(txn_hash:string): Promise<AnalyzeLogsResult>{
+        const method = "getReceiptLogs";
         assert.inTransaction();
         assert.notEmpty(txn_hash,"txn_hash");
         let receipt_db = new eth_receipt();
         receipt_db.transactionHash = txn_hash;
         await receipt_db.fetch();
         if(receipt_db.isNew()){
-            if(this.verbose) console.log(`hash:${txn_hash} receipt not on db, retrieving in rpc...`)
+            this.log(`hash:${txn_hash} receipt not on db, retrieving in rpc...`,method)
             const receipt = await eth_worker.getReceiptByTxnHashWeb3(txn_hash);
             receipt_db.blockHash = receipt.blockHash;
             receipt_db.blockNumber = receipt.blockNumber;
@@ -54,7 +70,7 @@ export class eth_receipt_logs_tools{
             receipt_db.transactionHash = receipt.transactionHash;
             receipt_db.transactionIndex = receipt.transactionIndex;
             await receipt_db.save();
-            if(this.verbose) console.log(`db receipt id:${receipt_db.id}`);
+            this.log(`db receipt id:${receipt_db.id}`,method);
 
             let totalLogsAlreadyOnDb = 0, totalLogsAddedToDb = 0;
             for(const log of receipt.logs as Log[]){
@@ -70,11 +86,11 @@ export class eth_receipt_logs_tools{
                 await dbLog.save();
                 totalLogsAddedToDb++;
             }
-            if(this.verbose) console.log(`${totalLogsAlreadyOnDb} total logs already on db. ${totalLogsAddedToDb} total logs added to db`);
+            this.log(`${totalLogsAlreadyOnDb} total logs already on db. ${totalLogsAddedToDb} total logs added to db`,method);
             return eth_receipt_logs_tools.getReceiptLogs(txn_hash);
         }
         else{
-            if(this.verbose) console.log(`receipt info of ${txn_hash} on db`);
+            this.log(`receipt info of ${txn_hash} on db`,method);
             let receipt: TransactionReceipt = {
                 blockHash: receipt_db.blockHash ?? "",
                 blockNumber: receipt_db.blockNumber ?? 0,
@@ -94,7 +110,7 @@ export class eth_receipt_logs_tools{
             await logs.list(" WHERE transactionHash=:transactionHash ",{transactionHash:receipt_db.transactionHash});
             let log = new eth_receipt_logs();
             while(log = logs.getItem()){
-                if(this.verbose) console.log(`${log.id} ${log.blockNumber} ${log.logIndex}`);
+                this.log(`${log.id} ${log.blockNumber} ${log.logIndex}`,method);
                 receipt.logs.push(eth_worker.convertDbLogToWeb3Log(log));
             }
             return {receipt: receipt, result: []};
@@ -239,11 +255,12 @@ export class eth_receipt_logs_tools{
             || log.topics.includes(eth_config.getTokenUsdPairContract().toLowerCase())
     }
     public static async analyzeLogsInvolvement(logs:Log[]){
-        if(this.verbose) console.log(`${logs.length} logs to scan`);
+        const method = "analyzeLogsInvolvement";
+        this.log(`${logs.length} logs to scan`,method);
         const total_logs = logs.length;
         let scan_count = 0;
         for(const log of logs as Log[]){
-            if(this.verbose) console.log(`${++scan_count}/${total_logs} block ${log.blockNumber} hash ${log.transactionHash} logIndex ${log.logIndex}`);
+            this.log(`${++scan_count}/${total_logs} block ${log.blockNumber} hash ...${tools.lastSubstring(log.transactionHash,6)} logIndex ${log.logIndex}`,method);
             let has_bnb_usd = false;
             if(eth_receipt_logs_tools.checkIfHasBnbUsdDex(log)){
                 has_bnb_usd = true;
@@ -260,9 +277,9 @@ export class eth_receipt_logs_tools{
             }
 
             if(has_bnb_usd || has_token || has_token_dex){
-                if(this.verbose) console.log(`transaction is involved, saving its logs to db`);
+                this.log(`transaction is involved, saving its logs to db`,method);
                 const dbReceipt = await eth_receipt_logs_tools.getReceiptLogs(log.transactionHash);
-                if(this.verbose) console.log(`${dbReceipt.receipt.logs.length} logs in db`);
+                this.log(`${dbReceipt.receipt.logs.length} logs in db`,method);
 
                 // flag this log
                 const db_log = await eth_receipt_logs_tools.getDbLog(log.transactionHash,log.logIndex);
@@ -270,7 +287,7 @@ export class eth_receipt_logs_tools{
                 if(has_token) db_log.has_token = "y";
                 if(has_token_dex) db_log.has_token_dex = "y";
                 await db_log.save();
-                if(this.verbose) console.log(`update log with flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`);
+                this.log(`update log with flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`,method,false,true);
 
                 // flag this transaction
                 const transaction = await eth_worker.getDbTxnByHash(log.transactionHash);
@@ -278,7 +295,7 @@ export class eth_receipt_logs_tools{
                 if(has_token) transaction.has_token = "y";
                 if(has_token_dex) transaction.has_token_dex = "y";
                 await transaction.save();
-                if(this.verbose) console.log(`update transaction flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`);
+                this.log(`update transaction flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`,method,false,true);
 
                 // flag block
                 const block = await eth_worker.getBlockByNumber(log.blockNumber);
@@ -286,7 +303,10 @@ export class eth_receipt_logs_tools{
                 if(has_token) block.has_token = "y";
                 if(has_token_dex) block.has_token_dex = "y";
                 await block.save();
-                if(this.verbose) console.log(`update block flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`);
+                this.log(`update block flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`,method,false,true);
+            }
+            else{
+                this.log(`...not involved`,method);
             }
         }
     }
