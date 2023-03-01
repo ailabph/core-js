@@ -173,7 +173,7 @@ class worker_price {
             await tools_1.tools.sleep(10);
             this.retryDelayMultiplier = 0;
             setImmediate(() => {
-                worker_price.run();
+                worker_price.run().finally();
             });
         }
         catch (e) {

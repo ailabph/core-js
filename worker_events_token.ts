@@ -191,7 +191,7 @@ export class worker_events_token{
             this.lastProcessedDbLogId = this.currentDbLogId;
             await tools.sleep(50);
             setImmediate(()=>{
-                worker_events_token.run();
+                worker_events_token.run().finally();
             });
         }catch (e){
             await connection.rollback();

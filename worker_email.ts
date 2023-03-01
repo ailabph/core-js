@@ -96,7 +96,7 @@ export class worker_email{
             await tools.sleep(1000 * 30);
             this.emailToProcess = 0;
             setImmediate(()=>{
-                worker_email.run();
+                worker_email.run().finally();
             });
         }
     }
@@ -109,7 +109,7 @@ export class worker_email{
             this.log(`restarting worker...`,method);
             await tools.sleep(1000);
             setImmediate(()=>{
-                this.run();
+                worker_email.run().finally();
             });
         }
         else{

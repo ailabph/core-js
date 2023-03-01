@@ -189,7 +189,7 @@ export class worker_events_trade{
             this.retryDelayMultiplier = 0;
             await tools.sleep(50);
             setImmediate(()=>{
-                worker_events_trade.run();
+                worker_events_trade.run().finally();
             });
         }catch (e){
             await connection.rollback();

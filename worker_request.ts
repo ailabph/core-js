@@ -36,7 +36,7 @@ export class worker_request{
             await connection.commit();
             await tools.sleep(150);
             setImmediate(()=>{
-                worker_request.run();
+                worker_request.run().finally();
             });
         }catch (e){
             await connection.rollback();

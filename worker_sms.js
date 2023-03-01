@@ -206,7 +206,7 @@ class worker_sms {
             await tools_1.tools.sleep(1000 * 60 * 2);
             this.smsToProcess = 0;
             setImmediate(() => {
-                worker_sms.run();
+                worker_sms.run().finally();
             });
         }
     }
@@ -219,7 +219,7 @@ class worker_sms {
             this.log(`restarting worker...`, method);
             await tools_1.tools.sleep(1000);
             setImmediate(() => {
-                this.run();
+                worker_sms.run().finally();
             });
         }
         else {

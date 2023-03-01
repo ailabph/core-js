@@ -33,7 +33,7 @@ class worker_request {
             await connection_1.connection.commit();
             await tools_1.tools.sleep(150);
             setImmediate(() => {
-                worker_request.run();
+                worker_request.run().finally();
             });
         }
         catch (e) {
