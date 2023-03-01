@@ -14,6 +14,7 @@ const config_1 = require("./config");
 const account_tools_1 = require("./account_tools");
 const eth_token_balance_tools_1 = require("./eth_token_balance_tools");
 const eth_worker_1 = require("./eth_worker");
+const user_tools_1 = require("./user_tools");
 class worker_complan {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
@@ -42,7 +43,9 @@ class worker_complan {
             }
             await connection_1.connection.commit();
             await tools_1.tools.sleep(500);
-            setImmediate(this.run);
+            setImmediate(() => {
+                worker_complan.run().finally();
+            });
         }
         catch (e) {
             await connection_1.connection.rollback();
@@ -227,6 +230,8 @@ class worker_complan {
                     await skip.save();
                 }
                 else {
+                    const uplineUser = await user_tools_1.user_tools.getUser(sponsor.user_id);
+                    const username = uplineUser ? uplineUser.username : "";
                     logs = this.addLog(`checking if upline is maintained`, method, logs);
                     const timeFormat = time_helper_1.time_helper.getAsFormat(buyTrade.blockTime, time_helper_1.TIME_FORMATS.ISO, "UTC");
                     const tokenBalanceAtPurchaseInfo = await eth_token_balance_tools_1.eth_token_balance_tools.getBalanceDetailAsOf(sponsor.account_code, buyTrade.blockTime);
@@ -244,7 +249,6 @@ class worker_complan {
                     const currentTime = time_helper_1.time_helper.getTime().format(time_helper_1.TIME_FORMATS.ISO);
                     logs = this.addLog(`current token balance during purchase on ${currentTime} is ${currentTokenBalance} valued at ${currentBalanceUsdValue} bnb_usd ${currentBnbBusdPrice} token_bnb ${currentTokenBnbPrice} token_usd ${currentTokenUsdPrice}`, method, logs);
                     if (tools_1.tools.greaterThanOrEqualTo(currentBalanceUsdValue, this.getMinimumUsdValue())) {
-                        // add point
                         const result = await this.addCommunityBonus(sponsor, buyer_account, buyTrade, logs);
                         logs = result.log;
                     }

@@ -15,6 +15,7 @@ import {config} from "./config";
 import {account_tools} from "./account_tools";
 import {eth_token_balance_tools} from "./eth_token_balance_tools";
 import {eth_worker} from "./eth_worker";
+import {user_tools} from "./user_tools";
 
 export class worker_complan{
 
@@ -46,7 +47,9 @@ export class worker_complan{
             }
             await connection.commit();
             await tools.sleep(500);
-            setImmediate(this.run);
+            setImmediate(()=>{
+                worker_complan.run().finally();
+            });
         }catch (e){
             await connection.rollback();
             throw e;
@@ -248,6 +251,9 @@ export class worker_complan{
                     await skip.save();
                 }
                 else{
+                    const uplineUser = await user_tools.getUser(sponsor.user_id);
+                    const username = uplineUser ? uplineUser.username : "";
+
                     logs = this.addLog(`checking if upline is maintained`,method,logs);
                     const timeFormat = time_helper.getAsFormat(buyTrade.blockTime,TIME_FORMATS.ISO,"UTC");
                     const tokenBalanceAtPurchaseInfo = await eth_token_balance_tools.getBalanceDetailAsOf(sponsor.account_code,buyTrade.blockTime);
@@ -267,7 +273,6 @@ export class worker_complan{
                     logs = this.addLog(`current token balance during purchase on ${currentTime} is ${currentTokenBalance} valued at ${currentBalanceUsdValue} bnb_usd ${currentBnbBusdPrice} token_bnb ${currentTokenBnbPrice} token_usd ${currentTokenUsdPrice}`,method,logs);
 
                     if(tools.greaterThanOrEqualTo(currentBalanceUsdValue,this.getMinimumUsdValue())){
-                        // add point
                         const result = await this.addCommunityBonus(sponsor,buyer_account,buyTrade,logs);
                         logs = result.log;
                     }
