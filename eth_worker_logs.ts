@@ -98,7 +98,7 @@ export class eth_worker_logs{
                 await tools.sleep(updatedWaitTimeSeconds * 1000);
             }
             setImmediate(()=>{
-                eth_worker_logs.run();
+                eth_worker_logs.run().finally();
             });
         }catch (e) {
             await connection.rollback();
@@ -107,7 +107,7 @@ export class eth_worker_logs{
             console.log(`rolled back changes on db. waiting ${updatedWaitTimeSeconds} seconds before trying again....`);
             await tools.sleep(updatedWaitTimeSeconds * 1000);
             setImmediate(()=>{
-                eth_worker_logs.run();
+                eth_worker_logs.run().finally();
             });
         }
     }

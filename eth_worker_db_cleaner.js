@@ -57,7 +57,7 @@ class eth_worker_db_cleaner {
             const used = process.memoryUsage().heapUsed / 1024 / 1024;
             console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
             setImmediate(() => {
-                eth_worker_db_cleaner.run();
+                eth_worker_db_cleaner.run().finally();
             });
         }
         catch (e) {

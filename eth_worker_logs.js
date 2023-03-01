@@ -94,7 +94,7 @@ class eth_worker_logs {
                 await tools_1.tools.sleep(updatedWaitTimeSeconds * 1000);
             }
             setImmediate(() => {
-                eth_worker_logs.run();
+                eth_worker_logs.run().finally();
             });
         }
         catch (e) {
@@ -104,7 +104,7 @@ class eth_worker_logs {
             console.log(`rolled back changes on db. waiting ${updatedWaitTimeSeconds} seconds before trying again....`);
             await tools_1.tools.sleep(updatedWaitTimeSeconds * 1000);
             setImmediate(() => {
-                eth_worker_logs.run();
+                eth_worker_logs.run().finally();
             });
         }
     }
