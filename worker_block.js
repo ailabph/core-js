@@ -101,7 +101,7 @@ class worker_block {
             this.log(`committing and restarting worker...`, method);
             await tools_1.tools.sleep(1000);
             setImmediate(() => {
-                this.run();
+                worker_block.run().finally();
             });
         }
         else {
