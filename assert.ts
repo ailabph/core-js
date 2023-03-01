@@ -128,4 +128,11 @@ export class assert{
         return true;
     }
 
+    public static validEmail(email:string|null,desc:string=""):string{
+        if(typeof email !== "string") throw new Error(`${desc} is empty`);
+        if(!tools.isValidEmail(email)){
+            throw new Error(`${desc} is not a valid email`);
+        }
+        return email;
+    }
 }

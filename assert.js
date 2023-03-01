@@ -141,6 +141,14 @@ class assert {
             throw new Error(moreInfo);
         return true;
     }
+    static validEmail(email, desc = "") {
+        if (typeof email !== "string")
+            throw new Error(`${desc} is empty`);
+        if (!tools_1.tools.isValidEmail(email)) {
+            throw new Error(`${desc} is not a valid email`);
+        }
+        return email;
+    }
 }
 exports.assert = assert;
 //# sourceMappingURL=assert.js.map
