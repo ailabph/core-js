@@ -4,6 +4,7 @@ exports.web3_startup_checks = void 0;
 const eth_config_1 = require("./eth_config");
 const assert_1 = require("./assert");
 const process_1 = require("process");
+const web3_token_1 = require("./web3_token");
 const eth_worker_1 = require("./eth_worker");
 const eth_contract_data_tools_1 = require("./eth_contract_data_tools");
 const web3_pancake_router_1 = require("./web3_pancake_router");
@@ -12,9 +13,21 @@ const tools_1 = require("./tools");
 const eth_log_sig_1 = require("./build/eth_log_sig");
 const account_1 = require("./build/account");
 const account_tools_1 = require("./account_tools");
+const worker_sms_1 = require("./worker_sms");
+const user_1 = require("./build/user");
+const time_helper_1 = require("./time_helper");
+const config_1 = require("./config");
+const worker_email_1 = require("./worker_email");
 class web3_startup_checks {
     static async run() {
         console.log(`running checks for web3`);
+        const testId = tools_1.tools.generateRandomNumber(1000000, 9999999);
+        const currentTime = time_helper_1.time_helper.getTime().format(time_helper_1.TIME_FORMATS.READABLE);
+        const admin = new user_1.user();
+        admin.username = "admin";
+        await admin.fetch();
+        if (admin.isNew())
+            throw new Error(`unable to retrieve admin user for further tests`);
         const rpc = assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getRPCUrl(), "getRPCUrl");
         console.log(`rpc:${rpc}`);
         //region BUSD
@@ -55,7 +68,7 @@ class web3_startup_checks {
             throw new Error(`config token symbol(${tokenSymbol}) does not match chain symbol(${tokenInfo.symbol})`);
         if (tokenDecimal !== assert_1.assert.naturalNumber(tokenInfo.decimals, "token decimal"))
             throw new Error(`config token Decimal(${tokenDecimal}) does not match chain Decimal(${tokenInfo.decimals})`);
-        //endregion
+        //endregion TRACKED TOKEN
         const genesisHash = assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getTokenGenesisHash(), "getTokenGenesisHash");
         const genesisHashDb = await eth_worker_1.eth_worker.getDbTxnByHash(genesisHash);
         if (genesisHashDb.isNew())
@@ -106,8 +119,9 @@ class web3_startup_checks {
         assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getHotWalletAddress(), "getHotWalletAddress");
         assert_1.assert.stringNotEmpty(eth_config_1.eth_config.getHotWalletKey(), "getHotWalletKey");
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getGasMultiplier(), "getGasMultiplier");
+        assert_1.assert.naturalNumber(eth_config_1.eth_config.getGasMultiplierForBnb(), "getGasMultiplierForBnb");
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getConfirmationNeeded(), "getConfirmationNeeded");
-        // SPONSOR CHECKS
+        //region SPONSOR STRUCTURE
         const auto_fix = true;
         const allAccounts = new account_1.account();
         await allAccounts.list(" WHERE 1 ");
@@ -121,11 +135,44 @@ class web3_startup_checks {
             }
         }
         console.log(`...sponsor structure issues found:${issuesFound}`);
-        if (issuesFound > 0 && auto_fix) {
-            console.log(`...try to re-run checks as auto fix has been currently enabled`);
-        }
-        //TODO check SMS
-        //TODO check email
+        if (issuesFound > 0)
+            throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools_1.tools.convertBoolToYesNo(auto_fix)}`);
+        //endregion SPONSOR STRUCTURE
+        //region HOT WALLET
+        console.log(`checking hot wallet bnb balance`);
+        const hotWalletBnb = await eth_worker_1.eth_worker.getETHBalance(eth_config_1.eth_config.getHotWalletAddress());
+        if (tools_1.tools.lesserThanOrEqualTo(hotWalletBnb, 0))
+            throw new Error(`hot wallet bnb balance is ${hotWalletBnb}`);
+        console.log(`...hot wallet bnb balance is ${hotWalletBnb}`);
+        console.log(`checking hot wallet token balance`);
+        const hotWalletToken = await eth_worker_1.eth_worker.getTokenBalance(eth_config_1.eth_config.getHotWalletAddress());
+        if (tools_1.tools.lesserThan(hotWalletToken, "1000000"))
+            throw new Error(`hot wallet token balance is below 1M, currently ${hotWalletToken}`);
+        console.log(`... hot wallet bnb balance is ${hotWalletToken}`);
+        console.log(`checking sending of token`);
+        const receiptToken = await web3_token_1.web3_token.transfer(eth_config_1.eth_config.getHotWalletAddress(), eth_config_1.eth_config.getHotWalletKey(), admin.walletAddress ?? "", "1");
+        console.log(`...send of token successful with hash ${receiptToken.transactionHash}`);
+        // console.log(`checking sending of bnb`);
+        const receiptBnb = await web3_token_1.web3_token.sendBNB(eth_config_1.eth_config.getHotWalletAddress(), eth_config_1.eth_config.getHotWalletKey(), admin.walletAddress ?? "", "0.0001");
+        console.log(`...send of bnb successful with hash ${receiptBnb.transactionHash}`);
+        //endregion HOT WALLET
+        //region SMS
+        console.log(`checking sms if working...`);
+        const smsRes = await worker_sms_1.worker_sms.sendSms(assert_1.assert.isNumericString(admin.contact, `admin.contact`), `sms check id ${testId} as of ${currentTime}`);
+        if (typeof smsRes === "string")
+            throw new Error(`...sms error ${smsRes}`);
+        console.log(`...send successful`);
+        const data = smsRes.data[0];
+        if (data.sender_name !== config_1.config.getCustomOption("sender_name", true))
+            throw new Error(`sender name do not match`);
+        //endregion SMS
+        //region EMAIL
+        console.log(`checking email...`);
+        const emailRes = await worker_email_1.worker_email.sendEmail(assert_1.assert.stringNotEmpty(admin.email, `admin.email`), `Email Check Id ${testId}`, `as of ${currentTime}`);
+        if (typeof emailRes === "string")
+            throw new Error(`email send failed: ${emailRes}`);
+        console.log(`...email send successful`);
+        //endregion EMAIL
         console.log(`check complete`);
     }
 }

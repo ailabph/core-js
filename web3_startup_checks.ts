@@ -11,11 +11,24 @@ import {tools} from "./tools";
 import {eth_log_sig} from "./build/eth_log_sig";
 import {account} from "./build/account";
 import {account_tools} from "./account_tools";
+import {worker_sms} from "./worker_sms";
+import {user} from "./build/user";
+import {TIME_FORMATS, time_helper} from "./time_helper";
+import {config} from "./config";
+import {worker_email} from "./worker_email";
 
 export class web3_startup_checks{
 
     public static async run(){
         console.log(`running checks for web3`);
+
+        const testId = tools.generateRandomNumber(1000000,9999999);
+        const currentTime = time_helper.getTime().format(TIME_FORMATS.READABLE);
+
+        const admin = new user();
+        admin.username = "admin";
+        await admin.fetch();
+        if(admin.isNew()) throw new Error(`unable to retrieve admin user for further tests`);
 
         const rpc = assert.stringNotEmpty(eth_config.getRPCUrl(),"getRPCUrl");
         console.log(`rpc:${rpc}`);
@@ -29,6 +42,7 @@ export class web3_startup_checks{
         if(!busdInfo) throw new Error(`unable to retrieve busd contract on chain`);
         if(busdSymbol.toLowerCase() !== busdInfo.symbol.toLowerCase()) throw new Error(`config busd symbol(${busdSymbol}) does not match chain symbol(${busdInfo.symbol})`);
         if(busdDecimal !== assert.naturalNumber(busdInfo.decimals,"busd decimal")) throw new Error(`config busd Decimal(${busdDecimal}) does not match chain Decimal(${busdInfo.decimals})`);
+
         //endregion BUSD
 
         //region BNB
@@ -51,7 +65,7 @@ export class web3_startup_checks{
         if(!tokenInfo) throw new Error(`unable to retrieve token info on chain`);
         if(tokenSymbol.toLowerCase() !== tokenInfo.symbol.toLowerCase()) throw new Error(`config token symbol(${tokenSymbol}) does not match chain symbol(${tokenInfo.symbol})`);
         if(tokenDecimal !== assert.naturalNumber(tokenInfo.decimals,"token decimal")) throw new Error(`config token Decimal(${tokenDecimal}) does not match chain Decimal(${tokenInfo.decimals})`);
-        //endregion
+        //endregion TRACKED TOKEN
 
         const genesisHash = assert.stringNotEmpty(eth_config.getTokenGenesisHash(),"getTokenGenesisHash");
         const genesisHashDb = await eth_worker.getDbTxnByHash(genesisHash);
@@ -101,9 +115,10 @@ export class web3_startup_checks{
         assert.stringNotEmpty(eth_config.getHotWalletKey(),"getHotWalletKey");
 
         assert.naturalNumber(eth_config.getGasMultiplier(),"getGasMultiplier");
+        assert.naturalNumber(eth_config.getGasMultiplierForBnb(),"getGasMultiplierForBnb");
         assert.naturalNumber(eth_config.getConfirmationNeeded(),"getConfirmationNeeded");
 
-        // SPONSOR CHECKS
+        //region SPONSOR STRUCTURE
         const auto_fix = true;
         const allAccounts = new account();
         await allAccounts.list(" WHERE 1 ");
@@ -117,12 +132,53 @@ export class web3_startup_checks{
             }
         }
         console.log(`...sponsor structure issues found:${issuesFound}`);
-        if(issuesFound > 0 && auto_fix){
-            console.log(`...try to re-run checks as auto fix has been currently enabled`);
-        }
+        if(issuesFound > 0) throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools.convertBoolToYesNo(auto_fix)}`);
+        //endregion SPONSOR STRUCTURE
 
-        //TODO check SMS
-        //TODO check email
+        //region HOT WALLET
+        console.log(`checking hot wallet bnb balance`);
+        const hotWalletBnb = await eth_worker.getETHBalance(eth_config.getHotWalletAddress());
+        if(tools.lesserThanOrEqualTo(hotWalletBnb,0)) throw new Error(`hot wallet bnb balance is ${hotWalletBnb}`);
+        console.log(`...hot wallet bnb balance is ${hotWalletBnb}`);
+
+        console.log(`checking hot wallet token balance`);
+        const hotWalletToken = await eth_worker.getTokenBalance(eth_config.getHotWalletAddress());
+        if(tools.lesserThan(hotWalletToken,"1000000")) throw new Error(`hot wallet token balance is below 1M, currently ${hotWalletToken}`);
+        console.log(`... hot wallet bnb balance is ${hotWalletToken}`);
+
+
+        console.log(`checking sending of token`);
+        const receiptToken = await web3_token.transfer(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),admin.walletAddress??"","1");
+        console.log(`...send of token successful with hash ${receiptToken.transactionHash}`);
+
+        // console.log(`checking sending of bnb`);
+        const receiptBnb = await web3_token.sendBNB(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),admin.walletAddress??"","0.0001");
+        console.log(`...send of bnb successful with hash ${receiptBnb.transactionHash}`);
+
+        //endregion HOT WALLET
+
+        //region SMS
+        console.log(`checking sms if working...`);
+        const smsRes = await worker_sms.sendSms(
+            assert.isNumericString(admin.contact,`admin.contact`),
+            `sms check id ${testId} as of ${currentTime}`
+        );
+        if(typeof smsRes === "string")throw new Error(`...sms error ${smsRes}`);
+        console.log(`...send successful`);
+        const data = smsRes.data[0];
+        if(data.sender_name !== config.getCustomOption("sender_name",true)) throw new Error(`sender name do not match`);
+        //endregion SMS
+
+        //region EMAIL
+        console.log(`checking email...`);
+        const emailRes = await worker_email.sendEmail(
+            assert.stringNotEmpty(admin.email,`admin.email`),
+            `Email Check Id ${testId}`,
+            `as of ${currentTime}`
+        );
+        if(typeof emailRes === "string") throw new Error(`email send failed: ${emailRes}`);
+        console.log(`...email send successful`);
+        //endregion EMAIL
 
         console.log(`check complete`);
     }
