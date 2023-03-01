@@ -27,6 +27,7 @@ exports.worker_blocks_tools = void 0;
 const t = __importStar(require("io-ts"));
 const d = __importStar(require("fp-ts/Either"));
 const tools_1 = require("./tools");
+const assert_1 = require("./assert");
 //region TYPES
 const SingleFlightErrorCodec = t.type({
     code: t.number,
@@ -148,6 +149,13 @@ class worker_blocks_tools {
                     receipt.cumulativeGasUsed = tools_1.tools.hexToNumberAsString(receipt.cumulativeGasUsed);
                     receipt.effectiveGasPrice = tools_1.tools.hexToNumberAsString(receipt.effectiveGasPrice);
                     receipt.gasUsed = tools_1.tools.hexToNumberAsString(receipt.gasUsed);
+                    for (const log of receipt.logs) {
+                        log.blockNumber = tools_1.tools.hexToNumberAsString(log.blockNumber);
+                        if (log.logIndex)
+                            log.logIndex = tools_1.tools.hexToNumberAsString(log.logIndex);
+                        if (log.transactionIndex)
+                            log.transactionIndex = tools_1.tools.hexToNumberAsString(log.transactionIndex);
+                    }
                 }
             }
             return blockInfo;
@@ -189,6 +197,29 @@ class worker_blocks_tools {
             return decoded.right;
         }
         return false;
+    }
+    //region CONVERT
+    static convertWeb3Log(log) {
+        const method = "convertWeb3Log";
+        return {
+            address: log.address,
+            blockHash: log.blockHash ?? "",
+            blockNumber: assert_1.assert.positiveInt(log.blockNumber, `${method} log.blockNumber`),
+            data: log.data,
+            logIndex: assert_1.assert.positiveInt(log.logIndex ?? 0, `${method} log.logIndex`),
+            topics: log.topics,
+            transactionHash: (log.transactionHash ?? ""),
+            transactionIndex: assert_1.assert.naturalNumber(log.transactionIndex ?? 0, `${method} log.transactionIndex`)
+        };
+    }
+    static getLogsArray(receipts) {
+        const logs = [];
+        for (const receipt of receipts) {
+            for (const log of receipt.logs) {
+                logs.push(this.convertWeb3Log(log));
+            }
+        }
+        return logs;
     }
 }
 exports.worker_blocks_tools = worker_blocks_tools;

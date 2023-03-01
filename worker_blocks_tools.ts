@@ -1,8 +1,8 @@
-
 import * as t from "io-ts";
 import * as d from "fp-ts/Either";
-import {TransferLog} from "./web3_log_decoder";
 import {tools} from "./tools";
+import {Log} from "web3-core";
+import {assert} from "./assert";
 
 //region TYPES
 const SingleFlightErrorCodec = t.type({
@@ -70,8 +70,8 @@ const LogCodec = t.type({
     logIndex: t.union([t.null,t.string]),
     removed: t.boolean,
 });
-type Log = t.TypeOf<typeof LogCodec>;
-export { Log };
+type LogDecoded = t.TypeOf<typeof LogCodec>;
+export { LogDecoded };
 
 const ReceiptCodec = t.type({
     blockHash: t.union([t.null,t.string]),
@@ -88,8 +88,8 @@ const ReceiptCodec = t.type({
     transactionHash: t.string,
     type: t.string,
 });
-type Receipt = t.TypeOf<typeof ReceiptCodec>;
-export { Receipt }
+type ReceiptDecoded = t.TypeOf<typeof ReceiptCodec>;
+export { ReceiptDecoded }
 
 const SingleFlightBlockResultCodec = t.type({
     receipts:t.union([t.null,t.array(ReceiptCodec)]),
@@ -144,6 +144,11 @@ export class worker_blocks_tools{
                     receipt.cumulativeGasUsed = tools.hexToNumberAsString(receipt.cumulativeGasUsed);
                     receipt.effectiveGasPrice = tools.hexToNumberAsString(receipt.effectiveGasPrice);
                     receipt.gasUsed = tools.hexToNumberAsString(receipt.gasUsed);
+                    for(const log of receipt.logs){
+                        log.blockNumber = tools.hexToNumberAsString(log.blockNumber);
+                        if(log.logIndex) log.logIndex = tools.hexToNumberAsString(log.logIndex);
+                        if(log.transactionIndex) log.transactionIndex = tools.hexToNumberAsString(log.transactionIndex);
+                    }
                 }
             }
             return blockInfo;
@@ -169,23 +174,46 @@ export class worker_blocks_tools{
         return false;
     }
     
-    public static getReceiptObject(value:unknown):Receipt|false{
+    public static getReceiptObject(value:unknown):ReceiptDecoded|false{
         if(typeof value !== "object") return false;
         const decoded = ReceiptCodec.decode(value);
         if(d.isRight(decoded)){
-            return decoded.right as Receipt;
+            return decoded.right as ReceiptDecoded;
         }
         return false;
     }
 
-    public static getLogObject(value:unknown):Log|false{
+    public static getLogObject(value:unknown):LogDecoded|false{
         if(typeof value !== "object") return false;
         const decoded = LogCodec.decode(value);
         if(d.isRight(decoded)){
-            return decoded.right as Log;
+            return decoded.right as LogDecoded;
         }
         return false;
     }
 
-
+    //region CONVERT
+    public static convertWeb3Log(log:LogDecoded):Log{
+        const method = "convertWeb3Log";
+        return {
+            address: log.address,
+            blockHash: log.blockHash ?? "",
+            blockNumber: assert.positiveInt(log.blockNumber, `${method} log.blockNumber`),
+            data: log.data,
+            logIndex: assert.positiveInt(log.logIndex ?? 0, `${method} log.logIndex`),
+            topics: log.topics,
+            transactionHash: (log.transactionHash ?? ""),
+            transactionIndex: assert.naturalNumber(log.transactionIndex ?? 0, `${method} log.transactionIndex`)
+        };
+    }
+    public static getLogsArray(receipts:ReceiptDecoded[]):Log[]{
+        const logs:Log[] = [];
+        for(const receipt of receipts){
+            for(const log of receipt.logs){
+                logs.push(this.convertWeb3Log(log));
+            }
+        }
+        return logs;
+    }
+    //endregion CONVERT
 }
