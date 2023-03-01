@@ -4,6 +4,10 @@ import {eth_rpc} from "./eth_rpc";
 import {tools} from "./tools";
 import {Contract} from "ethers";
 import {web3_rpc_web3} from "./web3_rpc_web3";
+import {web3_tools} from "./web3_tools";
+import {assert} from "./assert";
+import {eth_worker} from "./eth_worker";
+import {TransactionReceipt} from "web3-eth/types";
 
 export class web3_token{
 
@@ -148,6 +152,154 @@ export class web3_token{
     //region CHECKS
 
     //endregion CHECKS
+
+    //region WRITE
+    public static async transfer(fromAddress:string, privateKey:string,toAddress:string,tokenAmount:string,gasMultiplier:number=0):Promise<TransactionReceipt>{
+        const method = "transfer";
+        this.log(`transferring ${tokenAmount} from ${fromAddress} to ${toAddress}`,method,false,true);
+
+        if(gasMultiplier <= 0) gasMultiplier = eth_config.getGasMultiplier();
+        gasMultiplier = assert.positiveInt(gasMultiplier,`${method} gasMultiplier`);
+
+        const fromAddressIsWallet = await web3_tools.isWalletAddress(fromAddress);
+        if(!fromAddressIsWallet) throw new Error(`${method}| fromAddress ${fromAddress} is not detected as a wallet`);
+        assert.stringNotEmpty(privateKey,`${method} privateKey`);
+
+        const toAddressIsWallet = await web3_tools.isWalletAddress(toAddress);
+        if(!toAddressIsWallet) throw new Error(`${method}| toAddress ${toAddress} is not detected as a wallet`);
+        assert.isNumericString(tokenAmount,`${method} tokenAmount`, 0);
+
+        this.log(`...all wallets seem to be valid`,method,false,true);
+
+        const web3 = web3_rpc_web3.getWeb3Client();
+        const contract = web3_rpc_web3.getWeb3Contract(eth_config.getTokenContract(),eth_config.getTokenAbi());
+
+        const nonce = await web3.eth.getTransactionCount(fromAddress);
+        this.log(`...transaction count of ${fromAddress} is ${nonce}`,method,false,true);
+
+        const gasPrice = await web3.eth.getGasPrice();
+        this.log(`...current gas price is ${gasPrice}`,method,false,true);
+
+        this.log(`...encoding transfer ABI`,method,false,true);
+        const tokenValue = eth_worker.convertTokenToValue(tokenAmount);
+        const txData = contract.methods.transfer(toAddress,tokenValue).encodeABI();
+
+        this.log(`...estimating gas required`,method,false,true);
+        const gasLimit = await web3.eth.estimateGas({from:fromAddress,to:toAddress, data:txData});
+        this.log(`...estimated gas limit ${gasLimit}`,method,false,true);
+        const adjustedGasLimit = tools.parseIntSimple(tools.multiply(gasLimit,gasMultiplier,0));
+        this.log(`...adjusted gas limit ${adjustedGasLimit}`,method,false,true);
+
+        const rawTx: any = {
+            nonce: nonce,
+            gasPrice: gasPrice,
+            gasLimit: adjustedGasLimit,
+            from: fromAddress,
+            to: eth_config.getTokenContract(),
+            value: "0x0",
+            data: txData
+        };
+
+        this.log(`...signing transaction`,method,false,true);
+        const signedTx = await web3.eth.accounts.signTransaction(rawTx, privateKey);
+        if(signedTx.rawTransaction === undefined) throw new Error(`${method}| unable to sign transaction fromAddress ${fromAddress} to contract ${eth_config.getTokenContract()}`);
+        this.log(`...sending signed transaction`,method,false,true);
+
+        try{
+            const transactionReceipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            this.log(`...result`,method,false,true);
+            this.log(`......transactionHash ${transactionReceipt.transactionHash}`,method,false,true);
+            this.log(`......blockNumber ${transactionReceipt.blockNumber}`,method,false,true);
+            this.log(`......gasUsed ${transactionReceipt.gasUsed}`,method,false,true);
+            this.log(`......logs ${transactionReceipt.logs.length}`,method,false,true);
+            this.log(`......status ${transactionReceipt.status?"success":"failed"}`,method,false,true);
+            return transactionReceipt;
+        }catch (e){
+            const errorMessage = e instanceof Error ? e.message : "unknown error";
+            if(errorMessage.indexOf("replacement transaction underpriced") >= 0){
+                const waitForSeconds = 4;
+                this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`,method,false,true);
+                await tools.sleep(waitForSeconds * 1000);
+                return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,gasMultiplier);
+            }
+            else{
+                const newGasMultiplier = gasMultiplier + 1;
+                this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`,method,false,true);
+                return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,newGasMultiplier);
+            }
+        }
+    }
+    public static async sendBNB(fromAddress: string, privateKey: string, toAddress: string, amount_to_send: string, gasMultiplier:number=0):Promise<TransactionReceipt>{
+        const method = "sendBNB";
+        this.log(`transferring bnb ${amount_to_send} from ${fromAddress} to ${toAddress}`,method,false,true);
+
+        if(gasMultiplier <= 0) gasMultiplier = eth_config.getGasMultiplierForBnb();
+        gasMultiplier = assert.positiveInt(gasMultiplier,`${method} gasMultiplier`);
+
+        const fromAddressIsWallet = await web3_tools.isWalletAddress(fromAddress);
+        if(!fromAddressIsWallet) throw new Error(`${method}| fromAddress ${fromAddress} is not detected as a wallet`);
+        assert.stringNotEmpty(privateKey,`${method} privateKey`);
+
+        const toAddressIsWallet = await web3_tools.isWalletAddress(toAddress);
+        if(!toAddressIsWallet) throw new Error(`${method}| toAddress ${toAddress} is not detected as a wallet`);
+        assert.isNumericString(amount_to_send,`${method} amount_to_send`, 0);
+        const value_to_send = eth_worker.convertEthToValue(amount_to_send);
+
+        this.log(`...all wallets seem to be valid`,method,false,true);
+
+        const web3 = web3_rpc_web3.getWeb3Client();
+        const nonce = await web3.eth.getTransactionCount(fromAddress);
+        this.log(`...transaction count of ${fromAddress} is ${nonce}`,method,false,true);
+
+        this.log(`...estimating gas for this bnb transfer`,method,false,true);
+        const gasLimit = await web3.eth.estimateGas({value:value_to_send, to:toAddress, from:fromAddress });
+        this.log(`...estimated gas is ${gasLimit}`,method,false,true);
+        const adjustedGasLimit = gasLimit * 2;
+        this.log(`...adjusted gas limit is ${adjustedGasLimit}`,method,false,true);
+
+        const gasPrice = await web3.eth.getGasPrice();
+        this.log(`...current gas price is ${gasPrice}`,method,false,true);
+
+
+        const rawTx: any = {
+            nonce: nonce,
+            gas:adjustedGasLimit,
+            gasPrice: gasPrice,
+            from: fromAddress,
+            to: toAddress,
+            value: value_to_send,
+        };
+
+        this.log(`...signing transaction`,method,false,true);
+        const signedTx = await web3.eth.accounts.signTransaction(rawTx, privateKey);
+        if(signedTx.rawTransaction === undefined) throw new Error(`${method}| unable to sign transaction fromAddress ${fromAddress} to contract ${eth_config.getTokenContract()}`);
+        this.log(`...sending signed transaction`,method,false,true);
+
+        try{
+            const transactionReceipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            this.log(`...result`,method,false,true);
+            this.log(`......transactionHash ${transactionReceipt.transactionHash}`,method,false,true);
+            this.log(`......blockNumber ${transactionReceipt.blockNumber}`,method,false,true);
+            this.log(`......gasUsed ${transactionReceipt.gasUsed}`,method,false,true);
+            this.log(`......logs ${transactionReceipt.logs.length}`,method,false,true);
+            this.log(`......status ${transactionReceipt.status?"success":"failed"}`,method,false,true);
+            return transactionReceipt;
+        }catch (e){
+            const errorMessage = e instanceof Error ? e.message : "unknown error";
+            if(errorMessage.indexOf("replacement transaction underpriced") >= 0){
+                const waitForSeconds = 4;
+                this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`,method,false,true);
+                await tools.sleep(waitForSeconds * 1000);
+                return this.sendBNB(fromAddress,privateKey,toAddress,amount_to_send,gasMultiplier);
+            }
+            else{
+                const newGasMultiplier = gasMultiplier + 1;
+                this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`,method,false,true);
+                return this.sendBNB(fromAddress,privateKey,toAddress,amount_to_send,newGasMultiplier);
+            }
+        }
+    }
+    //endregion
 }
 
 class web3_token_error extends Error{
