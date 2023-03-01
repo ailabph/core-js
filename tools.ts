@@ -237,6 +237,10 @@ export class tools{
         if(typeof value === "string" && value.toLowerCase() === "null") return true;
         return false;
     }
+    public static isValidEmail(email: string): boolean {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
     //endregion CHECK
 
     //region GETTER
@@ -356,6 +360,16 @@ export class tools{
     }
     public static convertBoolToYesNo(val:boolean):string{
         return val ? "yes" : "no";
+    }
+    public static toOrdinal(num: number): string {
+        if (isNaN(num)) {
+            throw new Error('Invalid input, expected a number.');
+        }
+
+        const suffix = ['th', 'st', 'nd', 'rd'];
+        const lastTwo = num % 100;
+        const suffixIndex = (lastTwo >= 11 && lastTwo <= 13) ? 0 : Math.min(lastTwo % 10, 3);
+        return `${num}${suffix[suffixIndex]}`;
     }
     //endregion
 

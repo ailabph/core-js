@@ -232,6 +232,10 @@ class tools {
             return true;
         return false;
     }
+    static isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
     //endregion CHECK
     //region GETTER
     static parseInt({ val, name = "", strict = true }) {
@@ -355,6 +359,15 @@ class tools {
     }
     static convertBoolToYesNo(val) {
         return val ? "yes" : "no";
+    }
+    static toOrdinal(num) {
+        if (isNaN(num)) {
+            throw new Error('Invalid input, expected a number.');
+        }
+        const suffix = ['th', 'st', 'nd', 'rd'];
+        const lastTwo = num % 100;
+        const suffixIndex = (lastTwo >= 11 && lastTwo <= 13) ? 0 : Math.min(lastTwo % 10, 3);
+        return `${num}${suffix[suffixIndex]}`;
     }
     //endregion
     //region MATH
