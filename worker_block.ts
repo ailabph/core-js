@@ -7,6 +7,7 @@ import {LIMITER_INFO, RATE_LIMIT_INTERVAL, tools} from "./tools";
 import {config} from "./config";
 import {SingleFlightBlock, worker_blocks_tools} from "./worker_blocks_tools";
 import {eth_worker} from "./eth_worker";
+import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
 
 
 export class worker_block{
@@ -20,7 +21,7 @@ export class worker_block{
 
     //region CONFIG
     private static getBatch():number{
-        return 150;
+        return 2;
     }
     private static getHeightAllowance():number{
         return 8;
@@ -40,7 +41,8 @@ export class worker_block{
     public static async run(token_specific:boolean=true){
         const method = "run";
         this.init();
-        // await connection.startTransaction();
+        await connection.startTransaction();
+        const startTime = tools.getCurrentTimeStamp();
         try{
             // from = get latest block on db
             // to = from + batch
@@ -57,30 +59,47 @@ export class worker_block{
             for(let blockNum = fromBlock; blockNum < toBlock; blockNum++){
                 await tools.useCallLimiter(this.limiterInfo);
                 this.log(`...retrieving block info ${blockNum}`,method,false,true);
-                this.getBlockSingleFlight(blockNum).then((blockInfo)=>{
+                this.getBlockSingleFlight(blockNum).then(async (blockInfo)=>{
                     --this.blocksToProcess;
                     this.log(`...${this.blocksToProcess}/${currentBatch} block ${blockInfo.result.block.number} txns ${blockInfo.result.block.transactions.length} receipts ${blockInfo.result.receipts ? blockInfo.result.receipts.length : 0} ${blockInfo.result.block.timestamp}`,method,false,true);
-                    // this.restartWorker();
+                    for(const transaction of blockInfo.result.block.transactions){
+                        this.log(`......${transaction.hash} ${transaction.value} ${transaction.blockNumber} ${transaction.transactionIndex}`,method);
+                    }
+                    if(blockInfo.result.receipts){
+                        const web3Logs = worker_blocks_tools.getLogsArray(blockInfo.result.receipts);
+                        await eth_receipt_logs_tools.analyzeLogsInvolvement(web3Logs)
+                    }
+                    await eth_worker.getBlockByNumber(blockNum);
+                    if(this.blocksToProcess === 0){
+                        await connection.commit();
+                        const endTime = tools.getCurrentTimeStamp();
+                        const diff = endTime - startTime;
+                        const minutes = Math.floor(diff / 60);
+                        const minutesInSeconds = minutes * 60;
+                        const seconds = diff - minutesInSeconds;
+                        const blocksPerMinute = 20;
+                        const blocksPerHour = 1200;
+                        let processBlocksPerHour:number|string = blocksPerHour / currentBatch;
+                        processBlocksPerHour = processBlocksPerHour * diff;
+                        processBlocksPerHour = (processBlocksPerHour / 60).toFixed(2);
+                        const blocksPerDay = 28800;
+                        let processBlocksPerDay:number|string = blocksPerDay / currentBatch;
+                        processBlocksPerDay = processBlocksPerDay * diff;
+                        processBlocksPerDay = (processBlocksPerDay / 60).toFixed(2);
+
+                        console.log(`run time ${minutes} minutes ${seconds} seconds to process ${currentBatch} blocks`);
+                        console.log(`estimated ${processBlocksPerHour} minutes to process 1 hour worth of blocks (${blocksPerHour})`);
+                        console.log(`estimated ${processBlocksPerDay} minutes to process 1 day worth of blocks (${blocksPerDay})`);
+                        const used = process.memoryUsage().heapUsed / 1024 / 1024;
+                        console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
+                        await this.restartWorker();
+                    }
                 });
             }
-
         }catch (e){
             console.log(e);
+            await connection.rollback();
         }
-        /*
-        process:
-        blocks
-        from = get last block on db + 1
-        to = get latest block
-        to = to > limit ? limit : to;
-
-        loop from to
-            process++
-        single flight block
-        scan logs
-
-        if process is zero restart
-         */
     }
     private static async restartWorker(){
         const method = "restartWorker";
@@ -88,7 +107,7 @@ export class worker_block{
             throw new Error(`${method} unexpected worker_block.blocksToProcess ${worker_block.blocksToProcess} < 0`);
         }
         if(worker_block.blocksToProcess === 0){
-            this.log(`restarting worker...`,method);
+            this.log(`committing and restarting worker...`,method);
             await tools.sleep(1000);
             setImmediate(()=>{
                 this.run();
