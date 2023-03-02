@@ -207,17 +207,22 @@ class web3_token {
         }
         catch (e) {
             const errorMessage = e instanceof Error ? e.message : "unknown error";
-            if (errorMessage.indexOf("replacement transaction underpriced") >= 0) {
-                const waitForSeconds = 4;
-                this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`, method, false, true);
-                await tools_1.tools.sleep(waitForSeconds * 1000);
-                return this.transfer(fromAddress, privateKey, toAddress, tokenAmount, gasMultiplier);
-            }
-            else {
-                const newGasMultiplier = gasMultiplier + 1;
-                this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`, method, false, true);
-                return this.transfer(fromAddress, privateKey, toAddress, tokenAmount, newGasMultiplier);
-            }
+            this.log(`...send failed: ${errorMessage}`, method, false, true);
+            this.log(`...skipping`, method, false, true);
+            const waitForSeconds = 4;
+            await tools_1.tools.sleep(waitForSeconds * 1000);
+            return false;
+            // if(errorMessage.indexOf("replacement transaction underpriced") >= 0){
+            //     const waitForSeconds = 4;
+            //     this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`,method,false,true);
+            //     await tools.sleep(waitForSeconds * 1000);
+            //     return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,gasMultiplier);
+            // }
+            // else{
+            //     const newGasMultiplier = gasMultiplier + 1;
+            //     this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`,method,false,true);
+            //     return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,newGasMultiplier);
+            // }
         }
     }
     static async sendBNB(fromAddress, privateKey, toAddress, amount_to_send, gasMultiplier = 0) {

@@ -154,7 +154,7 @@ export class web3_token{
     //endregion CHECKS
 
     //region WRITE
-    public static async transfer(fromAddress:string, privateKey:string,toAddress:string,tokenAmount:string,gasMultiplier:number=0):Promise<TransactionReceipt>{
+    public static async transfer(fromAddress:string, privateKey:string,toAddress:string,tokenAmount:string,gasMultiplier:number=0):Promise<TransactionReceipt|false>{
         const method = "transfer";
         this.log(`transferring ${tokenAmount} from ${fromAddress} to ${toAddress}`,method,false,true);
 
@@ -216,17 +216,23 @@ export class web3_token{
             return transactionReceipt;
         }catch (e){
             const errorMessage = e instanceof Error ? e.message : "unknown error";
-            if(errorMessage.indexOf("replacement transaction underpriced") >= 0){
-                const waitForSeconds = 4;
-                this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`,method,false,true);
-                await tools.sleep(waitForSeconds * 1000);
-                return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,gasMultiplier);
-            }
-            else{
-                const newGasMultiplier = gasMultiplier + 1;
-                this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`,method,false,true);
-                return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,newGasMultiplier);
-            }
+            this.log(`...send failed: ${errorMessage}`,method,false,true);
+            this.log(`...skipping`,method,false,true);
+            const waitForSeconds = 4;
+            await tools.sleep(waitForSeconds * 1000);
+            return false;
+            
+            // if(errorMessage.indexOf("replacement transaction underpriced") >= 0){
+            //     const waitForSeconds = 4;
+            //     this.log(`...seems something wrong with the nonce, waiting for ${waitForSeconds} seconds before retrying`,method,false,true);
+            //     await tools.sleep(waitForSeconds * 1000);
+            //     return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,gasMultiplier);
+            // }
+            // else{
+            //     const newGasMultiplier = gasMultiplier + 1;
+            //     this.log(`...failed to send, attempting to resend with increase of gas multiplier from ${gasMultiplier} to ${newGasMultiplier}`,method,false,true);
+            //     return this.transfer(fromAddress,privateKey,toAddress,tokenAmount,newGasMultiplier);
+            // }
         }
     }
     public static async sendBNB(fromAddress: string, privateKey: string, toAddress: string, amount_to_send: string, gasMultiplier:number=0):Promise<TransactionReceipt>{
