@@ -43,33 +43,35 @@ class worker_token_sender {
                     throw new Error(`unable to retrieve user from send_token_request ${pendingToSend.id}`);
                 this.log(`sending ${pendingToSend.amount} to ${pendingToSend.toAddress} owned by ${receiverUser.username}`, method, false, true);
                 const receipt = await web3_token_1.web3_token.transfer(eth_config_1.eth_config.getHotWalletAddress(), eth_config_1.eth_config.getHotWalletKey(), pendingToSend.toAddress, pendingToSend.amount);
-                pendingToSend.status = "d";
-                pendingToSend.hash = receipt.transactionHash;
-                pendingToSend.time_sent = tools_1.tools.getCurrentTimeStamp();
-                await pendingToSend.save();
-                this.log(`send successful, notifying user`, method, false, true);
-                if (typeof point.sms_queue_id === "number" && point.sms_queue_id > 0) {
-                    this.log(`set sms_queue id ${point.sms_queue_id} for sending`, method, false, true);
-                    const sms = new sms_queue_1.sms_queue();
-                    sms.id = point.sms_queue_id;
-                    await sms.fetch();
-                    if (sms.recordExists()) {
-                        sms.status = "o";
-                        await sms.save();
+                if (receipt) {
+                    pendingToSend.status = "d";
+                    pendingToSend.hash = receipt.transactionHash;
+                    pendingToSend.time_sent = tools_1.tools.getCurrentTimeStamp();
+                    await pendingToSend.save();
+                    this.log(`send successful, notifying user`, method, false, true);
+                    if (typeof point.sms_queue_id === "number" && point.sms_queue_id > 0) {
+                        this.log(`set sms_queue id ${point.sms_queue_id} for sending`, method, false, true);
+                        const sms = new sms_queue_1.sms_queue();
+                        sms.id = point.sms_queue_id;
+                        await sms.fetch();
+                        if (sms.recordExists()) {
+                            sms.status = "o";
+                            await sms.save();
+                        }
+                    }
+                    else if (typeof point.email_queue_id === "number" && point.email_queue_id > 0) {
+                        this.log(`set email_queue id ${point.email_queue_id} for sending`, method, false, true);
+                        const emailRequest = new email_queue_1.email_queue();
+                        emailRequest.id = point.email_queue_id;
+                        await emailRequest.fetch();
+                        if (emailRequest.recordExists()) {
+                            emailRequest.status = "o";
+                            await emailRequest.save();
+                        }
                     }
                 }
-                else if (typeof point.email_queue_id === "number" && point.email_queue_id > 0) {
-                    this.log(`set email_queue id ${point.email_queue_id} for sending`, method, false, true);
-                    const emailRequest = new email_queue_1.email_queue();
-                    emailRequest.id = point.email_queue_id;
-                    await emailRequest.fetch();
-                    if (emailRequest.recordExists()) {
-                        emailRequest.status = "o";
-                        await emailRequest.save();
-                    }
-                }
+                this.log(``, method, true, true);
             }
-            this.log(``, method, true, true);
             await tools_1.tools.sleep(500);
             setImmediate(() => {
                 worker_token_sender.run().finally();

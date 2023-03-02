@@ -48,33 +48,35 @@ export class worker_token_sender{
                     eth_config.getHotWalletKey(),
                     pendingToSend.toAddress,
                     pendingToSend.amount);
+                if(receipt){
+                    pendingToSend.status = "d";
+                    pendingToSend.hash = receipt.transactionHash;
+                    pendingToSend.time_sent = tools.getCurrentTimeStamp();
+                    await pendingToSend.save();
 
-                pendingToSend.status = "d";
-                pendingToSend.hash = receipt.transactionHash;
-                pendingToSend.time_sent = tools.getCurrentTimeStamp();
-                await pendingToSend.save();
-
-                this.log(`send successful, notifying user`,method,false,true);
-                if(typeof point.sms_queue_id === "number" && point.sms_queue_id > 0){
-                    this.log(`set sms_queue id ${point.sms_queue_id} for sending`,method,false,true);
-                    const sms = new sms_queue();
-                    sms.id = point.sms_queue_id;
-                    await sms.fetch();
-                    if(sms.recordExists()){
-                        sms.status = "o";
-                        await sms.save();
+                    this.log(`send successful, notifying user`,method,false,true);
+                    if(typeof point.sms_queue_id === "number" && point.sms_queue_id > 0){
+                        this.log(`set sms_queue id ${point.sms_queue_id} for sending`,method,false,true);
+                        const sms = new sms_queue();
+                        sms.id = point.sms_queue_id;
+                        await sms.fetch();
+                        if(sms.recordExists()){
+                            sms.status = "o";
+                            await sms.save();
+                        }
+                    }
+                    else if(typeof point.email_queue_id === "number" && point.email_queue_id > 0){
+                        this.log(`set email_queue id ${point.email_queue_id} for sending`,method,false,true);
+                        const emailRequest = new email_queue();
+                        emailRequest.id = point.email_queue_id;
+                        await emailRequest.fetch();
+                        if(emailRequest.recordExists()){
+                            emailRequest.status = "o";
+                            await emailRequest.save();
+                        }
                     }
                 }
-                else if(typeof point.email_queue_id === "number" && point.email_queue_id > 0){
-                    this.log(`set email_queue id ${point.email_queue_id} for sending`,method,false,true);
-                    const emailRequest = new email_queue();
-                    emailRequest.id = point.email_queue_id;
-                    await emailRequest.fetch();
-                    if(emailRequest.recordExists()){
-                        emailRequest.status = "o";
-                        await emailRequest.save();
-                    }
-                }
+
                 this.log(``,method,true,true);
             }
             await tools.sleep(500);
