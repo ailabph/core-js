@@ -141,8 +141,8 @@ class web3_startup_checks {
         //region HOT WALLET
         console.log(`checking hot wallet bnb balance`);
         const hotWalletBnb = await eth_worker_1.eth_worker.getETHBalance(eth_config_1.eth_config.getHotWalletAddress());
-        if (tools_1.tools.lesserThanOrEqualTo(hotWalletBnb, 0))
-            throw new Error(`hot wallet bnb balance is ${hotWalletBnb}`);
+        if (tools_1.tools.lesserThanOrEqualTo(hotWalletBnb, "0.3000"))
+            throw new Error(`hot wallet bnb balance is ${hotWalletBnb}, which is low`);
         console.log(`...hot wallet bnb balance is ${hotWalletBnb}`);
         console.log(`checking hot wallet token balance`);
         const hotWalletToken = await eth_worker_1.eth_worker.getTokenBalance(eth_config_1.eth_config.getHotWalletAddress());
@@ -151,6 +151,8 @@ class web3_startup_checks {
         console.log(`... hot wallet bnb balance is ${hotWalletToken}`);
         console.log(`checking sending of token`);
         const receiptToken = await web3_token_1.web3_token.transfer(eth_config_1.eth_config.getHotWalletAddress(), eth_config_1.eth_config.getHotWalletKey(), admin.walletAddress ?? "", "1");
+        if (!receiptToken)
+            throw new Error(`unable to transfer token`);
         console.log(`...send of token successful with hash ${receiptToken.transactionHash}`);
         // console.log(`checking sending of bnb`);
         const receiptBnb = await web3_token_1.web3_token.sendBNB(eth_config_1.eth_config.getHotWalletAddress(), eth_config_1.eth_config.getHotWalletKey(), admin.walletAddress ?? "", "0.0001");
