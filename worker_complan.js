@@ -248,7 +248,7 @@ class worker_complan {
                     const currentBalanceUsdValue = tools_1.tools.multiply(currentTokenBalance, currentTokenUsdPrice);
                     const currentTime = time_helper_1.time_helper.getTime().format(time_helper_1.TIME_FORMATS.ISO);
                     logs = this.addLog(`current token balance during purchase on ${currentTime} is ${currentTokenBalance} valued at ${currentBalanceUsdValue} bnb_usd ${currentBnbBusdPrice} token_bnb ${currentTokenBnbPrice} token_usd ${currentTokenUsdPrice}`, method, logs);
-                    if (tools_1.tools.greaterThanOrEqualTo(currentBalanceUsdValue, this.getMinimumUsdValue())) {
+                    if (tools_1.tools.greaterThanOrEqualTo(currentBalanceUsdValue, this.getMinimumUsdValue()) || username.toLowerCase() === "admin") {
                         const result = await this.addCommunityBonus(sponsor, buyer_account, buyTrade, logs);
                         logs = result.log;
                     }
@@ -256,8 +256,9 @@ class worker_complan {
                         // add skip point
                         logs = this.addLog(`skipped bonus because token balance ${currentTokenBalance} usd value ${currentTokenUsdPrice} is below minimum ${this.getMinimumUsdValue()}`, method, logs);
                         const skip = this.getDefaultPoint(sponsor, buyer_account, buyTrade);
-                        skip.action = "skip_eth_community_bonus";
+                        skip.action = "skip_eth_community_bonus_below";
                         skip.eth_data = logs[logs.length - 1];
+                        await skip.save();
                     }
                 }
             }
