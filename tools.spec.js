@@ -130,5 +130,38 @@ describe("tools spec", () => {
         const obj = { name: 'John', age: 30 };
         (0, chai_1.expect)(() => tools_1.tools.getPropertyValue(obj, 'address')).to.throw("Property 'address' does not exist in object");
     });
+    it("toOrdinal return '1st' when given 1", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(1)).to.equal("1st");
+    });
+    it("toOrdinal return '2nd' when given 2", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(2)).to.equal("2nd");
+    });
+    it("toOrdinal return '3rd' when given 3", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(3)).to.equal("3rd");
+    });
+    it("toOrdinal return '4th' when given 4", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(4)).to.equal("4th");
+    });
+    it("toOrdinal return '5th' when given 5", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(5)).to.equal("5th");
+    });
+    it("toOrdinal return '11th' when given 11", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(11)).to.equal("11th");
+    });
+    it("toOrdinal return '21st' when given 21", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(21)).to.equal("21st");
+    });
+    it("toOrdinal return '22nd' when given 22", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(22)).to.equal("22nd");
+    });
+    it("toOrdinal return '111th' when given 111", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(111)).to.equal("111th");
+    });
+    it("toOrdinal return '112th' when given 112", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(112)).to.equal("112th");
+    });
+    it("toOrdinal return '113th' when given 113", () => {
+        (0, chai_1.expect)(tools_1.tools.toOrdinal(113)).to.equal("113th");
+    });
 });
 //# sourceMappingURL=tools.spec.js.map
