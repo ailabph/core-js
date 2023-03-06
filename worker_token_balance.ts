@@ -168,12 +168,17 @@ export class worker_token_balance{
         }
         else{
             if(tools.greaterThanOrEqualTo(balanceDetail.token_amount,currentMinimumToken,`${method} balanceDetail.token_amount >= currentMinimumToken`)){
-                this.log(`...detected that balance ${balanceDetail.token_amount} is >= minimum token ${currentMinimumToken}`,method);
-                balanceHeader.activation_status = "y";
-                balanceHeader.activation_count++;
-                balanceHeader.minimum_balance = currentMinimumToken;
-                balanceHeader.last_activated_transaction = balanceDetail.transactionHash;
-                balanceDetail.activation_data = `token balance ${balanceDetail.token_amount} met minimum token amount ${currentMinimumToken} worth ${this.getMinimumBusdForActivation()} busd`;
+                if(balanceDetail.type === "buy"){
+                    this.log(`...detected that balance ${balanceDetail.token_amount} is >= minimum token ${currentMinimumToken}`,method);
+                    balanceHeader.activation_status = "y";
+                    balanceHeader.activation_count++;
+                    balanceHeader.minimum_balance = currentMinimumToken;
+                    balanceHeader.last_activated_transaction = balanceDetail.transactionHash;
+                    balanceDetail.activation_data = `token balance ${balanceDetail.token_amount} met minimum token amount ${currentMinimumToken} worth ${this.getMinimumBusdForActivation()} busd`;
+                }
+                else{
+                    this.log(`...detected that balance ${balanceDetail.token_amount} is >= minimum token ${currentMinimumToken} but type is not buy, current type ${balanceDetail.type}`,method);
+                }
             }
         }
         balanceDetail.activation_status = balanceHeader.activation_status;
