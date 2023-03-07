@@ -39,9 +39,10 @@ export class worker_complan{
          */
         const method = "run";
         await connection.startTransaction();
+
         try{
             const buyTrades = await this.getTradesForProcessing();
-            console.log(`${buyTrades.count()} found`);
+            if(buyTrades.count() > 0) console.log(`${buyTrades.count()} found`);
             for(const buyTrade of buyTrades._dataList as eth_token_balance[]){
                 await this.processBuyTradeComplan(buyTrade);
             }
