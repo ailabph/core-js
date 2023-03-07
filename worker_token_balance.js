@@ -100,8 +100,13 @@ class worker_token_balance {
         }
         catch (e) {
             await connection_1.connection.rollback();
-            this.log(`ERROR`, method, false, true);
-            throw e;
+            const errorMsg = e instanceof Error ? e.message : "unknown";
+            this.log(`ERROR ${errorMsg}`, method, false, true);
+            this.log(`...retrying in 3 seconds`, method, false, true);
+            await tools_1.tools.sleep(3000);
+            setImmediate(() => {
+                worker_token_balance.run().finally();
+            });
         }
     }
     static async getUnprocessedEvent() {
