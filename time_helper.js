@@ -74,6 +74,14 @@ class time_helper {
     static getCurrentTimeStamp() {
         return time_helper.getTime().unix();
     }
+    static getCurrentTimeStampMs() {
+        return Date.now();
+    }
+    static getCurrentHrTime() {
+        const timestamp = time_helper.getCurrentTimeStamp();
+        const partHrTime = process.hrtime()[1];
+        return parseInt(timestamp + "" + partHrTime);
+    }
     static getAsFormat(current_time, format, timezone_override = "") {
         if (!format) {
             format = TIME_FORMATS.READABLE;
@@ -119,6 +127,44 @@ class time_helper {
         else {
             return parsedTime.startOf("D");
         }
+    }
+    static formatSeconds(seconds) {
+        const yearSeconds = 365 * 24 * 60 * 60;
+        const monthSeconds = 30 * 24 * 60 * 60;
+        const daySeconds = 24 * 60 * 60;
+        const hourSeconds = 60 * 60;
+        const minuteSeconds = 60;
+        let remainingSeconds = seconds;
+        let years = Math.floor(remainingSeconds / yearSeconds);
+        remainingSeconds -= years * yearSeconds;
+        let months = Math.floor(remainingSeconds / monthSeconds);
+        remainingSeconds -= months * monthSeconds;
+        let days = Math.floor(remainingSeconds / daySeconds);
+        remainingSeconds -= days * daySeconds;
+        let hours = Math.floor(remainingSeconds / hourSeconds);
+        remainingSeconds -= hours * hourSeconds;
+        let minutes = Math.floor(remainingSeconds / minuteSeconds);
+        remainingSeconds -= minutes * minuteSeconds;
+        let result = '';
+        if (years > 0) {
+            result += `${years} year${years > 1 ? 's' : ''}, `;
+        }
+        if (months > 0) {
+            result += `${months} month${months > 1 ? 's' : ''}, `;
+        }
+        if (days > 0) {
+            result += `${days} day${days > 1 ? 's' : ''}, `;
+        }
+        if (hours > 0) {
+            result += `${hours} hour${hours > 1 ? 's' : ''}, `;
+        }
+        if (minutes > 0) {
+            result += `${minutes} minute${minutes > 1 ? 's' : ''}`;
+        }
+        if (result === '') {
+            result = '0 minutes';
+        }
+        return result;
     }
 }
 exports.time_helper = time_helper;
