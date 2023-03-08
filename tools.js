@@ -307,13 +307,21 @@ class tools {
     static convertNumberToHex(num) {
         return "0x" + num.toString(16);
     }
-    static hexToNumber(hexString) {
-        // remove "0x" prefix if present
-        if (hexString.startsWith("0x")) {
-            hexString = hexString.slice(2);
+    static hexToNumber(hexString, desc = "") {
+        let toReturn = 0;
+        try {
+            // remove "0x" prefix if present
+            if (hexString.startsWith("0x")) {
+                hexString = hexString.slice(2);
+            }
+            // parse hex string to integer
+            toReturn = parseInt(hexString, 16);
         }
-        // parse hex string to integer
-        return parseInt(hexString, 16);
+        catch (e) {
+            const errMsg = e instanceof Error ? e.message : "unknown error";
+            throw new Error(`ERROR ${desc} | ${errMsg}`);
+        }
+        return toReturn;
     }
     static hexToNumberAsString(hexString) {
         return tools.hexToNumber(hexString).toString();
