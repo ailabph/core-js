@@ -33,7 +33,31 @@ const TransactionsCodec = t.type({
     accessList: t.union([t.null,t.array(t.any)]),
     chainId: t.string,
 });
-type Transactions = t.TypeOf<typeof TransactionsCodec>;
+type TransactionsRaw = t.TypeOf<typeof TransactionsCodec>;
+export { TransactionsRaw }
+
+const TransactionDecodedCodec = t.type({
+    blockHash: t.string,
+    blockNumber: t.number,
+    from: t.string,
+    gas: t.number,
+    gasPrice: t.number,
+    hash: t.string,
+    input: t.string,
+    nonce: t.number,
+    to: t.union([t.null,t.string]),
+    transactionIndex: t.union([t.null,t.number]),
+    value: t.number,
+    type: t.string,
+    v: t.number,
+    r: t.string,
+    s: t.string,
+    maxFeePerGas: t.number,
+    maxPriorityFeePerGas: t.number,
+    accessList: t.union([t.null,t.array(t.any)]),
+    chainId: t.number,
+});
+type TransactionDecoded = t.TypeOf<typeof TransactionDecodedCodec>;
 
 const BlockCodec = t.type({
     baseFeePerGas: t.string,
@@ -56,8 +80,32 @@ const BlockCodec = t.type({
     totalDifficulty: t.string,
     transactions: t.array(TransactionsCodec),
 });
-type Block = t.TypeOf<typeof BlockCodec>;
-export { Block }
+type BlockRaw = t.TypeOf<typeof BlockCodec>;
+export { BlockRaw }
+
+const BlockDecodedCodec = t.type({
+    baseFeePerGas: t.number,
+    difficulty: t.number,
+    extraData: t.string,
+    gasLimit: t.number,
+    gasUsed: t.number,
+    hash: t.union([t.null,t.string]),
+    logsBloom: t.union([t.null,t.string]),
+    miner: t.string,
+    mixHash: t.string,
+    nonce: t.union([t.null,t.string]),
+    number: t.union([t.null,t.number]),
+    parentHash: t.string,
+    receiptsRoot: t.string,
+    sha3Uncles: t.string,
+    size: t.number,
+    stateRoot: t.string,
+    timestamp: t.number,
+    totalDifficulty: t.number,
+    transactions: t.array(TransactionDecodedCodec),
+});
+type BlockDecoded = t.TypeOf<typeof BlockDecodedCodec>;
+export { BlockDecoded };
 
 const LogCodec = t.type({
     address: t.string,
@@ -70,7 +118,21 @@ const LogCodec = t.type({
     logIndex: t.union([t.null,t.string]),
     removed: t.boolean,
 });
-type LogDecoded = t.TypeOf<typeof LogCodec>;
+type LogRaw = t.TypeOf<typeof LogCodec>;
+export { LogRaw };
+
+const LogDecodedCodec = t.type({
+    address: t.string,
+    topics: t.array(t.string),
+    data: t.string,
+    blockNumber: t.number,
+    transactionHash: t.union([t.null,t.string]),
+    transactionIndex: t.union([t.null,t.number]),
+    blockHash: t.union([t.null,t.string]),
+    logIndex: t.union([t.null,t.number]),
+    removed: t.boolean,
+});
+type LogDecoded = t.TypeOf<typeof LogDecodedCodec>;
 export { LogDecoded };
 
 const ReceiptCodec = t.type({
@@ -88,8 +150,26 @@ const ReceiptCodec = t.type({
     transactionHash: t.string,
     type: t.string,
 });
-type ReceiptDecoded = t.TypeOf<typeof ReceiptCodec>;
-export { ReceiptDecoded }
+type ReceiptRaw = t.TypeOf<typeof ReceiptCodec>;
+export { ReceiptRaw }
+
+const ReceiptDecodedCodec = t.type({
+    blockHash: t.union([t.null,t.string]),
+    blockNumber: t.number,
+    contractAddress: t.union([t.null,t.string]),
+    cumulativeGasUsed: t.number,
+    effectiveGasPrice: t.number,
+    from: t.string,
+    gasUsed: t.number,
+    logs: t.array(LogDecodedCodec),
+    logsBloom: t.string,
+    status: t.number,
+    to: t.union([t.null,t.string]),
+    transactionHash: t.string,
+    type: t.string,
+});
+type ReceiptDecoded = t.TypeOf<typeof ReceiptDecodedCodec>;
+export { ReceiptDecodedCodec };
 
 const SingleFlightBlockResultCodec = t.type({
     receipts:t.union([t.null,t.array(ReceiptCodec)]),
@@ -98,6 +178,12 @@ const SingleFlightBlockResultCodec = t.type({
 type SingleFlightBlockResult = t.TypeOf<typeof SingleFlightBlockResultCodec>;
 export { SingleFlightBlockResult }
 
+type SingleFlightBlockResultDecoded = {
+    receipts:null|ReceiptDecoded[],
+    block:BlockDecoded,
+};
+export { SingleFlightBlockResultDecoded }
+
 const SingleFlightBlockCodec = t.type({
     jsonrpc:t.string,
     // id:t.unknown,
@@ -105,6 +191,12 @@ const SingleFlightBlockCodec = t.type({
 });
 type SingleFlightBlock = t.TypeOf<typeof SingleFlightBlockCodec>;
 export { SingleFlightBlock }
+
+type SingleFlightBlockDecoded = {
+    jsonrpc:string,
+    result:SingleFlightBlockResultDecoded
+}
+export { SingleFlightBlockDecoded }
 
 //endregion TYPES
 
@@ -118,82 +210,66 @@ export class worker_blocks_tools{
         return false;
     }
 
-    public static getSingleFlightBlockResult(response:unknown):SingleFlightBlock|false{
+    public static getSingleFlightBlockResult(response:unknown):SingleFlightBlockDecoded|false{
         if(typeof response !== "object") return false;
         const decodedData = SingleFlightBlockCodec.decode(response);
         if(d.isRight(decodedData)){
             const blockInfo = decodedData.right as SingleFlightBlock;
-            blockInfo.result.block.number = blockInfo.result.block.number ? tools.hexToNumberAsString(blockInfo.result.block.number) : blockInfo.result.block.number;
-            blockInfo.result.block.baseFeePerGas = tools.hexToNumberAsString(blockInfo.result.block.baseFeePerGas);
-            blockInfo.result.block.difficulty = tools.hexToNumberAsString(blockInfo.result.block.difficulty);
-            blockInfo.result.block.gasLimit = tools.hexToNumberAsString(blockInfo.result.block.gasLimit);
-            blockInfo.result.block.gasUsed = tools.hexToNumberAsString(blockInfo.result.block.gasUsed);
-            blockInfo.result.block.timestamp = tools.hexToNumberAsString(blockInfo.result.block.timestamp);
-            for(const transaction of blockInfo.result.block.transactions){
-                transaction.blockNumber = tools.hexToNumberAsString(transaction.blockNumber);
-                transaction.gas = tools.hexToNumberAsString(transaction.gas);
-                transaction.gasPrice = tools.hexToNumberAsString(transaction.gasPrice);
-                transaction.maxFeePerGas = tools.hexToNumberAsString(transaction.maxFeePerGas);
-                transaction.maxPriorityFeePerGas = tools.hexToNumberAsString(transaction.maxPriorityFeePerGas);
-                transaction.value = tools.hexToNumberAsString(transaction.value);
-                if(transaction.transactionIndex) transaction.transactionIndex = tools.hexToNumberAsString(transaction.transactionIndex);
-            }
+            const receipts:ReceiptDecoded[] = [];
             if(blockInfo.result.receipts){
-                for(const receipt of blockInfo.result.receipts){
-                    receipt.blockNumber = tools.hexToNumberAsString(receipt.blockNumber);
-                    receipt.cumulativeGasUsed = tools.hexToNumberAsString(receipt.cumulativeGasUsed);
-                    receipt.effectiveGasPrice = tools.hexToNumberAsString(receipt.effectiveGasPrice);
-                    receipt.gasUsed = tools.hexToNumberAsString(receipt.gasUsed);
-                    for(const log of receipt.logs){
-                        log.blockNumber = tools.hexToNumberAsString(log.blockNumber);
-                        if(log.logIndex) log.logIndex = tools.hexToNumberAsString(log.logIndex);
-                        if(log.transactionIndex) log.transactionIndex = tools.hexToNumberAsString(log.transactionIndex);
-                    }
+                for(const receiptRaw of blockInfo.result.receipts){
+                    receipts.push(this.getReceiptDecoded(receiptRaw));
                 }
             }
-            return blockInfo;
+            return {
+                jsonrpc: blockInfo.jsonrpc,
+                result: {
+                    block: this.getBlockDecoded(blockInfo.result.block),
+                    receipts: blockInfo.result.receipts === null ? null : receipts,
+                }
+            };
         }
         return false;
     }
 
-    public static getBlockObject(response:unknown):Block|false{
+    public static getBlockObject(response:unknown):BlockRaw|false{
         if(typeof response !== "object") return false;
         const decoded = BlockCodec.decode(response);
         if(d.isRight(decoded)){
-            return decoded.right as Block;
+            return decoded.right as BlockRaw;
         }
         return false;
     }
 
-    public static getTransactionsObject(value:unknown):Transactions|false{
+    public static getTransactionsObject(value:unknown):TransactionsRaw|false{
         if(typeof value !== "object") return false;
         const decoded = TransactionsCodec.decode(value);
         if(d.isRight(decoded)){
-            return decoded.right as Transactions;
+            return decoded.right as TransactionsRaw;
         }
         return false;
     }
     
-    public static getReceiptObject(value:unknown):ReceiptDecoded|false{
+    public static getReceiptObject(value:unknown):ReceiptRaw|false{
         if(typeof value !== "object") return false;
         const decoded = ReceiptCodec.decode(value);
         if(d.isRight(decoded)){
-            return decoded.right as ReceiptDecoded;
+            return decoded.right as ReceiptRaw;
         }
         return false;
     }
 
-    public static getLogObject(value:unknown):LogDecoded|false{
+    public static getLogObject(value:unknown):LogRaw|false{
         if(typeof value !== "object") return false;
         const decoded = LogCodec.decode(value);
         if(d.isRight(decoded)){
-            return decoded.right as LogDecoded;
+            return decoded.right as LogRaw;
         }
         return false;
     }
 
     //region CONVERT
-    public static convertWeb3Log(log:LogDecoded):Log{
+    public static convertWeb3Log(log:LogRaw):Log{
         const method = "convertWeb3Log";
         return {
             address: log.address,
@@ -206,7 +282,7 @@ export class worker_blocks_tools{
             transactionIndex: assert.naturalNumber(log.transactionIndex ?? 0, `${method} log.transactionIndex`)
         };
     }
-    public static getLogsArray(receipts:ReceiptDecoded[]):Log[]{
+    public static getLogsArray(receipts:ReceiptRaw[]):Log[]{
         const logs:Log[] = [];
         for(const receipt of receipts){
             for(const log of receipt.logs){
@@ -214,6 +290,99 @@ export class worker_blocks_tools{
             }
         }
         return logs;
+    }
+
+    public static getBlockDecoded(block:BlockRaw):BlockDecoded{
+        const method = "getBlockDecoded";
+        const blockNumber = block.number === null ? null : tools.hexToNumber(block.number,`${method} block.number`);
+        const transactions:TransactionDecoded[] = [];
+        for(const transactionRaw of block.transactions){
+            transactions.push(worker_blocks_tools.getTransactionDecoded(transactionRaw));
+        }
+        return {
+            transactions: transactions,
+            baseFeePerGas: tools.hexToNumber(block.baseFeePerGas,`${method} block.baseFeePerGas`),
+            difficulty: tools.hexToNumber(block.difficulty,`${method} block.difficulty`),
+            extraData: block.extraData,
+            gasLimit: tools.hexToNumber(block.gasLimit,`${method} block.gasLimit`),
+            gasUsed: tools.hexToNumber(block.gasUsed, `${method} block.gasUsed`),
+            hash: block.hash,
+            logsBloom: block.logsBloom,
+            miner: block.miner,
+            mixHash: block.mixHash,
+            nonce: block.nonce,
+            number: blockNumber,
+            parentHash: block.parentHash,
+            receiptsRoot: block.receiptsRoot,
+            sha3Uncles: block.sha3Uncles,
+            size: tools.hexToNumber(block.size,`${method} block.size`),
+            stateRoot: block.stateRoot,
+            timestamp: tools.hexToNumber(block.timestamp,`${method} block.timestamp`),
+            totalDifficulty: tools.hexToNumber(block.totalDifficulty,`${method} block.totalDifficulty`)
+        };
+    }
+    public static getTransactionDecoded(transaction:TransactionsRaw):TransactionDecoded{
+        const method = "getTransactionDecoded";
+        const transactionIndex = transaction.transactionIndex === null ? null : tools.hexToNumber(transaction.transactionIndex,`${method} transaction.transactionIndex`);
+        return {
+            accessList: transaction.accessList,
+            blockHash: transaction.blockHash,
+            blockNumber: tools.hexToNumber(transaction.blockNumber,`${method} transaction.blockNumber`),
+            chainId: tools.hexToNumber(transaction.chainId,`${method} transaction.chainId`),
+            from: transaction.from,
+            gas: tools.hexToNumber(transaction.gas,`${method} transaction.gas`),
+            gasPrice: tools.hexToNumber(transaction.gasPrice,`${method} transaction.gasPrice`),
+            hash: transaction.hash,
+            input: transaction.input,
+            maxFeePerGas: tools.hexToNumber(transaction.maxFeePerGas,`${method} transaction.maxFeePerGas`),
+            maxPriorityFeePerGas: tools.hexToNumber(transaction.maxPriorityFeePerGas,`${method} transaction.maxPriorityFeePerGas`),
+            nonce: tools.hexToNumber(transaction.nonce,`${method} transaction.nonce`),
+            r: transaction.r,
+            s: transaction.s,
+            to: transaction.to,
+            transactionIndex: transactionIndex,
+            type: transaction.type,
+            v: tools.hexToNumber(transaction.v,`${method} transaction.v`),
+            value: tools.hexToNumber(transaction.value,`${method} transaction.value`),
+        };
+    }
+    public static getLogDecoded(log:LogRaw):LogDecoded{
+        const method = "getLogDecoded";
+        const logIndex = log.logIndex === null ? null : tools.hexToNumber(log.logIndex,`${method} log.logIndex`);
+        const transactionIndex = log.transactionIndex === null ? null : tools.hexToNumber(log.transactionIndex,`${method} log.transactionIndex`);
+        return {
+            address: log.address,
+            blockHash: log.blockHash,
+            blockNumber: tools.hexToNumber(log.blockNumber,`${method} log.blockNumber`),
+            data: log.data,
+            logIndex: logIndex,
+            removed: log.removed,
+            topics: log.topics,
+            transactionHash: log.transactionHash,
+            transactionIndex: transactionIndex
+        };
+    }
+    public static getReceiptDecoded(receipt:ReceiptRaw):ReceiptDecoded{
+        const method = "getReceiptDecoded";
+        const logs:LogDecoded[] = [];
+        for(const logRaw of receipt.logs){
+            logs.push(this.getLogDecoded(logRaw));
+        }
+        return {
+            blockHash: receipt.blockHash,
+            blockNumber: tools.hexToNumber(receipt.blockNumber,`${method} receipt.blockNumber`),
+            contractAddress: receipt.contractAddress,
+            cumulativeGasUsed: tools.hexToNumber(receipt.cumulativeGasUsed,`${method} receipt.cumulativeGasUsed`),
+            effectiveGasPrice: tools.hexToNumber(receipt.effectiveGasPrice,`${method} receipt.effectiveGasPrice`),
+            from: "",
+            gasUsed: tools.hexToNumber(receipt.gasUsed,`${method} receipt.gasUsed`),
+            logs: logs,
+            logsBloom: receipt.logsBloom,
+            status: tools.hexToNumber(receipt.status,`${method} receipt.status`),
+            to: receipt.to,
+            transactionHash: receipt.transactionHash,
+            type: receipt.type
+        };
     }
     //endregion CONVERT
 }
