@@ -12,6 +12,7 @@ const assert_1 = require("./assert");
 const user_tools_1 = require("./user_tools");
 const sms_queue_1 = require("./build/sms_queue");
 const email_queue_1 = require("./build/email_queue");
+const time_helper_1 = require("./time_helper");
 class worker_token_sender {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
@@ -29,8 +30,16 @@ class worker_token_sender {
             const pendingCommunityBonus = await this.getPendingCommunityBonus();
             if (pendingCommunityBonus.count() > 0) {
                 const pendingToSend = await pendingCommunityBonus.getItem();
-                pendingToSend.status = "p";
-                await pendingToSend.save();
+                if (pendingToSend.status === "p") {
+                    this.log(`retrying to resend a previous failed send request id ${pendingToSend.id} amount ${pendingToSend.amount} to ${pendingToSend.toAddress} requested on ${time_helper_1.time_helper.getAsFormat(pendingToSend.time_added ?? 0, time_helper_1.TIME_FORMATS.ISO)}`, method, false, true);
+                }
+                else {
+                    pendingToSend.status = "p";
+                    await pendingToSend.save();
+                }
+                if (!tools_1.tools.isNullish(pendingToSend.hash)) {
+                    throw new Error(`refuse to send request id ${pendingToSend.id}, already has send hash ${pendingToSend.hash}`);
+                }
                 pendingToSend.toAddress = assert_1.assert.stringNotEmpty(pendingToSend.toAddress, `${method} pendingToSend.toAddress`);
                 pendingToSend.amount = assert_1.assert.isNumericString(pendingToSend.amount, `${method} pendingToSend.amount`);
                 const point = new points_log_1.points_log();
@@ -88,8 +97,11 @@ class worker_token_sender {
         }
     }
     static async getPendingCommunityBonus() {
-        const pendingSend = new eth_send_token_1.eth_send_token();
+        let pendingSend = new eth_send_token_1.eth_send_token();
         await pendingSend.list(" WHERE tag=:eth_community_bonus AND status=:open ", { eth_community_bonus: "eth_community_bonus", open: "o" }, ` ORDER BY id ASC LIMIT ${this.getBatch()} `);
+        if (pendingSend.count() === 0) {
+            await pendingSend.list(" WHERE tag=:eth_community_bonus AND status=:pending AND hash IS NULL ", { eth_community_bonus: "eth_community_bonus", pending: "p" }, ` ORDER BY id ASC LIMIT ${this.getBatch()} `);
+        }
         return pendingSend;
     }
 }
