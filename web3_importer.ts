@@ -6,6 +6,8 @@ import {eth_config} from "./eth_config";
 import {argv} from "process";
 import {worker_token_sender} from "./worker_token_sender";
 import {eth_transaction_known} from "./build/eth_transaction_known";
+import {eth_worker} from "./eth_worker";
+import {assert} from "./assert";
 
 export class web3_importer{
 
@@ -19,10 +21,11 @@ export class web3_importer{
     private static lastPageSelector:string = "ul.pagination li:last-child a";
     private static previousPageSelector:string = "nav ul.pagination li:nth-child(2) a.page-link";
     private static paginationInfoSelector:string = "nav ul.pagination li:nth-child(3) span";
+    private static nextPageSelector:string = "nav ul.pagination li:nth-child(4) a.page-link";
     private static dataTableTrSelector:string = "#maindiv table tbody tr";
     private static hashSelector:string = "#maindiv table tbody tr:nth-child({row_num}) td:first-child a";
 
-    public static async scrapeAll():Promise<void>{
+    public static async scrapeAll(asc:boolean = false):Promise<void>{
         const method = "scrapeAll";
         this.log(`opening browser`,method,false,true);
         const browser = await puppeteer.launch();
@@ -40,69 +43,117 @@ export class web3_importer{
         await page.goto(iframeSrc);
 
         let pageInfo:string = await this.getText(page,this.paginationInfoSelector);
-        this.log(`page info ${pageInfo}, going to the first page...`,method,false,true);
 
-        // GO TO THE BEGINNING OF THE TRANSACTIONS
-        const lastPageExist = await this.checkElementExists(page,this.lastPageSelector);
-        if(!lastPageExist){
-            this.log(`last page link not found using selector ${this.lastPageSelector}`,method,false,true);
-            this.log(`...exiting`,method,true,true);
-            return;
-        }
+        if(asc){
+            this.log(`ascending mode detected`,method,false,true);
+            let endOfLoop = true;
+            do{
+                endOfLoop = true;
+                const rowCount = await this.getElementLength(page,this.dataTableTrSelector);
+                this.log(`${rowCount} table row found`,method,false,true);
 
-        let lastPageUrl:string = await this.getHref(page,this.lastPageSelector);
-        lastPageUrl = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${lastPageUrl}`;
-        this.log(`loading page ${lastPageUrl}`,method,false,true);
-        await page.goto(lastPageUrl);
-
-        pageInfo = await this.getText(page,this.paginationInfoSelector);
-        this.log(`...${pageInfo}, begin scraping`,method,false,true);
-
-        let prevLinkHref:string = "";
-        let knownHashes:string[] = [];
-        do{
-            prevLinkHref = "";
-            const rowCount = await this.getElementLength(page,this.dataTableTrSelector);
-            this.log(`${rowCount} table row found`,method,false,true);
-
-            // EXTRACT AND PROCESS KNOWN HASH
-            for(let row=rowCount;row>0;row--){
-                const hashSelector:string = this.hashSelector.replace("{row_num}",row+"");
-                const hash = await this.getText(page,hashSelector);
-                this.log(`${row} | ${hash}`,method,false,true);
-                this.log(`...checking if hash added to known`,method,false,true);
-                const known = new eth_transaction_known();
-                known.hash = hash;
-                await known.fetch();
-                if(known.recordExists()){
-                    this.log(`...already added to known, skipping`,method,false,true);
+                // EXTRACT AND PROCESS KNOWN HASH
+                for(let row=rowCount;row>0;row--){
+                    const hashSelector:string = this.hashSelector.replace("{row_num}",row+"");
+                    const hash = await this.getText(page,hashSelector);
+                    this.log(`${row} | ${hash}`,method,false,true);
+                    this.log(`...checking if hash added to known`,method,false,true);
+                    const known = new eth_transaction_known();
+                    known.hash = hash;
+                    await known.fetch();
+                    if(known.recordExists()){
+                        this.log(`...already added to known, skipping`,method,false,true);
+                    }
+                    else{
+                        this.log(`...not yet on db, adding`,method,false,true);
+                        known.hash = hash;
+                        await known.save();
+                        this.log(`...saved on db with id ${known.id}`,method,false,true);
+                    }
+                }
+                if(await this.checkElementExists(page,this.nextPageSelector)){
+                    this.log(`next page link found, retrieving url`,method,false,true);
+                    const waitingMs = tools.generateRandomNumber(2000,5000);
+                    this.log(`current page: ${pageInfo}`,method,false,true);
+                    this.log(`waiting for ${waitingMs}ms`,method,false,true);
+                    await tools.sleep(waitingMs);
+                    let nextLinkHref:string = await this.getHref(page,this.nextPageSelector);
+                    nextLinkHref = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${nextLinkHref}`;
+                    this.log(`...loading page ${nextLinkHref}`,method,false,true);
+                    await page.goto(nextLinkHref);
+                    pageInfo = await this.getText(page,this.paginationInfoSelector);
+                    this.log(`...page loaded: ${pageInfo}`,method,false,true);
+                    endOfLoop = false;
                 }
                 else{
-                    this.log(`...not yet on db, adding`,method,false,true);
-                    known.hash = hash;
-                    await known.save();
-                    this.log(`...saved on db with id ${known.id}`,method,false,true);
+                    this.log(`next page link not found`,method,false,true);
+                    endOfLoop = true;
                 }
+            }while(!endOfLoop);
+        }
+        else{
+            this.log(`page info ${pageInfo}, going to the first page...`,method,false,true);
+            // GO TO THE BEGINNING OF THE TRANSACTIONS
+            const lastPageExist = await this.checkElementExists(page,this.lastPageSelector);
+            if(!lastPageExist){
+                this.log(`last page link not found using selector ${this.lastPageSelector}`,method,false,true);
+                this.log(`...exiting`,method,true,true);
+                return;
             }
 
-            if(await this.checkElementExists(page,this.previousPageSelector)){
-                this.log(`previous page link found, retrieving url`,method,false,true);
-                const waitingMs = tools.generateRandomNumber(2000,5000);
-                this.log(`current page: ${pageInfo}`,method,false,true);
-                this.log(`waiting for ${waitingMs}ms`,method,false,true);
-                await tools.sleep(waitingMs);
-                prevLinkHref = await this.getHref(page,this.previousPageSelector);
-                prevLinkHref = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${prevLinkHref}`;
-                this.log(`...loading page ${prevLinkHref}`,method,false,true);
-                await page.goto(prevLinkHref);
-                pageInfo = await this.getText(page,this.paginationInfoSelector);
-                this.log(`...page loaded: ${pageInfo}`,method,false,true);
-            }
-            else{
-                this.log(`previous page link not found`,method,false,true);
-            }
-        }while(prevLinkHref !== "");
+            let lastPageUrl:string = await this.getHref(page,this.lastPageSelector);
+            lastPageUrl = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${lastPageUrl}`;
+            this.log(`loading page ${lastPageUrl}`,method,false,true);
+            await page.goto(lastPageUrl);
 
+            pageInfo = await this.getText(page,this.paginationInfoSelector);
+            this.log(`...${pageInfo}, begin scraping`,method,false,true);
+
+            let prevLinkHref:string = "";
+            let knownHashes:string[] = [];
+            do{
+                prevLinkHref = "";
+                const rowCount = await this.getElementLength(page,this.dataTableTrSelector);
+                this.log(`${rowCount} table row found`,method,false,true);
+
+                // EXTRACT AND PROCESS KNOWN HASH
+                for(let row=rowCount;row>0;row--){
+                    const hashSelector:string = this.hashSelector.replace("{row_num}",row+"");
+                    const hash = await this.getText(page,hashSelector);
+                    this.log(`${row} | ${hash}`,method,false,true);
+                    this.log(`...checking if hash added to known`,method,false,true);
+                    const known = new eth_transaction_known();
+                    known.hash = hash;
+                    await known.fetch();
+                    if(known.recordExists()){
+                        this.log(`...already added to known, skipping`,method,false,true);
+                    }
+                    else{
+                        this.log(`...not yet on db, adding`,method,false,true);
+                        known.hash = hash;
+                        await known.save();
+                        this.log(`...saved on db with id ${known.id}`,method,false,true);
+                    }
+                }
+
+                if(await this.checkElementExists(page,this.previousPageSelector)){
+                    this.log(`previous page link found, retrieving url`,method,false,true);
+                    const waitingMs = tools.generateRandomNumber(2000,5000);
+                    this.log(`current page: ${pageInfo}`,method,false,true);
+                    this.log(`waiting for ${waitingMs}ms`,method,false,true);
+                    await tools.sleep(waitingMs);
+                    prevLinkHref = await this.getHref(page,this.previousPageSelector);
+                    prevLinkHref = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${prevLinkHref}`;
+                    this.log(`...loading page ${prevLinkHref}`,method,false,true);
+                    await page.goto(prevLinkHref);
+                    pageInfo = await this.getText(page,this.paginationInfoSelector);
+                    this.log(`...page loaded: ${pageInfo}`,method,false,true);
+                }
+                else{
+                    this.log(`previous page link not found`,method,false,true);
+                }
+            }while(prevLinkHref !== "");
+        }
         this.log(``,method,true,true);
     }
 
@@ -145,8 +196,33 @@ export class web3_importer{
         return href;
     }
     //endregion BROWSER UTILITIES
+
+    public static async addBlockNoInKnown():Promise<void>{
+        const method = "addBlockNoInKnown";
+        const knownTransactions = new eth_transaction_known();
+        await knownTransactions.list(" WHERE time_processed IS NULL AND blockNo IS NULL ");
+        const count = knownTransactions.count();
+        let progress = 0;
+        this.log(`${count} found known txns without blockNo`,method,false,true);
+        for(const txn of knownTransactions._dataList as eth_transaction_known[]){
+            txn.hash = assert.stringNotEmpty(txn.hash,`${method} txn.hash`);
+            this.log(`${++progress}/${count} processing ${txn.hash}`,method,false,true);
+            const receipt = await eth_worker.getReceiptByTxnHashWeb3(txn.hash);
+            this.log(`---- blockNo found ${receipt.blockNumber}, updating...`,method,false,true);
+            txn.blockNo = receipt.blockNumber;
+            await txn.save();
+            this.log(`---- updated`,method,false,true);
+            await tools.sleep(100);
+        }
+        this.log(``,method,true,true);
+    }
 }
 
 if(argv.includes("run_scrapeAll")){
-    web3_importer.scrapeAll().finally();
+    const asc = argv.includes("asc");
+    web3_importer.scrapeAll(asc).finally();
+}
+
+if(argv.includes("run_addBlockNoInKnown")){
+    web3_importer.addBlockNoInKnown().finally();
 }
