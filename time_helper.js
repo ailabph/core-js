@@ -42,7 +42,7 @@ class time_helper {
             return timezone;
         return "Asia/Manila";
     }
-    static getTime(time = null, timezone_override = "") {
+    static getTime(time = null, timezone_override = "", desc = "") {
         this.timeInit();
         let to_return = undefined;
         if (time === null) {
@@ -59,7 +59,7 @@ class time_helper {
                 to_return = dayjs_1.default.tz(time, this.getTimeZone(timezone_override));
             }
             if (to_return === undefined)
-                throw new Error(`unable to create time object from passed argument:${time}`);
+                throw new Error(`${desc} unable to create time object from passed argument:${time}`);
         }
         else {
             to_return = time;
