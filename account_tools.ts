@@ -25,27 +25,33 @@ export class account_tools{
             queryAccount.id = assert.positiveInt(account_arg,`${method} account_arg`);
         }
         else if(typeof account_arg === "string"){
-            this.log(`...retrieving account via account_code ${account_arg}`,method);
+            this.log(`retrieving account via account_code ${account_arg}`,method);
             queryAccount.account_code = assert.stringNotEmpty(account_arg,`${method} account_arg`);
         }
         else{
-            this.log(`...detected account object passed, checking if record exist`,method);
+            this.log(`detected account object passed, checking if record exist`,method);
             if(account_arg.isNew()){
-                this.log(`...passed account object with account_code ${account_arg.account_code} is not retrieved from db, cannot guarantee if account exists`,method);
+                this.log(`passed account object with account_code ${account_arg.account_code} is not retrieved from db, cannot guarantee if account exists`,method);
                 return false;
             }
             else{
-                this.log(`...account object retrieved from db, returning`,method);
+                this.log(`account object retrieved from db, returning`,method);
                 return account_arg;
             }
         }
         await queryAccount.fetch();
         if(queryAccount.isNew()){
-            this.log(`...account not on db`,method);
+            this.log(`account not on db`,method);
             return false;
         }
-        this.log(`...account found with id ${queryAccount.id}`,method);
+        this.log(`account found with id ${queryAccount.id}`,method);
         return queryAccount;
+    }
+    public static async getAccountStrict(account_arg:null|number|string|account,desc:string=""):Promise<account>{
+        const acc = await this.getAccount(account_arg);
+        if(!tools.isEmpty(desc)) desc = `${desc}| `;
+        if(!acc) throw new Error(`${desc}unable to retrieve account`);
+        return acc;
     }
     public static countSponsorUplinesByDna(sponsor_dna:null|string):number{
         sponsor_dna = assert.stringNotEmpty(sponsor_dna,`countSponsorUplinesByDna sponsor_dna`);
@@ -63,16 +69,22 @@ export class account_tools{
     //region CHECKER
     public static async verifySponsorLineOfDownline(downline:null|number|string|account,fix:boolean=false):Promise<true|string>{
         const method = "verifySponsorLineOfDownline";
-        this.log(`checking if downline sponsor structure is correct`,method);
-        const downlineObject = await this.getAccount(downline);
-        if(!downlineObject) throw new Error(`${method} unable to retrieve downline`);
-        this.log(`...checking account sponsor info ${downlineObject.account_code} as sponsor level ${downlineObject.sponsor_level}`,method);
-        let invalidInfo = this.checkSponsorInfoOfAccount(downlineObject);
-        if(typeof invalidInfo === "string") return invalidInfo;
-        this.log(`...downline ${downlineObject.account_code} verified`,method);
+        downline = await this.getAccountStrict(downline,`${method} retrieve downline record`);
+        this.log(`checking if downline sponsor structure is correct for`,method);
+        this.log(`...id ${downline.id}`,method);
+        this.log(`...account_code ${downline.account_code}`,method);
+        this.log(`...sponsor_dna ${downline.sponsor_dna}`,method);
+        this.log(`...sponsor_level ${downline.sponsor_level}`,method);
+        this.log(`...sponsor_id ${downline.sponsor_id}`,method);
+        this.log(`...sponsor_account ${downline.sponsor_account_id}`,method);
+        let invalidInfo = this.checkSponsorInfoOfAccount(downline);
+        if(typeof invalidInfo === "string") {
+            this.log(`ERROR ${invalidInfo}`,method);
+            return invalidInfo;
+        }
 
-        let sponsor_id = downlineObject.sponsor_id;
-        let current_downline:account = downlineObject;
+        let sponsor_id = downline.sponsor_id;
+        let current_downline:account = downline;
         while(sponsor_id > 0){
             this.log(`...checking sponsor_id ${sponsor_id} of current_downline_id ${current_downline.id}`,method);
             const upline = await this.getAccount(sponsor_id);
@@ -93,7 +105,7 @@ export class account_tools{
             sponsor_id = upline.sponsor_id;
             current_downline = upline;
         }
-        this.log(`...${downlineObject.account_code} sponsor structure is correct`,method);
+        this.log(`...${downline.account_code} sponsor structure is correct`,method);
         return true;
     }
     public static checkSponsorInfoOfAccount(account_info:account):true|string{
