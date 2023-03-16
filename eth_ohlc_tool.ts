@@ -7,6 +7,7 @@ import {eth_contract_events} from "./build/eth_contract_events";
 import {TRADE_TYPE} from "./eth_worker_trade";
 import {Dayjs} from "dayjs";
 import {config} from "./config";
+import {web3_tools} from "./web3_tools";
 
 //region TYPES
 enum BAR_COLOR {
@@ -312,7 +313,7 @@ export class eth_ohlc_tool {
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
         const ohlc_collection: OHLC_DETAILED_LIST[] = [];
-        for (const interval of intervals as INTERVAL_DATA[]) {
+        for (const interval of intervals) {
             const ohlc_item: OHLC_DETAILED_LIST = {
                 interval: timeFrame,
                 intervalInfo: interval,
@@ -329,6 +330,16 @@ export class eth_ohlc_tool {
             ohlc_collection.push(ohlc_item);
         }
         return ohlc_collection;
+    }
+
+    public static async getCandles(interval:INTERVAL, from:string|number, to:string|number) {
+        const method = "getCandles";
+        // if (await web3_tools.isContractAddress(pair_contract)) throw new Error(`${method} ${pair_contract} pair contract is not valid`);
+        // const fromTime = time_helper.getTime(from,"UTC",`${method} `)
+        // const tradeEvents = new eth_contract_events();
+        // await tradeEvents.list(" WHERE block_time>=:from AND block_time<=:to ",
+        //     {from},
+        //     " ORDER BY blockNumber ASC, logIndex ASC ");
     }
 
     //endregion OHLC

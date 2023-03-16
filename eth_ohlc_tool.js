@@ -264,6 +264,15 @@ class eth_ohlc_tool {
         }
         return ohlc_collection;
     }
+    static async getCandles(interval, from, to) {
+        const method = "getCandles";
+        // if (await web3_tools.isContractAddress(pair_contract)) throw new Error(`${method} ${pair_contract} pair contract is not valid`);
+        // const fromTime = time_helper.getTime(from,"UTC",`${method} `)
+        // const tradeEvents = new eth_contract_events();
+        // await tradeEvents.list(" WHERE block_time>=:from AND block_time<=:to ",
+        //     {from},
+        //     " ORDER BY blockNumber ASC, logIndex ASC ");
+    }
 }
 exports.eth_ohlc_tool = eth_ohlc_tool;
 //# sourceMappingURL=eth_ohlc_tool.js.map
