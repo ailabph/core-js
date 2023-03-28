@@ -37,6 +37,14 @@ class user_tools {
         this.log(`...user found with id ${queryUser.id} username ${queryUser.username}`, method);
         return queryUser;
     }
+    static async getUserStrict(id_or_username, desc = "") {
+        if (!tools_1.tools.isEmpty(desc))
+            desc = `${desc}|`;
+        const query = await this.getUser(id_or_username);
+        if (!query)
+            throw new Error(`${desc}user not found`);
+        return query;
+    }
     static async getUserByWallet(wallet_address) {
         const method = "getUserByWallet";
         wallet_address = assert_1.assert.stringNotEmpty(wallet_address, `${method} wallet_address`);
@@ -45,6 +53,28 @@ class user_tools {
         if (queryUser.count() > 1)
             throw new Error(`multiple users found ${queryUser.count()}, with address ${wallet_address}`);
         return queryUser.getItem();
+    }
+    static async getUserByCode(code) {
+        if (tools_1.tools.isEmpty(code) || tools_1.tools.isNullish(code))
+            return false;
+        const queryUser = new user_1.user();
+        queryUser.qr_hash = code;
+        await queryUser.fetch();
+        if (queryUser.recordExists())
+            return queryUser;
+        else
+            return false;
+    }
+    static async getUserByCodeStrict(code, desc = "") {
+        const queryUser = await this.getUserByCode(code);
+        if (typeof queryUser === "boolean") {
+            if (tools_1.tools.isNotEmpty(desc))
+                desc = desc + "|";
+            throw new Error(`${desc}user not found with qr_hash code ${code}`);
+        }
+        else {
+            return queryUser;
+        }
     }
 }
 exports.user_tools = user_tools;

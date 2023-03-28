@@ -39,6 +39,12 @@ export class user_tools{
         this.log(`...user found with id ${queryUser.id} username ${queryUser.username}`,method);
         return queryUser;
     }
+    public static async getUserStrict(id_or_username:null|string|number,desc:string=""):Promise<user>{
+        if(!tools.isEmpty(desc)) desc = `${desc}|`;
+        const query = await this.getUser(id_or_username);
+        if(!query) throw new Error(`${desc}user not found`);
+        return query;
+    }
     public static async getUserByWallet(wallet_address:string):Promise<user|false>{
         const method = "getUserByWallet";
         wallet_address = assert.stringNotEmpty(wallet_address,`${method} wallet_address`);
@@ -48,6 +54,24 @@ export class user_tools{
             {address:wallet_address,claimed:"claimed"});
         if(queryUser.count() > 1) throw new Error(`multiple users found ${queryUser.count()}, with address ${wallet_address}`);
         return queryUser.getItem();
+    }
+    public static async getUserByCode(code:string|null):Promise<user|false>{
+        if(tools.isEmpty(code) || tools.isNullish(code)) return false;
+        const queryUser = new user();
+        queryUser.qr_hash = code;
+        await queryUser.fetch();
+        if(queryUser.recordExists()) return queryUser;
+        else return false;
+    }
+    public static async getUserByCodeStrict(code:string|null,desc:string=""):Promise<user>{
+        const queryUser = await this.getUserByCode(code);
+        if(typeof queryUser === "boolean"){
+            if(tools.isNotEmpty(desc)) desc = desc + "|";
+            throw new Error(`${desc}user not found with qr_hash code ${code}`);
+        }
+        else{
+            return queryUser;
+        }
     }
     //endregion GETTERS
 
