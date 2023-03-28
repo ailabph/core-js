@@ -216,7 +216,7 @@ class eth_ohlc_tool {
     }
     //endregion
     //region OHLC
-    static generateDetailedOhlc(tradeEvents) {
+    static convertTradesToSingleOhlc(tradeEvents) {
         const ohlc = this.getDefaultOhlcDetailed();
         ohlc.open = this.getOpen(tradeEvents);
         ohlc.open_usd = this.getOpenUsd(tradeEvents);
@@ -241,7 +241,7 @@ class eth_ohlc_tool {
         ohlc.color = this.isGreen(ohlc) ? BAR_COLOR.GREEN : BAR_COLOR.RED;
         return ohlc;
     }
-    static generateOhlcList(timeFrame, tradeEvents) {
+    static convertTradesToOhlcList(timeFrame, tradeEvents) {
         const fromTimeInfo = this.getFromTimeInfo(tradeEvents);
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper_1.time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
@@ -259,7 +259,7 @@ class eth_ohlc_tool {
                     ohlc_item.trades.push(trade);
                 }
             }
-            ohlc_item.ohlc = this.generateDetailedOhlc(ohlc_item.trades);
+            ohlc_item.ohlc = this.convertTradesToSingleOhlc(ohlc_item.trades);
             ohlc_collection.push(ohlc_item);
         }
         return ohlc_collection;

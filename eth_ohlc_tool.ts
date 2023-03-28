@@ -279,7 +279,7 @@ export class eth_ohlc_tool {
     //endregion
 
     //region OHLC
-    public static generateDetailedOhlc(tradeEvents: eth_contract_events[]): OHLC_DETAILED {
+    public static convertTradesToSingleOhlc(tradeEvents: eth_contract_events[]): OHLC_DETAILED {
         const ohlc = this.getDefaultOhlcDetailed();
         ohlc.open = this.getOpen(tradeEvents);
         ohlc.open_usd = this.getOpenUsd(tradeEvents);
@@ -308,7 +308,7 @@ export class eth_ohlc_tool {
         return ohlc;
     }
 
-    public static generateOhlcList(timeFrame: INTERVAL, tradeEvents: eth_contract_events[]): OHLC_DETAILED_LIST[] {
+    public static convertTradesToOhlcList(timeFrame: INTERVAL, tradeEvents: eth_contract_events[]): OHLC_DETAILED_LIST[] {
         const fromTimeInfo = this.getFromTimeInfo(tradeEvents);
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
@@ -326,7 +326,7 @@ export class eth_ohlc_tool {
                     ohlc_item.trades.push(trade);
                 }
             }
-            ohlc_item.ohlc = this.generateDetailedOhlc(ohlc_item.trades);
+            ohlc_item.ohlc = this.convertTradesToSingleOhlc(ohlc_item.trades);
             ohlc_collection.push(ohlc_item);
         }
         return ohlc_collection;

@@ -209,7 +209,7 @@ describe("ohlc_tool spec", () => {
             newEvent.type = trade_types[c1];
             events.push(newEvent);
         }
-        const ohlc = eth_ohlc_tool_2.eth_ohlc_tool.generateDetailedOhlc(events);
+        const ohlc = eth_ohlc_tool_2.eth_ohlc_tool.convertTradesToSingleOhlc(events);
         assert.equal(ohlc.open, 123.54, "open");
         assert.equal(ohlc.high, 456.86, "high");
         assert.equal(ohlc.low, 50.12, "low");
@@ -245,7 +245,7 @@ describe("ohlc_tool spec", () => {
             newEvent.type = trade_types[c1];
             events.push(newEvent);
         }
-        const ohlc_list = eth_ohlc_tool_2.eth_ohlc_tool.generateOhlcList(time_helper_1.INTERVAL.HOUR, events);
+        const ohlc_list = eth_ohlc_tool_2.eth_ohlc_tool.convertTradesToOhlcList(time_helper_1.INTERVAL.HOUR, events);
         assert.equal(ohlc_list.length, 2, "ohlc bar count");
         const ohlc1 = ohlc_list[0].ohlc;
         assert.equal(ohlc1.open, 123.54, "open 1");
