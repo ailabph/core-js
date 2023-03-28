@@ -1,15 +1,12 @@
 import {connection} from "./connection";
-import {eth_contract_events} from "./build/eth_contract_events";
 import {account} from "./build/account";
 import {TIME_FORMATS, time_helper} from "./time_helper";
 import {assert} from "./assert";
 import {argv} from "process";
-import {user} from "./build/user";
 import {tools} from "./tools";
 import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 import {eth_config} from "./eth_config";
 import {points_log} from "./build/points_log";
-import {eth_send_token} from "./build/eth_send_token";
 import {eth_token_balance} from "./build/eth_token_balance";
 import {config} from "./config";
 import {account_tools} from "./account_tools";
@@ -42,7 +39,8 @@ export class worker_complan{
 
         try{
             const buyTrades = await this.getTradesForProcessing();
-            if(buyTrades.count() > 0) console.log(`${buyTrades.count()} found`);
+            // const current_time = time_helper.getAsFormat(time_helper.getCurrentTimeStamp(),TIME_FORMATS.READABLE,"UTC");
+            // if(buyTrades.count() > 0) console.log(`${current_time}| ${buyTrades.count()} found`);
             for(const buyTrade of buyTrades._dataList as eth_token_balance[]){
                 await this.processBuyTradeComplan(buyTrade);
             }
@@ -202,7 +200,7 @@ export class worker_complan{
 
     public static async processBuyTradeComplan(buyTrade:eth_token_balance):Promise<eth_token_balance>{
         const method = "processBuyTradeComplan";
-        this.log(`processing buy trade complan logic`,method);
+        this.log(`processing buy trade complan logic for ${buyTrade.transactionHash}`,method,false,true);
         assert.inTransaction();
         this.assertBuyTrade(buyTrade);
         const buy_amount = assert.isNumericString(buyTrade.debit,`${method} buyTrade.debit`);

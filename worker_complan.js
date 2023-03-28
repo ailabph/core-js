@@ -37,8 +37,8 @@ class worker_complan {
         await connection_1.connection.startTransaction();
         try {
             const buyTrades = await this.getTradesForProcessing();
-            if (buyTrades.count() > 0)
-                console.log(`${buyTrades.count()} found`);
+            // const current_time = time_helper.getAsFormat(time_helper.getCurrentTimeStamp(),TIME_FORMATS.READABLE,"UTC");
+            // if(buyTrades.count() > 0) console.log(`${current_time}| ${buyTrades.count()} found`);
             for (const buyTrade of buyTrades._dataList) {
                 await this.processBuyTradeComplan(buyTrade);
             }
@@ -185,7 +185,7 @@ class worker_complan {
     //endregion POINTS
     static async processBuyTradeComplan(buyTrade) {
         const method = "processBuyTradeComplan";
-        this.log(`processing buy trade complan logic`, method);
+        this.log(`processing buy trade complan logic for ${buyTrade.transactionHash}`, method, false, true);
         assert_1.assert.inTransaction();
         this.assertBuyTrade(buyTrade);
         const buy_amount = assert_1.assert.isNumericString(buyTrade.debit, `${method} buyTrade.debit`);
