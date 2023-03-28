@@ -265,7 +265,7 @@ class eth_receipt_logs_tools {
                 if (has_token_dex)
                     db_log.has_token_dex = "y";
                 await db_log.save();
-                this.log(`update log with flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method, false, true);
+                this.log(`update log with flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method);
                 // flag this transaction
                 const transaction = await eth_worker_1.eth_worker.getDbTxnByHash(log.transactionHash);
                 if (has_bnb_usd)
@@ -275,7 +275,7 @@ class eth_receipt_logs_tools {
                 if (has_token_dex)
                     transaction.has_token_dex = "y";
                 await transaction.save();
-                this.log(`update transaction flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method, false, true);
+                this.log(`update transaction flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method);
                 // flag block
                 const block = await eth_worker_1.eth_worker.getBlockByNumber(log.blockNumber);
                 if (has_bnb_usd)
@@ -285,7 +285,7 @@ class eth_receipt_logs_tools {
                 if (has_token_dex)
                     block.has_token_dex = "y";
                 await block.save();
-                this.log(`update block flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method, false, true);
+                this.log(`update block flags, has_bnb_usd:${db_log.has_bnb_usd} has_token:${db_log.has_token} has_token_dex:${db_log.has_token_dex}`, method);
             }
             else {
                 this.log(`...not involved`, method);
