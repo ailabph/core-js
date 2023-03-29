@@ -4,6 +4,7 @@ exports.eth_ohlc_tool = exports.BAR_COLOR = void 0;
 const assert_1 = require("./assert");
 const tools_1 = require("./tools");
 const time_helper_1 = require("./time_helper");
+const eth_contract_events_1 = require("./build/eth_contract_events");
 const eth_worker_trade_1 = require("./eth_worker_trade");
 const config_1 = require("./config");
 //region TYPES
@@ -39,11 +40,14 @@ class eth_ohlc_tool {
             volume_sell_usd: "0.00",
             volume: "0.00",
             volume_usd: "0.00",
+            volume_token: "0",
+            volume_token_buy: "0",
+            volume_token_sell: "0",
             color: BAR_COLOR.GREEN,
             from_dateTime: "",
             from_time: 0,
             to_dateTime: "",
-            to_time: 0,
+            to_time: 0
         };
     }
     static getDefaultOhlc() {
@@ -169,6 +173,28 @@ class eth_ohlc_tool {
     static getBuyVolumeUsd(tradeEvents) {
         return this.getBuyVolume(tradeEvents, true);
     }
+    static getBuyVolumeToken(tradeEvents) {
+        const method = "getBuyVolumeToken";
+        let totalBuyVolume = "0";
+        for (const trade of tradeEvents) {
+            if (trade.type === eth_worker_trade_1.TRADE_TYPE.BUY) {
+                const buyVolume = assert_1.assert.isNumericString(trade.toAmountGross, `${method} trade.toAmountGross`);
+                totalBuyVolume = tools_1.tools.add(totalBuyVolume, buyVolume, 18, `${method} adding totalBuyVolume(${totalBuyVolume}) and buyVolume(${buyVolume})`);
+            }
+        }
+        return totalBuyVolume;
+    }
+    static getSellVolumeToken(tradeEvents) {
+        const method = "getSellVolumeToken";
+        let totalSellVolume = "0";
+        for (const trade of tradeEvents) {
+            if (trade.type === eth_worker_trade_1.TRADE_TYPE.SELL) {
+                const SellVolume = assert_1.assert.isNumericString(trade.fromAmountGross, `${method} trade.fromAmountGross`);
+                totalSellVolume = tools_1.tools.add(totalSellVolume, SellVolume, 18, `${method} adding totalSellVolume(${totalSellVolume}) and SellVolume(${SellVolume})`);
+            }
+        }
+        return totalSellVolume;
+    }
     static getTotalVolume(tradeEvents, usd_price = false) {
         const method = "getTotalVolume";
         const totalBuyVolume = this.getBuyVolume(tradeEvents, usd_price);
@@ -177,6 +203,12 @@ class eth_ohlc_tool {
     }
     static getTotalVolumeUsd(tradeEvents) {
         return this.getTotalVolume(tradeEvents, true);
+    }
+    static getTotalVolumeToken(tradeEvents) {
+        const method = "getTotalVolumeToken";
+        const totalBuyVolume = this.getBuyVolumeToken(tradeEvents);
+        const totalSellVolume = this.getSellVolumeToken(tradeEvents);
+        return tools_1.tools.add(totalBuyVolume, totalSellVolume, 18, `${method} totalBuyVolume ${totalBuyVolume} totalSellVolume ${totalSellVolume}`);
     }
     static getFromTimeInfo(tradeEvents) {
         const method = "getFromTimeInfo";
@@ -192,8 +224,7 @@ class eth_ohlc_tool {
                 }
             }
         }
-        if (oldestTime <= 0)
-            throw new Error(`${method} unable to retrieve oldest time`);
+        // if(oldestTime <= 0) throw new Error(`${method} unable to retrieve oldest time(${oldestTime}) from trade list(${tradeEvents.length})`);
         return time_helper_1.time_helper.getTime(oldestTime, "UTC");
     }
     static getToTimeInfo(tradeEvents) {
@@ -210,13 +241,12 @@ class eth_ohlc_tool {
                 }
             }
         }
-        if (latestTime <= 0)
-            throw new Error(`${method} unable to retrieve latest time`);
+        // if(latestTime <= 0) throw new Error(`${method} unable to retrieve latest time`);
         return time_helper_1.time_helper.getTime(latestTime, "UTC");
     }
     //endregion
     //region OHLC
-    static convertTradesToSingleOhlc(tradeEvents) {
+    static convertTradesToSingleOhlc(tradeEvents, previousClose = 0, previousCloseUsd = 0) {
         const ohlc = this.getDefaultOhlcDetailed();
         ohlc.open = this.getOpen(tradeEvents);
         ohlc.open_usd = this.getOpenUsd(tradeEvents);
@@ -232,12 +262,29 @@ class eth_ohlc_tool {
         ohlc.volume_sell_usd = this.getSellVolumeUsd(tradeEvents);
         ohlc.volume = this.getTotalVolume(tradeEvents);
         ohlc.volume_usd = this.getTotalVolumeUsd(tradeEvents);
+        ohlc.volume_token_buy = this.getBuyVolumeToken(tradeEvents);
+        ohlc.volume_token_sell = this.getSellVolumeToken(tradeEvents);
+        ohlc.volume_token = this.getTotalVolumeToken(tradeEvents);
         const fromTimeInfo = this.getFromTimeInfo(tradeEvents);
         ohlc.from_time = fromTimeInfo.unix();
         ohlc.from_dateTime = fromTimeInfo.format(time_helper_1.TIME_FORMATS.MYSQL_DATE_TIME);
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         ohlc.to_time = toTimeInfo.unix();
         ohlc.to_dateTime = toTimeInfo.format(time_helper_1.TIME_FORMATS.MYSQL_DATE_TIME);
+        if (previousClose > 0 || previousCloseUsd > 0) {
+            assert_1.assert.positiveNumber(previousClose, `previousClose(${previousClose})`);
+            assert_1.assert.positiveNumber(previousCloseUsd, `previousCloseUsd(${previousCloseUsd})`);
+            ohlc.open = String(previousClose);
+            ohlc.open_usd = String(previousCloseUsd);
+            if (tradeEvents.length === 0) {
+                ohlc.high = String(previousClose);
+                ohlc.low = String(previousClose);
+                ohlc.close = String(previousClose);
+                ohlc.high_usd = String(previousCloseUsd);
+                ohlc.low_usd = String(previousCloseUsd);
+                ohlc.close_usd = String(previousCloseUsd);
+            }
+        }
         ohlc.color = this.isGreen(ohlc) ? BAR_COLOR.GREEN : BAR_COLOR.RED;
         return ohlc;
     }
@@ -246,6 +293,8 @@ class eth_ohlc_tool {
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper_1.time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
         const ohlc_collection = [];
+        let lastPrice = 0;
+        let lastPriceUsd = 0;
         for (const interval of intervals) {
             const ohlc_item = {
                 interval: timeFrame,
@@ -259,19 +308,28 @@ class eth_ohlc_tool {
                     ohlc_item.trades.push(trade);
                 }
             }
-            ohlc_item.ohlc = this.convertTradesToSingleOhlc(ohlc_item.trades);
+            ohlc_item.ohlc = this.convertTradesToSingleOhlc(ohlc_item.trades, lastPrice, lastPriceUsd);
+            const closePrice = tools_1.tools.parseNumber(ohlc_item.ohlc.close, `ohlc.close(${ohlc_item.ohlc.close})`);
+            const closePriceUsd = tools_1.tools.parseNumber(ohlc_item.ohlc.close_usd, `ohlc.close(${ohlc_item.ohlc.close_usd})`);
+            if (closePrice > 0) {
+                lastPrice = closePrice;
+                lastPriceUsd = closePriceUsd;
+            }
             ohlc_collection.push(ohlc_item);
         }
         return ohlc_collection;
     }
-    static async getCandles(interval, from, to) {
+    static async getCandles(pair_contract, interval, from, to) {
         const method = "getCandles";
-        // if (await web3_tools.isContractAddress(pair_contract)) throw new Error(`${method} ${pair_contract} pair contract is not valid`);
-        // const fromTime = time_helper.getTime(from,"UTC",`${method} `)
-        // const tradeEvents = new eth_contract_events();
-        // await tradeEvents.list(" WHERE block_time>=:from AND block_time<=:to ",
-        //     {from},
-        //     " ORDER BY blockNumber ASC, logIndex ASC ");
+        // retrieve trade data from db between from and to
+        from = time_helper_1.time_helper.getTime(from, "UTC", `from ${from}`).unix();
+        to = time_helper_1.time_helper.getTime(to, "UTC", `to ${to}`).unix();
+        const trades = new eth_contract_events_1.eth_contract_events();
+        await trades.list(" WHERE pair_contract=:pair AND block_time>=:from AND block_time<=:to AND (type=:buy OR type=:sell) ", { pair: pair_contract, from: from, to: to, buy: "buy", sell: "sell" });
+        if (trades.count() <= 0)
+            throw new Error(`no trade data for ${pair_contract} from(${from}) to(${to})`);
+        // convert trade data to ohlc
+        return this.convertTradesToOhlcList(interval, trades._dataList);
     }
 }
 exports.eth_ohlc_tool = eth_ohlc_tool;
