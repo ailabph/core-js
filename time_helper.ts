@@ -131,7 +131,6 @@ export class time_helper{
             return parsedTime.startOf("D");
         }
     }
-
     public static formatSeconds(seconds: number): string {
         const yearSeconds = 365 * 24 * 60 * 60;
         const monthSeconds = 30 * 24 * 60 * 60;
@@ -171,6 +170,18 @@ export class time_helper{
             result = '0 minutes';
         }
         return result;
+    }
+    public static startOfHour(time:number|string|Dayjs|null = null, timezone = "UTC"):Dayjs{
+        this.timeInit();
+        time = this.getTime(time,timezone);
+        const startOfHour = time.startOf("h");
+        return this.getTime(startOfHour.unix(),timezone);
+    }
+    public static endOfHour(time:number|string|Dayjs|null = null, timezone = "UTC"):Dayjs{
+        this.timeInit();
+        time = this.getTime(time,timezone);
+        const endOfHour = time.endOf("h");
+        return this.getTime(endOfHour.unix(),timezone);
     }
     //endregion UTILITIES
 }

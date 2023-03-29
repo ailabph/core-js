@@ -166,6 +166,18 @@ class time_helper {
         }
         return result;
     }
+    static startOfHour(time = null, timezone = "UTC") {
+        this.timeInit();
+        time = this.getTime(time, timezone);
+        const startOfHour = time.startOf("h");
+        return this.getTime(startOfHour.unix(), timezone);
+    }
+    static endOfHour(time = null, timezone = "UTC") {
+        this.timeInit();
+        time = this.getTime(time, timezone);
+        const endOfHour = time.endOf("h");
+        return this.getTime(endOfHour.unix(), timezone);
+    }
 }
 exports.time_helper = time_helper;
 time_helper.hasTimeInit = false;
