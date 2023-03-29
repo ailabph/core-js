@@ -18,6 +18,13 @@ let latestBlock = 0;
 let adjustedToBlock = 0;
 class eth_worker_logs {
     static async run() {
+        const knownTxnWithNoBlockNo = await this.fixKnownData();
+        if (knownTxnWithNoBlockNo > 0) {
+            setImmediate(() => {
+                eth_worker_logs.run().finally();
+            });
+            return;
+        }
         // check if known has records tim_processed = null
         await connection_1.connection.startTransaction();
         const startTime = tools_1.tools.getCurrentTimeStamp();
@@ -26,6 +33,7 @@ class eth_worker_logs {
             const unprocessedKnownTransactions = new eth_transaction_known_1.eth_transaction_known();
             await unprocessedKnownTransactions.list(" WHERE time_processed IS NULL ", {}, " ORDER BY blockNo ASC LIMIT 1");
             if (unprocessedKnownTransactions.count() > 0) {
+                console.log(``);
                 for (const known of unprocessedKnownTransactions._dataList) {
                     if (!(known.blockNo ?? 0 > 0)) {
                         const web3Transaction = await eth_worker_1.eth_worker.getTxnByHashWeb3(known.hash ?? "");
@@ -107,6 +115,22 @@ class eth_worker_logs {
                 eth_worker_logs.run().finally();
             });
         }
+    }
+    static async fixKnownData() {
+        const knownTxns = new eth_transaction_known_1.eth_transaction_known();
+        await knownTxns.list(" WHERE blockNo IS NULL ", {}, "");
+        if (knownTxns.count() > 0) {
+            console.log(`${knownTxns.count()} known transaction with no blockNo found`);
+            for (const txn of knownTxns._dataList) {
+                await tools_1.tools.sleep(100);
+                console.log(`hash ${txn.hash} with no blockNo, retrieving on chain`);
+                const txnWeb3 = await eth_worker_1.eth_worker.getTxnByHashWeb3(assert_1.assert.stringNotEmpty(txn.hash, `txn.hash`));
+                txn.blockNo = assert_1.assert.positiveInt(txnWeb3.blockNumber, `txnWeb3.blockNumber`);
+                await txn.save();
+                console.log(`...blockNo found ${txn.blockNo}, updated db id ${txn.id}`);
+            }
+        }
+        return knownTxns.count();
     }
 }
 exports.eth_worker_logs = eth_worker_logs;

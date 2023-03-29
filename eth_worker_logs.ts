@@ -7,6 +7,7 @@ import {tools} from "./tools";
 import {eth_transaction_known} from "./build/eth_transaction_known";
 import {Log} from "web3-core";
 import {argv} from "process";
+import {web3_tools} from "./web3_tools";
 
 const blocksToProcess = getBlocksToProcess();
 const blockConfirmation = 8;
@@ -17,7 +18,14 @@ let latestBlock = 0;
 let adjustedToBlock = 0;
 
 export class eth_worker_logs{
-    public static async run(){
+    public static async run():Promise<void>{
+        const knownTxnWithNoBlockNo = await this.fixKnownData();
+        if(knownTxnWithNoBlockNo > 0){
+            setImmediate(()=>{
+                eth_worker_logs.run().finally();
+            });
+            return;
+        }
         // check if known has records tim_processed = null
         await connection.startTransaction();
         const startTime = tools.getCurrentTimeStamp();
@@ -26,6 +34,7 @@ export class eth_worker_logs{
             const unprocessedKnownTransactions = new eth_transaction_known();
             await unprocessedKnownTransactions.list(" WHERE time_processed IS NULL ",{}," ORDER BY blockNo ASC LIMIT 1");
             if(unprocessedKnownTransactions.count() > 0){
+                console.log(``);
                 for(const known of unprocessedKnownTransactions._dataList as eth_transaction_known[]){
                     if(!(known.blockNo??0 > 0)){
                         const web3Transaction = await eth_worker.getTxnByHashWeb3(known.hash??"");
@@ -112,6 +121,22 @@ export class eth_worker_logs{
         }
     }
 
+    private static async fixKnownData():Promise<number>{
+        const knownTxns = new eth_transaction_known();
+        await knownTxns.list(" WHERE blockNo IS NULL ",{},"");
+        if(knownTxns.count() > 0){
+            console.log(`${knownTxns.count()} known transaction with no blockNo found`);
+            for(const txn of knownTxns._dataList as eth_transaction_known[]){
+                await tools.sleep(100);
+                console.log(`hash ${txn.hash} with no blockNo, retrieving on chain`);
+                const txnWeb3 = await eth_worker.getTxnByHashWeb3(assert.stringNotEmpty(txn.hash,`txn.hash`));
+                txn.blockNo = assert.positiveInt(txnWeb3.blockNumber,`txnWeb3.blockNumber`);
+                await txn.save();
+                console.log(`...blockNo found ${txn.blockNo}, updated db id ${txn.id}`);
+            }
+        }
+        return knownTxns.count();
+    }
 
 }
 
