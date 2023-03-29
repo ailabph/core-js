@@ -69,19 +69,19 @@ export class worker_price {
             await checkLastBlockOnLogs.list(" WHERE 1 ",{}," ORDER BY blockNumber DESC LIMIT 1 ");
             if(checkLastBlockOnLogs.count() > 0) latestBlockOnDb = assert.positiveInt(checkLastBlockOnLogs.getItem().blockNumber,`${method} checkLastBlockOnLogs.getItem().blockNumber`);
 
-            if(!(this.lastProcessedBlockNumber > 0)){
-                this.log(`first run detected, retrieving last blockNumber that is processed (heavy query)`,method,false,true);
-                let check = new eth_receipt_logs();
-                await check.list(" WHERE time_processed_price IS NOT NULL ",{}," ORDER BY blockNumber DESC, logIndex DESC LIMIT 1 ");
-                check = check.getItem();
-                if(!check){
-                    this.log(`...no logs found that price has been processed`,method,false,true);
-                    someLogsAlreadyProcessed = false;
-                }else{
-                    this.lastProcessedBlockNumber = assert.positiveInt(check.blockNumber,`${method} check.blockNumber to this.lastProcessedBlockNumber`);
-                    this.log(`...found blockNumber ${check.blockNumber} logIndex ${check.logIndex} dbId ${check.id}`,method,false,true);
-                }
-            }
+            // if(!(this.lastProcessedBlockNumber > 0)){
+            //     this.log(`first run detected, retrieving last blockNumber that is processed (heavy query)`,method,false,true);
+            //     let check = new eth_receipt_logs();
+            //     await check.list(" WHERE time_processed_price IS NOT NULL ",{}," ORDER BY blockNumber DESC, logIndex DESC LIMIT 1 ");
+            //     check = check.getItem();
+            //     if(!check){
+            //         this.log(`...no logs found that price has been processed`,method,false,true);
+            //         someLogsAlreadyProcessed = false;
+            //     }else{
+            //         this.lastProcessedBlockNumber = assert.positiveInt(check.blockNumber,`${method} check.blockNumber to this.lastProcessedBlockNumber`);
+            //         this.log(`...found blockNumber ${check.blockNumber} logIndex ${check.logIndex} dbId ${check.id}`,method,false,true);
+            //     }
+            // }
             if(!(this.lastProcessedBlockNumber > 0)){
                 this.log(`retrieving first blockNumber in logs (heavy query)`,method,false,true);
                 let check = new eth_receipt_logs();
