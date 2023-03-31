@@ -1912,79 +1912,7 @@ export class eth_worker{
 
     //region TRADE
 
-    public static async swapExactETHForTokens(bnb_amount:number|string): Promise<TransactionReceipt> {
-        console.log(`swapping ${bnb_amount} BNB for ${eth_config.getTokenSymbol()}`);
-        const bnb_value = eth_worker.convertEthToValue(bnb_amount);
 
-        console.log(`encoding swapExactETHForTokens data`);
-        const dex_contract = await new Web3Client.eth.Contract(eth_config.getDexAbi(), eth_config.getDexContract());
-        let data = dex_contract.methods.swapExactETHForTokens(
-            bnb_value,
-            [eth_config.getEthContract(), eth_config.getTokenContract()],
-            eth_config.getHotWalletAddress(),
-            Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)
-        ).encodeABI();
-
-        let _nonce = await Web3Client.eth.getTransactionCount(eth_config.getHotWalletAddress());
-        console.log(`nonce found:${_nonce}`);
-        console.log(`estimating gas ${bnb_value}`);
-        let estimateGas = await Web3Client.eth.estimateGas({
-            value: bnb_value
-            , data: data
-            , to: eth_config.getDexContract()
-            , from: eth_config.getHotWalletAddress()
-        });
-        console.log(`gas:${estimateGas}. signing transaction`);
-        let signedTransaction = await Web3Client.eth.accounts.signTransaction({
-            nonce: _nonce,
-            data: data,
-            to: eth_config.getDexContract(),
-            value: bnb_value,
-            gas: estimateGas,
-            gasPrice: await Web3Client.eth.getGasPrice(),
-        }, eth_config.getHotWalletKey());
-
-        console.log(`executing swap`);
-        assert.notEmpty(signedTransaction.rawTransaction);
-        return Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction as string);
-    }
-
-    public static async swapExactTokensForETH(token_amount:number|string): Promise<TransactionReceipt> {
-        console.log(`swapping ${token_amount} ${eth_config.getTokenSymbol()} for BNB`);
-        const token_value = eth_worker.convertTokenToValue(token_amount);
-
-        console.log(`encoding swapExactTokensForETH data`);
-        const dex_contract = await new Web3Client.eth.Contract(eth_config.getDexAbi(), eth_config.getDexContract());
-        let data = dex_contract.methods.swapExactTokensForETH(
-            token_value,
-            [eth_config.getEthContract(), eth_config.getTokenContract()],
-            eth_config.getHotWalletAddress(),
-            Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)
-        ).encodeABI();
-
-        let _nonce = await Web3Client.eth.getTransactionCount(eth_config.getHotWalletAddress());
-        console.log(`nonce found:${_nonce}`);
-        console.log(`estimating gas ${token_value} ${eth_config.getTokenContract()}`);
-        let estimateGas = await Web3Client.eth.estimateGas({
-            value: "0x0" // only tokens
-            , data: data
-            , to: eth_config.getDexContract()
-            , from: eth_config.getHotWalletAddress()
-        });
-        console.log(`gas:${estimateGas}. signing transaction`);
-        let signedTransaction = await Web3Client.eth.accounts.signTransaction({
-            nonce: _nonce,
-            data: data,
-            to: eth_config.getDexContract(),
-            value: token_value,
-            gas: estimateGas,
-            gasPrice: await Web3Client.eth.getGasPrice(),
-        }, eth_config.getHotWalletKey());
-
-        console.log(`executing swap`);
-        assert.notEmpty(signedTransaction.rawTransaction);
-        return Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction as string);
-    }
 
     //endregion
 
