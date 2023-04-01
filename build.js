@@ -221,11 +221,13 @@ exports.build = build;
 build.CONFIG_LOCATION = "";
 (async () => {
     if (process_1.argv.includes("run_build")) {
+        console.log(`db:${config_1.config.getConfig().db_name}`);
+        console.log(`env:${config_1.config.getEnv()}`);
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        const default_dir = process.cwd();
+        const default_dir = "build";
         let dir = await new Promise(resolve => {
             console.log(`current target dir: ${default_dir}`);
             rl.question(`target dir of db classes? `, (name) => {
@@ -234,7 +236,7 @@ build.CONFIG_LOCATION = "";
         });
         dir = tools_1.tools.isEmpty(dir) ? default_dir : dir;
         console.log(`selected dir: ${dir}`);
-        const default_dataObject = "./dataObject";
+        const default_dataObject = "../dataObject";
         let target_dataObject = await new Promise(resolve => {
             console.log(`current data object: ${default_dataObject}`);
             rl.question(`target data object? `, (name) => {

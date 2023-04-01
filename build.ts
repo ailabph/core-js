@@ -233,11 +233,13 @@ export class build{
 
 (async()=>{
     if(argv.includes("run_build")){
+        console.log(`db:${config.getConfig().db_name}`);
+        console.log(`env:${config.getEnv()}`);
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        const default_dir = process.cwd();
+        const default_dir = "build";
         let dir = await new Promise<string>(resolve => {
             console.log(`current target dir: ${default_dir}`);
             rl.question(`target dir of db classes? `, (name: string | PromiseLike<string>) => {
@@ -247,7 +249,7 @@ export class build{
         dir = tools.isEmpty(dir) ? default_dir : dir;
         console.log(`selected dir: ${dir}`);
 
-        const default_dataObject = "./dataObject";
+        const default_dataObject = "../dataObject";
         let target_dataObject = await new Promise<string>(resolve => {
             console.log(`current data object: ${default_dataObject}`);
             rl.question(`target data object? `, (name: string | PromiseLike<string>) => {
