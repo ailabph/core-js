@@ -8,6 +8,7 @@ import {TRADE_TYPE} from "./eth_worker_trade";
 import {Dayjs} from "dayjs";
 import {config} from "./config";
 import {web3_tools} from "./web3_tools";
+import {ohlc_details} from "./build/ohlc_details";
 
 //region TYPES
 enum BAR_COLOR {
@@ -107,26 +108,51 @@ export class eth_ohlc_tool {
             to_time: 0
         };
     }
-
     public static getDefaultOhlc(): OHLC_SIMPLE {
         return {close: 0, high: 0, low: 0, open: 0, time: ""};
     }
-
     public static isGreen(ohlc: OHLC_SIMPLE | OHLC_DETAILED): boolean {
         const method = "isGreen";
         assert.isNumericString(ohlc.open,`${method} ohlc.open`);
         assert.isNumericString(ohlc.close,`${method} ohlc.close`);
         return tools.greaterThanOrEqualTo(ohlc.close,ohlc.open,`${method} close ${ohlc.close} >= open ${ohlc.open}`);
     }
-
     public static isRed(ohlc: OHLC_SIMPLE | OHLC_DETAILED): boolean {
         return !this.isGreen(ohlc);
     }
-
     public static getDefaultDecimal(): number {
         return 6;
     }
+    public static convertDbToOhlcDetailed(ohlc_detail:ohlc_details):OHLC_DETAILED{
+        const ohlc = this.getDefaultOhlcDetailed();
+        ohlc.open = assert.isNumericString(ohlc_detail.open,`ohlc_detail(${ohlc_detail.id}).open(${ohlc_detail.open})`);
+        ohlc.high = assert.isNumericString(ohlc_detail.high,`ohlc_detail(${ohlc_detail.id}).high(${ohlc_detail.high})`);
+        ohlc.low = assert.isNumericString(ohlc_detail.low,`ohlc_detail(${ohlc_detail.id}).high(${ohlc_detail.low})`);
+        ohlc.close = assert.isNumericString(ohlc_detail.close,`ohlc_detail(${ohlc_detail.id}).high(${ohlc_detail.close})`);
 
+        ohlc.open_usd = assert.isNumericString(ohlc_detail.open_usd,`ohlc_detail(${ohlc_detail.id}).open_usd(${ohlc_detail.open_usd})`);
+        ohlc.high_usd = assert.isNumericString(ohlc_detail.high_usd,`ohlc_detail(${ohlc_detail.id}).high_usd(${ohlc_detail.high_usd})`);
+        ohlc.low_usd = assert.isNumericString(ohlc_detail.low_usd,`ohlc_detail(${ohlc_detail.id}).low_usd(${ohlc_detail.low_usd})`);
+        ohlc.close_usd = assert.isNumericString(ohlc_detail.close_usd,`ohlc_detail(${ohlc_detail.id}).close_usd(${ohlc_detail.close_usd})`);
+
+        ohlc.volume_buy = assert.isNumericString(ohlc_detail.volume_buy,`ohlc_detail(${ohlc_detail.id}).volume_buy(${ohlc_detail.volume_buy})`);
+        ohlc.volume_sell = assert.isNumericString(ohlc_detail.volume_sell,`ohlc_detail(${ohlc_detail.id}).volume_sell(${ohlc_detail.volume_sell})`);
+        ohlc.volume = assert.isNumericString(ohlc_detail.volume,`ohlc_detail(${ohlc_detail.id}).volume(${ohlc_detail.volume})`);
+
+        ohlc.volume_buy_usd = assert.isNumericString(ohlc_detail.volume_buy_usd,`ohlc_detail(${ohlc_detail.id}).volume_buy_usd(${ohlc_detail.volume_buy_usd})`);
+        ohlc.volume_sell_usd = assert.isNumericString(ohlc_detail.volume_sell_usd,`ohlc_detail(${ohlc_detail.id}).volume_sell_usd(${ohlc_detail.volume_sell_usd})`);
+        ohlc.volume_usd = assert.isNumericString(ohlc_detail.volume_usd,`ohlc_detail(${ohlc_detail.id}).volume_usd(${ohlc_detail.volume_usd})`);
+
+        ohlc.volume_token_buy = assert.isNumericString(ohlc_detail.volume_token_buy,`ohlc_detail(${ohlc_detail.id}).volume_token_buy(${ohlc_detail.volume_token_buy})`);
+        ohlc.volume_token_sell = assert.isNumericString(ohlc_detail.volume_token_sell,`ohlc_detail(${ohlc_detail.id}).volume_token_sell(${ohlc_detail.volume_token_sell})`);
+        ohlc.volume_token = assert.isNumericString(ohlc_detail.volume_token,`ohlc_detail(${ohlc_detail.id}).volume_token(${ohlc_detail.volume_token})`);
+
+        if(this.isRed(ohlc)) ohlc.color = BAR_COLOR.RED;
+        ohlc.from_time = ohlc_detail.from;
+        ohlc.to_time = ohlc_detail.to;
+
+        return ohlc;
+    }
     //endregion UTILITIES
 
     //region GETTERS
@@ -247,6 +273,7 @@ export class eth_ohlc_tool {
         }
         return totalBuyVolume;
     }
+
     public static getSellVolumeToken(tradeEvents: eth_contract_events[]): string {
         const method = "getSellVolumeToken";
         let totalSellVolume = "0";
@@ -276,8 +303,6 @@ export class eth_ohlc_tool {
         const totalSellVolume = this.getSellVolumeToken(tradeEvents);
         return tools.add(totalBuyVolume,totalSellVolume,18,`${method} totalBuyVolume ${totalBuyVolume} totalSellVolume ${totalSellVolume}`);
     }
-
-
 
     public static getFromTimeInfo(tradeEvents: eth_contract_events[]): Dayjs {
         const method = "getFromTimeInfo";
@@ -315,6 +340,16 @@ export class eth_ohlc_tool {
         return time_helper.getTime(latestTime,"UTC");
     }
 
+    public static async getLatestCandle(pair:string,interval:INTERVAL):Promise<ohlc_details>{
+        const method = "getLatestCandle";
+        assert.stringNotEmpty(pair,`pair(${pair})`);
+        const latestBar = new ohlc_details();
+        await latestBar.list(
+            " WHERE pair=:pair AND interval=:interval ",
+            {pair:pair,interval:interval},
+            " ORDER BY datetime DESC LIMIT 1 ");
+        return latestBar.getItem();
+    }
     //endregion
 
     //region OHLC
