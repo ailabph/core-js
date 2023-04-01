@@ -1,6 +1,12 @@
 
 //region TYPES
-
+enum TRADE_STATUS{
+    PENDING_OPEN = "pending_open",
+    OPEN = "open",
+    PENDING_CLOSE = "pending_close",
+    CLOSE = "close",
+}
+export { TRADE_STATUS }
 //endregion TYPES
 
 import {eth_contract_events} from "./build/eth_contract_events";

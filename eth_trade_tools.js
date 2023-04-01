@@ -1,7 +1,15 @@
 "use strict";
-//region TYPES
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.eth_trade_tools = void 0;
+exports.eth_trade_tools = exports.TRADE_STATUS = void 0;
+//region TYPES
+var TRADE_STATUS;
+(function (TRADE_STATUS) {
+    TRADE_STATUS["PENDING_OPEN"] = "pending_open";
+    TRADE_STATUS["OPEN"] = "open";
+    TRADE_STATUS["PENDING_CLOSE"] = "pending_close";
+    TRADE_STATUS["CLOSE"] = "close";
+})(TRADE_STATUS || (TRADE_STATUS = {}));
+exports.TRADE_STATUS = TRADE_STATUS;
 //endregion TYPES
 const eth_contract_events_1 = require("./build/eth_contract_events");
 const assert_1 = require("./assert");
