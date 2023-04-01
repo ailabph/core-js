@@ -396,8 +396,17 @@ class tools {
     static deduct(from, to, decimal = 18, desc = "") {
         return tools.toBn(from).minus(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
     }
+    static minus(from, to, decimal = 18, desc = "") {
+        return tools.deduct(from, to, decimal, desc);
+    }
+    static subtract(from, to, decimal = 18, desc = "") {
+        return tools.deduct(from, to, decimal, desc);
+    }
     static add(from, to, decimal = 18, desc = "") {
         return tools.toBn(from).plus(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
+    }
+    static plus(from, to, decimal = 18, desc = "") {
+        return tools.add(from, to, decimal, desc);
     }
     static multiply(from, to, decimal = 18, desc = "") {
         return tools.toBn(from).multipliedBy(tools.toBn(to)).toFixed(assert_1.assert.naturalNumber(decimal, desc));
@@ -456,6 +465,25 @@ class tools {
         const percentage = tools.divide(toReturn.diff, toReturn.gross, decimal, desc);
         toReturn.percentage = tools.parseNumber(percentage, desc);
         return toReturn;
+    }
+    static percentageDifference(num1, num2, desc = "", decimal = 4) {
+        const method = "percentageDifference";
+        if (typeof num1 === "string")
+            assert_1.assert.isNumericString(num1, desc);
+        if (typeof num2 === "string")
+            assert_1.assert.isNumericString(num2, desc);
+        const bigNum1 = new bignumber_js_1.default(num1);
+        const bigNum2 = new bignumber_js_1.default(num2);
+        this.log(`num1(${bigNum1.toFixed(decimal)}) num2(${bigNum2.toFixed(decimal)}) decimal(${decimal})`, method);
+        // Calculate the absolute difference
+        const difference = bigNum2.minus(bigNum1);
+        this.log(`difference(${difference.toFixed(decimal)})`, method);
+        // Calculate the percentage difference
+        const percentageDifference = difference.dividedBy(bigNum1);
+        // Convert the result to a number with the specified number of decimal places
+        const result = Number(percentageDifference.toFixed(decimal));
+        this.log(`percentageDifference(${result})`, method);
+        return result;
     }
     //endregion MATH
     //region LIMITER

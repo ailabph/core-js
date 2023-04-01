@@ -189,4 +189,30 @@ describe("tools spec",()=>{
     it("toOrdinal return '113th' when given 113", () => {
         expect(tools.toOrdinal(113)).to.equal("113th");
     });
+
+    it('percentageDifference should return the correct percentage difference', () => {
+        const num1 = 100;
+        const num2 = 110;
+        const result = tools.percentageDifference(num1, num2, "",4);
+        expect(result).to.equal(0.1);
+    });
+
+    it('percentageDifference should return the correct negative percentage difference', () => {
+        const num1 = 100;
+        const num2 = 90;
+        const result = tools.percentageDifference(num1, num2, "",4);
+        expect(result).to.equal(-0.1);
+    });
+
+    it('percentageDifference should throw an error for non-numeric input', () => {
+        expect(() => tools.percentageDifference('abc', 100)).to.throw();
+        expect(() => tools.percentageDifference(100, 'abc')).to.throw();
+    });
+
+    it('percentageDifference should return the correct percentage difference for numeric strings', () => {
+        const num1 = '100';
+        const num2 = '110';
+        const result = tools.percentageDifference(num1, num2, "",4);
+        expect(result).to.equal(0.1);
+    });
 });

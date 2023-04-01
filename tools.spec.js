@@ -163,5 +163,27 @@ describe("tools spec", () => {
     it("toOrdinal return '113th' when given 113", () => {
         (0, chai_1.expect)(tools_1.tools.toOrdinal(113)).to.equal("113th");
     });
+    it('percentageDifference should return the correct percentage difference', () => {
+        const num1 = 100;
+        const num2 = 110;
+        const result = tools_1.tools.percentageDifference(num1, num2, "", 4);
+        (0, chai_1.expect)(result).to.equal(0.1);
+    });
+    it('percentageDifference should return the correct negative percentage difference', () => {
+        const num1 = 100;
+        const num2 = 90;
+        const result = tools_1.tools.percentageDifference(num1, num2, "", 4);
+        (0, chai_1.expect)(result).to.equal(-0.1);
+    });
+    it('percentageDifference should throw an error for non-numeric input', () => {
+        (0, chai_1.expect)(() => tools_1.tools.percentageDifference('abc', 100)).to.throw();
+        (0, chai_1.expect)(() => tools_1.tools.percentageDifference(100, 'abc')).to.throw();
+    });
+    it('percentageDifference should return the correct percentage difference for numeric strings', () => {
+        const num1 = '100';
+        const num2 = '110';
+        const result = tools_1.tools.percentageDifference(num1, num2, "", 4);
+        (0, chai_1.expect)(result).to.equal(0.1);
+    });
 });
 //# sourceMappingURL=tools.spec.js.map
