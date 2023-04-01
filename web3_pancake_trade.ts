@@ -19,63 +19,6 @@ export class web3_pancake_trade{
     }
 
     //region TRADE
-    public static async buyTokenFromExactBnb2(bnb_amount:number|string): Promise<TransactionReceipt|string> {
-        const method = "swapExactETHForTokens";
-        bnb_amount = tools.parseNumber(bnb_amount,`${method}|bnb_amount(${bnb_amount})`,true);
-        assert.isNumber(bnb_amount,`${method}|bnb_amount(${bnb_amount})`,0);
-
-        const Web3Client = web3_rpc_web3.getWeb3Client();
-        this.log(`swapping ${bnb_amount} BNB for ${eth_config.getTokenSymbol()}`,method,false,true);
-
-        const bnb_value = eth_worker.convertEthToValue(bnb_amount);
-
-        this.log(`encoding swapExactETHForTokens data`,method,false,true);
-        const dex_contract = await new Web3Client.eth.Contract(eth_config.getDexAbi(), eth_config.getDexContract());
-        let data = dex_contract.methods.swapExactETHForTokens(
-            bnb_value,
-            [eth_config.getEthContract(), eth_config.getTokenContract()],
-            eth_config.getHotWalletAddress(),
-            Web3.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)
-        ).encodeABI();
-
-        let _nonce = await Web3Client.eth.getTransactionCount(eth_config.getHotWalletAddress());
-        this.log(`estimating gas ${bnb_value}`,method,false,true);
-        let estimateGas = await Web3Client.eth.estimateGas({
-            value: bnb_value
-            , data: data
-            , to: eth_config.getDexContract()
-            , from: eth_config.getHotWalletAddress()
-        });
-        this.log(`estimated gas ${bnb_value} nonce ${_nonce}, signing transaction`,method,false,true);
-        const signedTransaction = await Web3Client.eth.accounts.signTransaction({
-            nonce: _nonce,
-            data: data,
-            to: eth_config.getDexContract(),
-            value: bnb_value,
-            gas: estimateGas,
-            gasPrice: await Web3Client.eth.getGasPrice(),
-        }, eth_config.getHotWalletKey());
-
-        this.log(`executing swap`,method,false,true);
-        assert.notEmpty(signedTransaction.rawTransaction);
-        try{
-            const result = await Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction as string);
-            this.log(`receipt received hash ${result.transactionHash} block ${result.blockNumber}, retrieving transaction`,method,false,true);
-            const txn = await eth_worker.getTxnByHashWeb3(result.transactionHash);
-            const decodedInput = web3_abi_decoder.decodeAbiObject(txn.input);
-            const decodedSwap = web3_abi_decoder.getSwapExactETHForTokens(decodedInput);
-            if(!decodedSwap){
-                throw new Error(`unable to decode swapExactETHForTokens from input of ${result.transactionHash}`);
-            }
-
-            return result;
-        }catch (e) {
-            if(!(e instanceof Error)) throw e;
-            this.log(`ERROR ${e.message}`,method,false,true);
-            return e.message;
-        }
-    }
-
     public static async buyTokensFromExactBnb(bnb_amount:number|string, slippage:number = 3.5):Promise<TransactionReceipt|string>{
         const method = "buyTokensFromExactBnb";
         bnb_amount = tools.parseNumber(bnb_amount,`bnb_amount(${bnb_amount})`,true);

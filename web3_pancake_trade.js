@@ -1,17 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.web3_pancake_trade = void 0;
 const eth_config_1 = require("./eth_config");
-const web3_1 = __importDefault(require("web3"));
 const assert_1 = require("./assert");
 const eth_worker_1 = require("./eth_worker");
 const web3_rpc_web3_1 = require("./web3_rpc_web3");
 const tools_1 = require("./tools");
 const config_1 = require("./config");
-const web3_abi_decoder_1 = require("./web3_abi_decoder");
 const web3_log_decoder_1 = require("./web3_log_decoder");
 const web3_tools_1 = require("./web3_tools");
 class web3_pancake_trade {
@@ -23,53 +18,6 @@ class web3_pancake_trade {
         }
     }
     //region TRADE
-    static async buyTokenFromExactBnb2(bnb_amount) {
-        const method = "swapExactETHForTokens";
-        bnb_amount = tools_1.tools.parseNumber(bnb_amount, `${method}|bnb_amount(${bnb_amount})`, true);
-        assert_1.assert.isNumber(bnb_amount, `${method}|bnb_amount(${bnb_amount})`, 0);
-        const Web3Client = web3_rpc_web3_1.web3_rpc_web3.getWeb3Client();
-        this.log(`swapping ${bnb_amount} BNB for ${eth_config_1.eth_config.getTokenSymbol()}`, method, false, true);
-        const bnb_value = eth_worker_1.eth_worker.convertEthToValue(bnb_amount);
-        this.log(`encoding swapExactETHForTokens data`, method, false, true);
-        const dex_contract = await new Web3Client.eth.Contract(eth_config_1.eth_config.getDexAbi(), eth_config_1.eth_config.getDexContract());
-        let data = dex_contract.methods.swapExactETHForTokens(bnb_value, [eth_config_1.eth_config.getEthContract(), eth_config_1.eth_config.getTokenContract()], eth_config_1.eth_config.getHotWalletAddress(), web3_1.default.utils.toHex(Math.round(Date.now() / 1000) + 60 * 20)).encodeABI();
-        let _nonce = await Web3Client.eth.getTransactionCount(eth_config_1.eth_config.getHotWalletAddress());
-        this.log(`estimating gas ${bnb_value}`, method, false, true);
-        let estimateGas = await Web3Client.eth.estimateGas({
-            value: bnb_value,
-            data: data,
-            to: eth_config_1.eth_config.getDexContract(),
-            from: eth_config_1.eth_config.getHotWalletAddress()
-        });
-        this.log(`estimated gas ${bnb_value} nonce ${_nonce}, signing transaction`, method, false, true);
-        const signedTransaction = await Web3Client.eth.accounts.signTransaction({
-            nonce: _nonce,
-            data: data,
-            to: eth_config_1.eth_config.getDexContract(),
-            value: bnb_value,
-            gas: estimateGas,
-            gasPrice: await Web3Client.eth.getGasPrice(),
-        }, eth_config_1.eth_config.getHotWalletKey());
-        this.log(`executing swap`, method, false, true);
-        assert_1.assert.notEmpty(signedTransaction.rawTransaction);
-        try {
-            const result = await Web3Client.eth.sendSignedTransaction(signedTransaction.rawTransaction);
-            this.log(`receipt received hash ${result.transactionHash} block ${result.blockNumber}, retrieving transaction`, method, false, true);
-            const txn = await eth_worker_1.eth_worker.getTxnByHashWeb3(result.transactionHash);
-            const decodedInput = web3_abi_decoder_1.web3_abi_decoder.decodeAbiObject(txn.input);
-            const decodedSwap = web3_abi_decoder_1.web3_abi_decoder.getSwapExactETHForTokens(decodedInput);
-            if (!decodedSwap) {
-                throw new Error(`unable to decode swapExactETHForTokens from input of ${result.transactionHash}`);
-            }
-            return result;
-        }
-        catch (e) {
-            if (!(e instanceof Error))
-                throw e;
-            this.log(`ERROR ${e.message}`, method, false, true);
-            return e.message;
-        }
-    }
     static async buyTokensFromExactBnb(bnb_amount, slippage = 3.5) {
         const method = "buyTokensFromExactBnb";
         bnb_amount = tools_1.tools.parseNumber(bnb_amount, `bnb_amount(${bnb_amount})`, true);
