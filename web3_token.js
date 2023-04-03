@@ -148,6 +148,44 @@ class web3_token {
             return false;
         }
     }
+    static async getBalanceOf(contract_address, wallet_address) {
+        const method = "getBalanceOf";
+        if (!await web3_tools_1.web3_tools.isContractAddress(contract_address))
+            throw new Error(`${method} contract_address(${contract_address}) is not a valid contract`);
+        if (!await web3_tools_1.web3_tools.isWalletAddress(wallet_address))
+            throw new Error(`${method} wallet_address(${wallet_address}) is not a valid wallet address`);
+        const balanceABI = [
+            {
+                constant: true,
+                inputs: [
+                    {
+                        name: '_owner',
+                        type: 'address',
+                    },
+                ],
+                name: 'balanceOf',
+                outputs: [
+                    {
+                        name: 'balance',
+                        type: 'uint256',
+                    },
+                ],
+                type: 'function',
+            },
+        ];
+        const contract = web3_rpc_web3_1.web3_rpc_web3.getWeb3Contract(contract_address, balanceABI);
+        try {
+            let balance = await contract.methods.balanceOf(wallet_address).call();
+            assert_1.assert.isNumericString(balance, `${method} balance(${balance})`);
+            return balance;
+        }
+        catch (e) {
+            if (e instanceof Error) {
+                this.log(`ERROR ${e.message}`, method, false, true);
+            }
+            throw e;
+        }
+    }
     //endregion READ
     //region CHECKS
     //endregion CHECKS

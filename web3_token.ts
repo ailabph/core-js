@@ -83,7 +83,6 @@ export class web3_token{
             if(strict) throw e;
             return false;
         }
-
     }
     public static async getSymbolWeb3(contract_address:string,strict:boolean=false):Promise<string|false>{
         const method = "getSymbolWeb3";
@@ -145,6 +144,41 @@ export class web3_token{
             this.log(`ERROR, unable to retrieve symbol`,method);
             if(strict) throw e;
             return false;
+        }
+    }
+    public static async getBalanceOf(contract_address:string,wallet_address:string):Promise<string>{
+        const method = "getBalanceOf";
+        if(!await web3_tools.isContractAddress(contract_address)) throw new Error(`${method} contract_address(${contract_address}) is not a valid contract`);
+        if(!await web3_tools.isWalletAddress(wallet_address)) throw new Error(`${method} wallet_address(${wallet_address}) is not a valid wallet address`);
+        const balanceABI = [
+            {
+                constant: true,
+                inputs: [
+                    {
+                        name: '_owner',
+                        type: 'address',
+                    },
+                ],
+                name: 'balanceOf',
+                outputs: [
+                    {
+                        name: 'balance',
+                        type: 'uint256',
+                    },
+                ],
+                type: 'function',
+            },
+        ];
+        const contract = web3_rpc_web3.getWeb3Contract(contract_address,balanceABI);
+        try{
+            let balance:string = await contract.methods.balanceOf(wallet_address).call();
+            assert.isNumericString(balance,`${method} balance(${balance})`);
+            return balance;
+        }catch (e){
+            if(e instanceof Error){
+                this.log(`ERROR ${e.message}`,method,false,true);
+            }
+            throw e;
         }
     }
     //endregion READ
