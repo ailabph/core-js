@@ -522,4 +522,10 @@ export class tools{
     private static async placeholderFunction(){}
 
     //endregion LIMITER
+
+    //region FORMAT
+    public static percentageFormat(percentage:number, decimal:number = 2):string{
+        return tools.multiply(percentage,100,decimal);
+    }
+    //endregion FORMAT
 }

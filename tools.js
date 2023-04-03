@@ -524,6 +524,11 @@ class tools {
         await limiterInfo.limiter.schedule(() => this.placeholderFunction());
     }
     static async placeholderFunction() { }
+    //endregion LIMITER
+    //region FORMAT
+    static percentageFormat(percentage, decimal = 2) {
+        return tools.multiply(percentage, 100, decimal);
+    }
 }
 exports.tools = tools;
 tools.BASE_DIR = "..";
