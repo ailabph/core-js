@@ -15,8 +15,9 @@ export class eth_contract_data_tools{
     }
 
     //region READ
-    public static async getContractViaAddress(contract_address:string,strict:boolean=false):Promise<ContractInfo|false>{
+    public static async getContractViaAddress(contract_address:string,strict:boolean=false,context:string=""):Promise<ContractInfo|false>{
         const method = "getContractViaAddress";
+        if(tools.isNotEmpty(context)) context = `${context}|`;
         contract_address = assert.stringNotEmpty(contract_address,`${method} contract_address`);
 
         this.log(`retrieving db contract ${contract_address}`,method);

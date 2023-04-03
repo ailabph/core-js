@@ -16,8 +16,10 @@ class eth_contract_data_tools {
         }
     }
     //region READ
-    static async getContractViaAddress(contract_address, strict = false) {
+    static async getContractViaAddress(contract_address, strict = false, context = "") {
         const method = "getContractViaAddress";
+        if (tools_1.tools.isNotEmpty(context))
+            context = `${context}|`;
         contract_address = assert_1.assert.stringNotEmpty(contract_address, `${method} contract_address`);
         this.log(`retrieving db contract ${contract_address}`, method);
         const contractInfo = eth_types_1.eth_types.getDefaultContractInfo();
