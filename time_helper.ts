@@ -105,7 +105,7 @@ export class time_helper{
 
         let collection:INTERVAL_DATA[] = [];
 
-        let currentStart = this.getTime(fromTime.unix(),timezone_override);
+        let currentStart = this.getTime(fromTime.unix() ,timezone_override);
         let currentEnd = this.getTime(fromTime.unix(),timezone_override).endOf(interval).tz(timezone_override);
         while(currentEnd.unix() <= toTime.unix()){
             collection.push({
