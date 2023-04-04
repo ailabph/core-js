@@ -10,6 +10,7 @@ import {tools} from "./tools";
 
 export class worker_ohlc{
     public static async run():Promise<void>{
+
         // get events where time_ohlc_processed order by blockNo, logIndex ASC
         const events = new eth_contract_events();
         await events.list(
@@ -24,7 +25,14 @@ export class worker_ohlc{
             console.log(`${blockTimeFormat} | ${pairInfo.orderedPairSymbol} | ${event.pair_contract}`);
             console.log(`... trade for processing hash(${event.txn_hash}) block(${event.blockNumber}) log(${event.logIndex}) type(${event.type})`);
 
-            const fromTime = time_helper.startOfHour(event.block_time);
+            let fromTime = time_helper.startOfHour(event.block_time);
+            // check last ohlc data
+            let lastOhlc = new ohlc_details();
+            await lastOhlc.list(" WHERE 1 ",{}," ORDER BY ohlc_details.to DESC LIMIT 1 ");
+            lastOhlc = lastOhlc.getItem();
+            if(lastOhlc){
+                fromTime = time_helper.startOfHour(lastOhlc.to,"UTC");
+            }
             const toTime = time_helper.endOfHour();
             console.log(`... retrieving trades from(${fromTime.format(TIME_FORMATS.READABLE)}) to(${toTime.format(TIME_FORMATS.READABLE)})`);
 

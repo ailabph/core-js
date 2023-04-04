@@ -22,7 +22,14 @@ class worker_ohlc {
             const pairInfo = await web3_pair_price_tools_1.web3_pair_price_tools.getPairInfo(event.pair_contract);
             console.log(`${blockTimeFormat} | ${pairInfo.orderedPairSymbol} | ${event.pair_contract}`);
             console.log(`... trade for processing hash(${event.txn_hash}) block(${event.blockNumber}) log(${event.logIndex}) type(${event.type})`);
-            const fromTime = time_helper_1.time_helper.startOfHour(event.block_time);
+            let fromTime = time_helper_1.time_helper.startOfHour(event.block_time);
+            // check last ohlc data
+            let lastOhlc = new ohlc_details_1.ohlc_details();
+            await lastOhlc.list(" WHERE 1 ", {}, " ORDER BY ohlc_details.to DESC LIMIT 1 ");
+            lastOhlc = lastOhlc.getItem();
+            if (lastOhlc) {
+                fromTime = time_helper_1.time_helper.startOfHour(lastOhlc.to, "UTC");
+            }
             const toTime = time_helper_1.time_helper.endOfHour();
             console.log(`... retrieving trades from(${fromTime.format(time_helper_1.TIME_FORMATS.READABLE)}) to(${toTime.format(time_helper_1.TIME_FORMATS.READABLE)})`);
             const ohlc_list = await eth_ohlc_tool_1.eth_ohlc_tool.getCandles(event.pair_contract, time_helper_1.INTERVAL.HOUR, fromTime.unix(), toTime.unix());
