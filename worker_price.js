@@ -14,6 +14,10 @@ const web3_pair_price_tools_1 = require("./web3_pair_price_tools");
 const eth_price_track_header_tools_1 = require("./eth_price_track_header_tools");
 const eth_worker_1 = require("./eth_worker");
 const config_1 = require("./config");
+const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
+const eth_contract_events_1 = require("./build/eth_contract_events");
+const time_helper_1 = require("./time_helper");
+const worker_events_trade_1 = require("./worker_events_trade");
 class worker_price {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
@@ -191,6 +195,29 @@ class worker_price {
             }, secondDelay * 1000);
         }
     }
+    static async checkPricesOnTradeEventsOfBusd() {
+        const method = "checkPricesOnTradeEvents";
+        const token_usd_trades = new eth_contract_events_1.eth_contract_events();
+        await token_usd_trades.list(" WHERE pair_contract=:token_usd AND tag=:trade ", { token_usd: eth_config_1.eth_config.getTokenUsdPairContract(), trade: "trade" });
+        this.log(`${token_usd_trades.count()} trades found`, method, false, true);
+        const pairInfo = await web3_pair_price_tools_1.web3_pair_price_tools.getPairInfo(eth_config_1.eth_config.getTokenUsdPairContract());
+        for (const trade of token_usd_trades._dataList) {
+            const timeFormat = time_helper_1.time_helper.getAsFormat(trade.block_time ?? 0, time_helper_1.TIME_FORMATS.READABLE);
+            const db_log = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getDbLog(trade.txn_hash ?? "", trade.logIndex ?? 0);
+            const Log = eth_worker_1.eth_worker.convertDbLogToWeb3Log(db_log);
+            const swapLog = await web3_log_decoder_1.web3_log_decoder.getSwapLog(Log);
+            if (!swapLog)
+                throw new Error(`unable to decode swap log`);
+            const summary = await worker_events_trade_1.worker_events_trade.getSwapSummary(db_log, eth_config_1.eth_config.getTokenContract(), swapLog, pairInfo);
+            this.log(`${timeFormat}|${trade.txn_hash?.slice(-5)}|${trade.logIndex}|${trade.type}|bnb_usd:${trade.bnb_usd}>${summary.bnb_usd}|usd:${trade.token_usd}>${summary.usd_price}|bnb:${trade.token_bnb}>${summary.bnb_price}`, method, false, true);
+            trade.bnb_usd = summary.bnb_usd;
+            trade.token_usd = summary.usd_price;
+            trade.token_usd_value = summary.usd_value;
+            trade.token_bnb = summary.bnb_price;
+            trade.token_bnb_value = summary.bnb_value;
+            await trade.save();
+        }
+    }
     //region GETTERS PAIR
     static async getPairInfo(pairContract) {
         const pair = new eth_price_track_header_1.eth_price_track_header();
@@ -293,5 +320,9 @@ worker_price.retryDelayMultiplier = 0;
 if (process_1.argv.includes("run_worker_price")) {
     console.log(`running worker to track and save token prices`);
     worker_price.run().finally();
+}
+if (process_1.argv.includes("run_checkPricesOnTradeEventsOfBusd")) {
+    console.log(`running checkPricesOnTradeEventsOfBusd`);
+    worker_price.checkPricesOnTradeEventsOfBusd().finally();
 }
 //# sourceMappingURL=worker_price.js.map

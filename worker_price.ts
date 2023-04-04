@@ -12,6 +12,9 @@ import {eth_price_track_header_tools} from "./eth_price_track_header_tools";
 import {eth_worker} from "./eth_worker";
 import {config} from "./config";
 import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
+import {eth_contract_events} from "./build/eth_contract_events";
+import {TIME_FORMATS, time_helper} from "./time_helper";
+import {worker_events_trade} from "./worker_events_trade";
 
 export class worker_price {
 
@@ -205,6 +208,29 @@ export class worker_price {
         }
     }
 
+    public static async checkPricesOnTradeEventsOfBusd(){
+        const method = "checkPricesOnTradeEvents";
+        const token_usd_trades = new eth_contract_events();
+        await token_usd_trades.list(" WHERE pair_contract=:token_usd AND tag=:trade ",{token_usd:eth_config.getTokenUsdPairContract(),trade:"trade"});
+        this.log(`${token_usd_trades.count()} trades found`,method,false,true);
+        const pairInfo = await web3_pair_price_tools.getPairInfo(eth_config.getTokenUsdPairContract());
+        for(const trade of token_usd_trades._dataList as eth_contract_events[]){
+            const timeFormat = time_helper.getAsFormat(trade.block_time??0,TIME_FORMATS.READABLE);
+            const db_log = await eth_receipt_logs_tools.getDbLog(trade.txn_hash??"",trade.logIndex??0);
+            const Log = eth_worker.convertDbLogToWeb3Log(db_log);
+            const swapLog = await web3_log_decoder.getSwapLog(Log);
+            if(!swapLog) throw new Error(`unable to decode swap log`);
+            const summary = await worker_events_trade.getSwapSummary(db_log,eth_config.getTokenContract(),swapLog,pairInfo);
+            this.log(`${timeFormat}|${trade.txn_hash?.slice(-5)}|${trade.logIndex}|${trade.type}|bnb_usd:${trade.bnb_usd}>${summary.bnb_usd}|usd:${trade.token_usd}>${summary.usd_price}|bnb:${trade.token_bnb}>${summary.bnb_price}`,method,false,true);
+            trade.bnb_usd = summary.bnb_usd;
+            trade.token_usd = summary.usd_price;
+            trade.token_usd_value = summary.usd_value;
+            trade.token_bnb = summary.bnb_price;
+            trade.token_bnb_value = summary.bnb_value;
+            await trade.save();
+        }
+    }
+
     //region GETTERS PAIR
 
     public static async getPairInfo(pairContract:string):Promise<eth_price_track_header>{
@@ -299,4 +325,8 @@ export class worker_price {
 if(argv.includes("run_worker_price")){
     console.log(`running worker to track and save token prices`);
     worker_price.run().finally();
+}
+if(argv.includes("run_checkPricesOnTradeEventsOfBusd")){
+    console.log(`running checkPricesOnTradeEventsOfBusd`);
+    worker_price.checkPricesOnTradeEventsOfBusd().finally();
 }
