@@ -9,6 +9,7 @@ const web3_rpc_web3_1 = require("./web3_rpc_web3");
 const web3_tools_1 = require("./web3_tools");
 const assert_1 = require("./assert");
 const eth_worker_1 = require("./eth_worker");
+const eth_contract_data_tools_1 = require("./eth_contract_data_tools");
 class web3_token {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
@@ -174,9 +175,11 @@ class web3_token {
             },
         ];
         const contract = web3_rpc_web3_1.web3_rpc_web3.getWeb3Contract(contract_address, balanceABI);
+        const contractInfo = await eth_contract_data_tools_1.eth_contract_data_tools.getContractViaAddressStrict(contract_address);
         try {
             let balance = await contract.methods.balanceOf(wallet_address).call();
             assert_1.assert.isNumericString(balance, `${method} balance(${balance})`);
+            balance = eth_worker_1.eth_worker.convertValueToAmount(balance, contractInfo.decimals);
             return balance;
         }
         catch (e) {

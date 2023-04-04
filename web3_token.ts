@@ -8,6 +8,7 @@ import {web3_tools} from "./web3_tools";
 import {assert} from "./assert";
 import {eth_worker} from "./eth_worker";
 import {TransactionReceipt} from "web3-eth/types";
+import {eth_contract_data_tools} from "./eth_contract_data_tools";
 
 export class web3_token{
 
@@ -170,9 +171,11 @@ export class web3_token{
             },
         ];
         const contract = web3_rpc_web3.getWeb3Contract(contract_address,balanceABI);
+        const contractInfo = await eth_contract_data_tools.getContractViaAddressStrict(contract_address);
         try{
             let balance:string = await contract.methods.balanceOf(wallet_address).call();
             assert.isNumericString(balance,`${method} balance(${balance})`);
+            balance = eth_worker.convertValueToAmount(balance,contractInfo.decimals);
             return balance;
         }catch (e){
             if(e instanceof Error){
