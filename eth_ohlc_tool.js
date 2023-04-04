@@ -78,13 +78,13 @@ class eth_ohlc_tool {
         ohlc.close_usd = assert_1.assert.isNumericString(ohlc_detail.close_usd, `ohlc_detail(${ohlc_detail.id}).close_usd(${ohlc_detail.close_usd})`);
         ohlc.volume_buy = assert_1.assert.isNumericString(ohlc_detail.volume_buy, `ohlc_detail(${ohlc_detail.id}).volume_buy(${ohlc_detail.volume_buy})`);
         ohlc.volume_sell = assert_1.assert.isNumericString(ohlc_detail.volume_sell, `ohlc_detail(${ohlc_detail.id}).volume_sell(${ohlc_detail.volume_sell})`);
-        ohlc.volume = assert_1.assert.isNumericString(ohlc_detail.volume, `ohlc_detail(${ohlc_detail.id}).volume(${ohlc_detail.volume})`);
+        ohlc.volume = assert_1.assert.isNumericString(ohlc_detail.volume_total, `ohlc_detail(${ohlc_detail.id}).volume_total(${ohlc_detail.volume_total})`);
         ohlc.volume_buy_usd = assert_1.assert.isNumericString(ohlc_detail.volume_buy_usd, `ohlc_detail(${ohlc_detail.id}).volume_buy_usd(${ohlc_detail.volume_buy_usd})`);
         ohlc.volume_sell_usd = assert_1.assert.isNumericString(ohlc_detail.volume_sell_usd, `ohlc_detail(${ohlc_detail.id}).volume_sell_usd(${ohlc_detail.volume_sell_usd})`);
-        ohlc.volume_usd = assert_1.assert.isNumericString(ohlc_detail.volume_usd, `ohlc_detail(${ohlc_detail.id}).volume_usd(${ohlc_detail.volume_usd})`);
-        ohlc.volume_token_buy = assert_1.assert.isNumericString(ohlc_detail.volume_token_buy, `ohlc_detail(${ohlc_detail.id}).volume_token_buy(${ohlc_detail.volume_token_buy})`);
-        ohlc.volume_token_sell = assert_1.assert.isNumericString(ohlc_detail.volume_token_sell, `ohlc_detail(${ohlc_detail.id}).volume_token_sell(${ohlc_detail.volume_token_sell})`);
-        ohlc.volume_token = assert_1.assert.isNumericString(ohlc_detail.volume_token, `ohlc_detail(${ohlc_detail.id}).volume_token(${ohlc_detail.volume_token})`);
+        ohlc.volume_usd = assert_1.assert.isNumericString(ohlc_detail.volume_total_usd, `ohlc_detail(${ohlc_detail.id}).volume_total_usd(${ohlc_detail.volume_total_usd})`);
+        ohlc.volume_token_buy = assert_1.assert.isNumericString(ohlc_detail.volume_buy_token, `ohlc_detail(${ohlc_detail.id}).volume_buy_token(${ohlc_detail.volume_buy_token})`);
+        ohlc.volume_token_sell = assert_1.assert.isNumericString(ohlc_detail.volume_sell_token, `ohlc_detail(${ohlc_detail.id}).volume_sell_token(${ohlc_detail.volume_sell_token})`);
+        ohlc.volume_token = assert_1.assert.isNumericString(ohlc_detail.volume_total_token, `ohlc_detail(${ohlc_detail.id}).volume_token(${ohlc_detail.volume_total_token})`);
         if (this.isRed(ohlc))
             ohlc.color = BAR_COLOR.RED;
         ohlc.from_time = ohlc_detail.from;
@@ -274,7 +274,7 @@ class eth_ohlc_tool {
         const method = "getLatestCandle";
         assert_1.assert.stringNotEmpty(pair, `pair(${pair})`);
         const latestBar = new ohlc_details_1.ohlc_details();
-        await latestBar.list(" WHERE pair=:pair AND interval=:interval ", { pair: pair, interval: interval }, " ORDER BY datetime DESC LIMIT 1 ");
+        await latestBar.list(" WHERE pair=:pair AND ohlc_details.interval=:interval ", { pair: pair, interval: interval }, " ORDER BY ohlc_details.from DESC LIMIT 1 ");
         return latestBar.getItem();
     }
     //endregion
