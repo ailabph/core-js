@@ -16,6 +16,7 @@ import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 import {eth_price_track_header_tools} from "./eth_price_track_header_tools";
 import {web3_abi_decoder} from "./web3_abi_decoder";
 import {connection} from "./connection";
+import {worker_events_trade_tools} from "./worker_events_trade_tools";
 
 
 //region TYPES
@@ -259,11 +260,25 @@ export class worker_events_trade{
 
         //PRICE
         const amount_for_value = type === TRADE_TYPE.BUY ? tokenInfo.transferAmount : tokenInfo.swapAmount;
-        swapSummary.bnb_price = await eth_price_track_details_tools.getBnbTokenPrice(db_log,tokenInfo.contractInfo);
-        swapSummary.bnb_value = await eth_price_track_details_tools.getBnbTokenValue(db_log,tokenInfo.contractInfo,amount_for_value);
         swapSummary.bnb_usd = await eth_price_track_details_tools.getBnbUsdPrice(db_log);
-        swapSummary.usd_price = await eth_price_track_details_tools.getBnbUsdValue(db_log,swapSummary.bnb_price);
-        swapSummary.usd_value = tools.toBn(swapSummary.usd_price).multipliedBy(tools.toBn(amount_for_value)).toFixed(eth_config.getBusdDecimal());
+        if(otherTokenInfo.contractInfo.address.toLowerCase() === eth_config.getBusdContract().toLowerCase()){
+            swapSummary.usd_price = tools.divide(otherTokenInfo.swapAmount,amount_for_value);
+            swapSummary.usd_value = otherTokenInfo.swapAmount;
+            swapSummary.bnb_price = worker_events_trade_tools.calculateBnbPerTokenFromSwap(amount_for_value, otherTokenInfo.swapAmount, swapSummary.bnb_usd);
+            swapSummary.bnb_value = tools.multiply(swapSummary.bnb_price,amount_for_value);
+        }
+        else if(otherTokenInfo.contractInfo.address.toLowerCase() === eth_config.getEthContract().toLowerCase()){
+            swapSummary.bnb_price = tools.divide(otherTokenInfo.swapAmount,amount_for_value);
+            swapSummary.bnb_value = otherTokenInfo.swapAmount;
+            swapSummary.usd_price = worker_events_trade_tools.calculateBusdPerTokenFromSwap(amount_for_value, otherTokenInfo.swapAmount, swapSummary.bnb_usd);
+            swapSummary.usd_value = tools.multiply(swapSummary.usd_price,amount_for_value);
+        }
+        else{
+            swapSummary.bnb_price = await eth_price_track_details_tools.getBnbTokenPrice(db_log,tokenInfo.contractInfo);
+            swapSummary.bnb_value = await eth_price_track_details_tools.getBnbTokenValue(db_log,tokenInfo.contractInfo,amount_for_value);
+            swapSummary.usd_price = await eth_price_track_details_tools.getBnbUsdValue(db_log,swapSummary.bnb_price);
+            swapSummary.usd_value = tools.toBn(swapSummary.usd_price).multipliedBy(tools.toBn(amount_for_value)).toFixed(eth_config.getBusdDecimal());
+        }
 
         return swapSummary;
     }
