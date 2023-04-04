@@ -61,12 +61,20 @@ export class eth_price_track_header_tools{
     public static pairHasBusd(header:eth_price_track_header):boolean{
         return this.pairBusdPosition(header) >= 0;
     }
+    public static async pairhasBusdViaPairAddress(pair_address:string):Promise<boolean>{
+        const pair_header = await this.getViaIdOrContractStrict(pair_address);
+        return this.pairHasBusd(pair_header);
+    }
 
     public static pairBnbPosition(header:eth_price_track_header):number{
         return this.getTokenPairPosition(header,eth_config.getEthContract());
     }
     public static pairHasBnb(header:eth_price_track_header):boolean{
         return this.pairBnbPosition(header) >= 0;
+    }
+    public static async pairHasBnbViaPairAddress(pair_address:string):Promise<boolean>{
+        const pair_header = await this.getViaIdOrContractStrict(pair_address);
+        return this.pairHasBnb(pair_header);
     }
 
     //endregion UTILITIES

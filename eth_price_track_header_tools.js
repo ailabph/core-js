@@ -59,11 +59,19 @@ class eth_price_track_header_tools {
     static pairHasBusd(header) {
         return this.pairBusdPosition(header) >= 0;
     }
+    static async pairhasBusdViaPairAddress(pair_address) {
+        const pair_header = await this.getViaIdOrContractStrict(pair_address);
+        return this.pairHasBusd(pair_header);
+    }
     static pairBnbPosition(header) {
         return this.getTokenPairPosition(header, eth_config_1.eth_config.getEthContract());
     }
     static pairHasBnb(header) {
         return this.pairBnbPosition(header) >= 0;
+    }
+    static async pairHasBnbViaPairAddress(pair_address) {
+        const pair_header = await this.getViaIdOrContractStrict(pair_address);
+        return this.pairHasBnb(pair_header);
     }
     //endregion UTILITIES
     //region GET RECORD
