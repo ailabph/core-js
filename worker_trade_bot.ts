@@ -18,11 +18,16 @@ import {web3_token} from "./web3_token";
 import {argv} from "process";
 
 export class worker_trade_bot{
-
+    private static lastLog:string = "";
     private static log(msg:string,method:string,end:boolean=false,force_display:boolean=true):void{
         if(config.getConfig().verbose_log || force_display){
-            console.log(`${this.name}|${method}|${msg}`);
-            if(end) console.log(`${this.name}|${method}|${tools.LINE}`);
+            const currentLog = `${this.name}|${method}|${msg}`;
+            if(this.lastLog !== currentLog){
+                this.lastLog = currentLog;
+                // add log here
+                console.log(currentLog);
+                if(end) console.log(`${this.name}|${method}|${tools.LINE}`);
+            }
         }
     }
 
@@ -158,7 +163,7 @@ export class worker_trade_bot{
         await trades.list(
             " WHERE status=:open ",
             {open:TRADE_STATUS.OPEN},
-            " ORDER id ASC LIMIT 1 ");
+            " ORDER BY id ASC LIMIT 1 ");
         if(trades.count() > 0){
             const openTrade = trades.getItem();
             openTrade.pair = assert.stringNotEmpty(openTrade.pair,`openTrade(${openTrade.id}).pair(${openTrade.pair})`);
@@ -231,13 +236,13 @@ export class worker_trade_bot{
 
         // 4 minutes before
         const currentTimeRange = new CurrentHourTimeRange();
-        this.log(`current start of hour ${currentTimeRange.startTime.format(TIME_FORMATS.READABLE)}`,method);
-        this.log(`current end of hour ${currentTimeRange.endTime.format(TIME_FORMATS.READABLE)}`,method);
-        const startOfTradeTime = currentTimeRange.endTime.subtract(4,'minute');
-        this.log(`time start of trade ${startOfTradeTime.format(TIME_FORMATS.READABLE)}`,method);
+        // this.log(`current start of hour ${currentTimeRange.startTime.format(TIME_FORMATS.READABLE)}`,method);
+        // this.log(`current end of hour ${currentTimeRange.endTime.format(TIME_FORMATS.READABLE)}`,method);
+        const startOfTradeTime = currentTimeRange.endTime.subtract(30,'minute');
+        // this.log(`time start of trade ${startOfTradeTime.format(TIME_FORMATS.READABLE)}`,method);
 
         if(currentTimeRange.currentTime.unix() < startOfTradeTime.unix()){
-            this.log(`current_time:${currentTimeRange.currentTime.format(TIME_FORMATS.ISO)} not yet within range for trading which starts on ${startOfTradeTime.format(TIME_FORMATS.ISO)}`,method);
+            this.log(`not yet within range for trading which starts on ${startOfTradeTime.format(TIME_FORMATS.ISO)}`,method);
             return false;
         }
 
@@ -353,8 +358,8 @@ export class worker_trade_bot{
     public static async getOpenTradesBetween(pair:string,from:number,to:number):Promise<eth_trade[]>{
         const query = new eth_trade();
         await query.list(
-            " WHERE pair=:pair AND open_time_added>=:from AND open_time_added<=:to AND status=:status ",
-            {pair:pair,from:from,to:to,status:status});
+            " WHERE pair=:pair AND open_time_added>=:from AND open_time_added<=:to AND (status=:open OR status=:pending_open) ",
+            {pair:pair,from:from,to:to,open:TRADE_STATUS.OPEN,pending_open:TRADE_STATUS.PENDING_OPEN});
         return query._dataList as eth_trade[];
     }
     public static async checkBalance(){

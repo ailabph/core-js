@@ -20,9 +20,14 @@ const process_1 = require("process");
 class worker_trade_bot {
     static log(msg, method, end = false, force_display = true) {
         if (config_1.config.getConfig().verbose_log || force_display) {
-            console.log(`${this.name}|${method}|${msg}`);
-            if (end)
-                console.log(`${this.name}|${method}|${tools_1.tools.LINE}`);
+            const currentLog = `${this.name}|${method}|${msg}`;
+            if (this.lastLog !== currentLog) {
+                this.lastLog = currentLog;
+                // add log here
+                console.log(currentLog);
+                if (end)
+                    console.log(`${this.name}|${method}|${tools_1.tools.LINE}`);
+            }
         }
     }
     static async getPairBaseContract() {
@@ -144,7 +149,7 @@ class worker_trade_bot {
         const method = "closeOpenTrade";
         let hasProcessed = false;
         const trades = new eth_trade_1.eth_trade();
-        await trades.list(" WHERE status=:open ", { open: eth_trade_tools_1.TRADE_STATUS.OPEN }, " ORDER id ASC LIMIT 1 ");
+        await trades.list(" WHERE status=:open ", { open: eth_trade_tools_1.TRADE_STATUS.OPEN }, " ORDER BY id ASC LIMIT 1 ");
         if (trades.count() > 0) {
             const openTrade = trades.getItem();
             openTrade.pair = assert_1.assert.stringNotEmpty(openTrade.pair, `openTrade(${openTrade.id}).pair(${openTrade.pair})`);
@@ -210,12 +215,12 @@ class worker_trade_bot {
         let openTradeAmount = 0;
         // 4 minutes before
         const currentTimeRange = new CurrentHourTimeRange();
-        this.log(`current start of hour ${currentTimeRange.startTime.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
-        this.log(`current end of hour ${currentTimeRange.endTime.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
-        const startOfTradeTime = currentTimeRange.endTime.subtract(4, 'minute');
-        this.log(`time start of trade ${startOfTradeTime.format(time_helper_1.TIME_FORMATS.READABLE)}`, method);
+        // this.log(`current start of hour ${currentTimeRange.startTime.format(TIME_FORMATS.READABLE)}`,method);
+        // this.log(`current end of hour ${currentTimeRange.endTime.format(TIME_FORMATS.READABLE)}`,method);
+        const startOfTradeTime = currentTimeRange.endTime.subtract(30, 'minute');
+        // this.log(`time start of trade ${startOfTradeTime.format(TIME_FORMATS.READABLE)}`,method);
         if (currentTimeRange.currentTime.unix() < startOfTradeTime.unix()) {
-            this.log(`current_time:${currentTimeRange.currentTime.format(time_helper_1.TIME_FORMATS.ISO)} not yet within range for trading which starts on ${startOfTradeTime.format(time_helper_1.TIME_FORMATS.ISO)}`, method);
+            this.log(`not yet within range for trading which starts on ${startOfTradeTime.format(time_helper_1.TIME_FORMATS.ISO)}`, method);
             return false;
         }
         const hasNegativeOrZeroVolume = tools_1.tools.lesserThanOrEqualTo(ohlc.volume_usd, 0);
@@ -327,7 +332,7 @@ class worker_trade_bot {
     }
     static async getOpenTradesBetween(pair, from, to) {
         const query = new eth_trade_1.eth_trade();
-        await query.list(" WHERE pair=:pair AND open_time_added>=:from AND open_time_added<=:to AND status=:status ", { pair: pair, from: from, to: to, status: status });
+        await query.list(" WHERE pair=:pair AND open_time_added>=:from AND open_time_added<=:to AND (status=:open OR status=:pending_open) ", { pair: pair, from: from, to: to, open: eth_trade_tools_1.TRADE_STATUS.OPEN, pending_open: eth_trade_tools_1.TRADE_STATUS.PENDING_OPEN });
         return query._dataList;
     }
     static async checkBalance() {
@@ -350,6 +355,7 @@ class worker_trade_bot {
     }
 }
 exports.worker_trade_bot = worker_trade_bot;
+worker_trade_bot.lastLog = "";
 //region PARAMETERS
 worker_trade_bot.SETTING_PAIR_BASE_CONTRACT = "pair_base_contract";
 worker_trade_bot.SETTING_PAIR_QUOTE_CONTRACT = "pair_quote_contract";
