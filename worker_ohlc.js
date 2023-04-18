@@ -23,16 +23,24 @@ class worker_ohlc {
             console.log(`${blockTimeFormat} | ${pairInfo.orderedPairSymbol} | ${event.pair_contract}`);
             console.log(`... trade for processing hash(${event.txn_hash}) block(${event.blockNumber}) log(${event.logIndex}) type(${event.type})`);
             let fromTime = time_helper_1.time_helper.startOfHour(event.block_time);
-            // check last ohlc data
-            let lastOhlc = new ohlc_details_1.ohlc_details();
-            await lastOhlc.list(" WHERE 1 ", {}, " ORDER BY ohlc_details.to DESC LIMIT 1 ");
-            lastOhlc = lastOhlc.getItem();
+            let lastPrice = 0;
+            let lastPriceUsd = 0;
+            const checkLastOhlc = new ohlc_details_1.ohlc_details();
+            await checkLastOhlc.list(" WHERE ohlc_details.to<:to AND pair=:pair ", { to: fromTime.unix(), pair: event.pair_contract }, " ORDER BY ohlc_details.to DESC LIMIT 1 ");
+            const lastOhlc = checkLastOhlc.getItem();
             if (lastOhlc) {
-                fromTime = time_helper_1.time_helper.startOfHour(lastOhlc.to, "UTC");
+                fromTime = time_helper_1.time_helper.getTime(lastOhlc.to + 1);
+                lastPrice = tools_1.tools.parseNumber(lastOhlc.close);
+                lastPriceUsd = tools_1.tools.parseNumber(lastOhlc.close_usd);
             }
-            const toTime = time_helper_1.time_helper.endOfHour();
+            // 24 hours after from
+            let toLimit = fromTime.add(15, "days");
+            toLimit = time_helper_1.time_helper.endOfHour(toLimit.unix(), "UTC");
+            // if greater than current time, currentTime
+            let toTime = time_helper_1.time_helper.endOfHour(time_helper_1.time_helper.getCurrentTimeStamp(), "UTC");
+            toTime = toLimit.unix() > toTime.unix() ? toTime : toLimit;
             console.log(`... retrieving trades from(${fromTime.format(time_helper_1.TIME_FORMATS.READABLE)}) to(${toTime.format(time_helper_1.TIME_FORMATS.READABLE)})`);
-            const ohlc_list = await eth_ohlc_tool_1.eth_ohlc_tool.getCandles(event.pair_contract, time_helper_1.INTERVAL.HOUR, fromTime.unix(), toTime.unix());
+            const ohlc_list = await eth_ohlc_tool_1.eth_ohlc_tool.getCandles(event.pair_contract, time_helper_1.INTERVAL.HOUR, fromTime.unix(), toTime.unix(), lastPrice, lastPriceUsd);
             for (const ohlc of ohlc_list) {
                 console.log(`${pairInfo.orderedPairSymbol} ${ohlc.intervalInfo.from_dateTime} ${ohlc.intervalInfo.to_dateTime}`);
                 console.log(`...${ohlc.ohlc.open} ${ohlc.ohlc.high} ${ohlc.ohlc.low} ${ohlc.ohlc.close}`);

@@ -7,6 +7,7 @@ import {web3_pair_price_tools} from "./web3_pair_price_tools";
 import {eth_ohlc_tool} from "./eth_ohlc_tool";
 import {ohlc_details} from "./build/ohlc_details";
 import {tools} from "./tools";
+import {eth_price_track_header_tools} from "./eth_price_track_header_tools";
 
 export class worker_ohlc{
     public static async run():Promise<void>{
@@ -26,17 +27,28 @@ export class worker_ohlc{
             console.log(`... trade for processing hash(${event.txn_hash}) block(${event.blockNumber}) log(${event.logIndex}) type(${event.type})`);
 
             let fromTime = time_helper.startOfHour(event.block_time);
-            // check last ohlc data
-            let lastOhlc = new ohlc_details();
-            await lastOhlc.list(" WHERE 1 ",{}," ORDER BY ohlc_details.to DESC LIMIT 1 ");
-            lastOhlc = lastOhlc.getItem();
+            let lastPrice:number = 0;
+            let lastPriceUsd:number = 0;
+            const checkLastOhlc = new ohlc_details();
+            await checkLastOhlc.list(" WHERE ohlc_details.to<:to AND pair=:pair ",{to:fromTime.unix(),pair:event.pair_contract},
+                " ORDER BY ohlc_details.to DESC LIMIT 1 ");
+            const lastOhlc = checkLastOhlc.getItem();
             if(lastOhlc){
-                fromTime = time_helper.startOfHour(lastOhlc.to,"UTC");
+                fromTime = time_helper.getTime(lastOhlc.to + 1);
+                lastPrice = tools.parseNumber(lastOhlc.close);
+                lastPriceUsd = tools.parseNumber(lastOhlc.close_usd);
             }
-            const toTime = time_helper.endOfHour();
+
+            // 24 hours after from
+            let toLimit = fromTime.add(15,"days");
+            toLimit = time_helper.endOfHour(toLimit.unix(),"UTC");
+            // if greater than current time, currentTime
+            let toTime = time_helper.endOfHour(time_helper.getCurrentTimeStamp(),"UTC");
+                toTime = toLimit.unix() > toTime.unix() ? toTime : toLimit;
+
             console.log(`... retrieving trades from(${fromTime.format(TIME_FORMATS.READABLE)}) to(${toTime.format(TIME_FORMATS.READABLE)})`);
 
-            const ohlc_list = await eth_ohlc_tool.getCandles(event.pair_contract,INTERVAL.HOUR, fromTime.unix(), toTime.unix());
+            const ohlc_list = await eth_ohlc_tool.getCandles(event.pair_contract,INTERVAL.HOUR, fromTime.unix(), toTime.unix(),lastPrice,lastPriceUsd);
             for(const ohlc of ohlc_list){
                 console.log(`${pairInfo.orderedPairSymbol} ${ohlc.intervalInfo.from_dateTime} ${ohlc.intervalInfo.to_dateTime}`);
                 console.log(`...${ohlc.ohlc.open} ${ohlc.ohlc.high} ${ohlc.ohlc.low} ${ohlc.ohlc.close}`);
