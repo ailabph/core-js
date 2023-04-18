@@ -43,6 +43,7 @@ describe("worker_trade_bot spec", () => {
     afterEach(async () => {
         await connection_1.connection.rollback();
     });
+    //region openTradeProfitCheck
     it("openTradeProfitCheck take profit returns false, starting price 100 current price 105", () => {
         const openTrade = new eth_trade_1.eth_trade();
         openTrade.status = eth_trade_tools_1.TRADE_STATUS.OPEN;
@@ -67,6 +68,8 @@ describe("worker_trade_bot spec", () => {
         const result = worker_trade_bot_1.worker_trade_bot.openTradeProfitCheck(openTrade, "110");
         (0, chai_1.expect)(result).to.equal(true);
     });
+    //endregion openTradeProfitCheck
+    //region openTradeStopLossCheck
     it("openTradeStopLossCheck returns false, starting price 100 current price 190", () => {
         const openTrade = new eth_trade_1.eth_trade();
         openTrade.status = eth_trade_tools_1.TRADE_STATUS.OPEN;
@@ -83,6 +86,7 @@ describe("worker_trade_bot spec", () => {
         const result = worker_trade_bot_1.worker_trade_bot.openTradeStopLossCheck(openTrade, "80");
         (0, chai_1.expect)(result).to.equal(true);
     });
+    //endregion openTradeStopLossCheck
     //region computeGreenBarBuyVolume
     it("computeGreenBarBuyVolume should return 0 for a green bar", () => {
         const ohlc = eth_ohlc_tool_1.eth_ohlc_tool.getDefaultOhlcDetailed();
@@ -118,6 +122,7 @@ describe("worker_trade_bot spec", () => {
         (0, chai_1.expect)(additionalBuyVolume).to.equal("130.000000000000000000");
     });
     //endregion computeGreenBarBuyVolume
+    //region checkIfTradeIsAffordable
     it("checkIfTradeIsAffordable should return false when trade_amount_usd is above max_trade_budget", async () => {
         const result = await worker_trade_bot_1.worker_trade_bot.checkIfTradeIsAffordable("100", "80");
         (0, chai_1.expect)(result).to.equal(false);
@@ -130,6 +135,8 @@ describe("worker_trade_bot spec", () => {
         const result = await worker_trade_bot_1.worker_trade_bot.checkIfTradeIsAffordable("50", "50");
         (0, chai_1.expect)(result).to.equal(true);
     });
+    //endregion checkIfTradeIsAffordable
+    //region adjustTradeAmountIfBelowMinimum
     it("adjustTradeAmountIfBelowMinimum should return trade_amount_usd when it's equal or above min_trade_budget", async () => {
         const result = await worker_trade_bot_1.worker_trade_bot.adjustTradeAmountIfBelowMinimum("50", "30");
         (0, chai_1.expect)(result).to.equal("50");
@@ -150,6 +157,8 @@ describe("worker_trade_bot spec", () => {
         const result = await worker_trade_bot_1.worker_trade_bot.adjustTradeAmountIfBelowMinimum("0", "30");
         (0, chai_1.expect)(result).to.equal("30");
     });
+    //endregion adjustTradeAmountIfBelowMinimum
+    //region checkTradeHasProfit
     it('checkTradeHasProfit should return true if trade has profit', () => {
         const starting_price = '1.00';
         const current_price = '1.10';
@@ -185,6 +194,8 @@ describe("worker_trade_bot spec", () => {
         const result = worker_trade_bot_1.worker_trade_bot.checkTradeHasProfit(starting_price, current_price, take_profit_percentage);
         (0, chai_1.expect)(result).to.be.true;
     });
+    //endregion checkTradeHasProfit
+    //region checkTradeStopLossTriggered
     it('checkTradeStopLossTriggered returns true when stop loss is triggered as a number', () => {
         const startingPrice = '100';
         const currentPrice = '90';
@@ -221,5 +232,68 @@ describe("worker_trade_bot spec", () => {
         const stopLossPercentage = 'invalid';
         assert.throws(() => worker_trade_bot_1.worker_trade_bot.checkTradeStopLossTriggered(startingPrice, currentPrice, stopLossPercentage), Error);
     });
+    //endregion checkTradeStopLossTriggered
+    //region checkTimeRange
+    const sampleOHLCBar = {
+        open: "100",
+        open_usd: "100",
+        high: "200",
+        high_usd: "200",
+        low: "50",
+        low_usd: "50",
+        close: "150",
+        close_usd: "150",
+        color: eth_ohlc_tool_1.BAR_COLOR.GREEN,
+        volume_sell: "1000",
+        volume_sell_usd: "1000",
+        volume_buy: "2000",
+        volume_buy_usd: "2000",
+        volume: "3000",
+        volume_usd: "3000",
+        volume_token: "3000",
+        volume_token_buy: "2000",
+        volume_token_sell: "1000",
+        from_time: 1662000000,
+        from_dateTime: "2023-04-04T00:00:00",
+        to_time: 1662086400,
+        to_dateTime: "2023-04-04T23:59:59",
+    };
+    it('checkTimeRange should not throw an error if the current time is within the bar time range', () => {
+        const currentTime = Date.now();
+        const testBar = {
+            ...sampleOHLCBar,
+            from_time: Math.floor(currentTime / 1000) - 60,
+            to_time: Math.floor(currentTime / 1000) + 60, // 1 minute after the current time
+        };
+        (0, chai_1.expect)(() => worker_trade_bot_1.worker_trade_bot.checkTimeRange(testBar)).to.not.throw();
+    });
+    it('checkTimeRange should throw an error if the current time is before the bar time range', () => {
+        const currentTime = Date.now();
+        const testBar = {
+            ...sampleOHLCBar,
+            from_time: Math.floor(currentTime / 1000) + 60,
+            to_time: Math.floor(currentTime / 1000) + 120, // 2 minutes after the current time
+        };
+        (0, chai_1.expect)(() => worker_trade_bot_1.worker_trade_bot.checkTimeRange(testBar)).to.throw('Current time is not within the bar time range.');
+    });
+    it('checkTimeRange should throw an error if the current time is after the bar time range', () => {
+        const currentTime = Date.now();
+        const testBar = {
+            ...sampleOHLCBar,
+            from_time: Math.floor(currentTime / 1000) - 120,
+            to_time: Math.floor(currentTime / 1000) - 60, // 1 minute before the current time
+        };
+        (0, chai_1.expect)(() => worker_trade_bot_1.worker_trade_bot.checkTimeRange(testBar)).to.throw('Current time is not within the bar time range.');
+    });
+    it('checkTimeRange should throw an error if the to_time is greater than from_time', () => {
+        const currentTime = Date.now();
+        const testBar = {
+            ...sampleOHLCBar,
+            from_time: Math.floor(currentTime / 1000) + 60,
+            to_time: Math.floor(currentTime / 1000) - 60, // 1 minute before the current time
+        };
+        (0, chai_1.expect)(() => worker_trade_bot_1.worker_trade_bot.checkTimeRange(testBar)).to.throw('to_time cannot be greater than from_time.');
+    });
+    //endregion checkTimeRange
 });
 //# sourceMappingURL=worker_trade_bot.spec.js.map

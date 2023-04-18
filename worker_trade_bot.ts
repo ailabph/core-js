@@ -126,8 +126,10 @@ export class worker_trade_bot{
                 let hasProcessed = false;
                 if (!hasProcessed) hasProcessed = await this.checkOpenTradesMaturity();
                 if(!hasProcessed){
-                    const ohlc_bar = await eth_ohlc_tool.getLatestCandle(await this.getPairToTrade(),INTERVAL.HOUR);
-                    hasProcessed = await this.strategy1(ohlc_bar);
+                    const ohlc_db = await eth_ohlc_tool.getLatestCandle(await this.getPairToTrade(),INTERVAL.HOUR);
+                    const ohlc_bar = eth_ohlc_tool.convertDbToOhlcDetailed(ohlc_db);
+                    this.checkTimeRange(ohlc_bar);
+                    hasProcessed = await this.strategy1(ohlc_bar,ohlc_db.pair);
                 }
             }
             else{
@@ -227,9 +229,10 @@ export class worker_trade_bot{
     }
 
     //region STRATEGIES
-    public static async strategy1(ohlc_bar:ohlc_details){
+    public static async strategy1(ohlc_bar:OHLC_DETAILED, pair_address:string){
         const method = "strategy1";
-        const ohlc = eth_ohlc_tool.convertDbToOhlcDetailed(ohlc_bar);
+        assert.stringNotEmpty(pair_address,`pair_address(${pair_address})`);
+        web3_tools.isContractAddressStrict(pair_address,`${method} pair_address(${pair_address})`);
         let hasTraded = false;
         let openTrade = false;
         let openTradeAmount = 0;
@@ -246,20 +249,20 @@ export class worker_trade_bot{
             return false;
         }
 
-        const hasNegativeOrZeroVolume = tools.lesserThanOrEqualTo(ohlc.volume_usd, 0);
+        const hasNegativeOrZeroVolume = tools.lesserThanOrEqualTo(ohlc_bar.volume_usd, 0);
         const isNotAggressiveMode = !(this.aggressive_mode);
         if (hasNegativeOrZeroVolume && isNotAggressiveMode) {
             this.log(`current bar has no trading volume and is not in aggressive mode, skipping`,method);
             return false;
         }
 
-        const openTrades = await this.getOpenTradesBetween(ohlc_bar.pair,currentTimeRange.startTime.unix(),currentTimeRange.endTime.unix());
+        const openTrades = await this.getOpenTradesBetween(pair_address,currentTimeRange.startTime.unix(),currentTimeRange.endTime.unix());
         if(openTrades.length > 0){
             this.log(`${openTrades.length} open trades found within this hour, skipping`,method);
             return false;
         }
 
-        let buyVolumeRequired = this.computeGreenBarBuyVolume(ohlc);
+        let buyVolumeRequired = this.computeGreenBarBuyVolume(ohlc_bar);
         const minTradeBudget = await this.getMinTradeBudget();
         const maxTradeBudget = await this.getMaxTradeBudget();
         const isPositiveBuyVolume = tools.greaterThan(buyVolumeRequired, 0);
@@ -380,6 +383,19 @@ export class worker_trade_bot{
             throw new HotWalletInsufficientBalance(`not enough balance. max_trade_budget(${this.max_trade_budget}) current busd balance value:${currentBusdBalanceValue}`);
         }
     }
+    public static checkTimeRange(ohlcBar: OHLC_DETAILED): void {
+        const method = "checkTimeRange";
+        ohlcBar.from_time = assert.positiveInt(ohlcBar.from_time,`ohlcBar.from_time(${ohlcBar.from_time})`);
+        ohlcBar.to_time = assert.positiveInt(ohlcBar.to_time,`ohlcBar.to_time(${ohlcBar.to_time})`);
+        if(tools.greaterThan(ohlcBar.from_time,ohlcBar.to_time)) throw new Error(`to_time cannot be greater than from_time.`);
+        const currentTime = Date.now(); // get the current time in milliseconds
+        const barFromTime = ohlcBar.from_time * 1000; // convert the bar's 'from_time' to milliseconds
+        const barToTime = ohlcBar.to_time * 1000; // convert the bar's 'to_time' to milliseconds
+
+        if (currentTime < barFromTime || currentTime > barToTime) {
+            throw new OhlcNotSynced("Current time is not within the bar time range.");
+        }
+    }
     //endregion UTILITIES
 }
 
@@ -399,6 +415,14 @@ class HotWalletInsufficientBalance extends Error {
         super(message);
         this.name = 'HotWalletInsufficientBalance';
         Object.setPrototypeOf(this, HotWalletInsufficientBalance.prototype);
+    }
+}
+
+class OhlcNotSynced extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'OhlcNotSynced';
+        Object.setPrototypeOf(this, OhlcNotSynced.prototype);
     }
 }
 

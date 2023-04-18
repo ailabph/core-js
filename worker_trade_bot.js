@@ -115,8 +115,10 @@ class worker_trade_bot {
                 if (!hasProcessed)
                     hasProcessed = await this.checkOpenTradesMaturity();
                 if (!hasProcessed) {
-                    const ohlc_bar = await eth_ohlc_tool_1.eth_ohlc_tool.getLatestCandle(await this.getPairToTrade(), time_helper_1.INTERVAL.HOUR);
-                    hasProcessed = await this.strategy1(ohlc_bar);
+                    const ohlc_db = await eth_ohlc_tool_1.eth_ohlc_tool.getLatestCandle(await this.getPairToTrade(), time_helper_1.INTERVAL.HOUR);
+                    const ohlc_bar = eth_ohlc_tool_1.eth_ohlc_tool.convertDbToOhlcDetailed(ohlc_db);
+                    this.checkTimeRange(ohlc_bar);
+                    hasProcessed = await this.strategy1(ohlc_bar, ohlc_db.pair);
                 }
             }
             else {
@@ -207,9 +209,10 @@ class worker_trade_bot {
         await openTrade.save();
     }
     //region STRATEGIES
-    static async strategy1(ohlc_bar) {
+    static async strategy1(ohlc_bar, pair_address) {
         const method = "strategy1";
-        const ohlc = eth_ohlc_tool_1.eth_ohlc_tool.convertDbToOhlcDetailed(ohlc_bar);
+        assert_1.assert.stringNotEmpty(pair_address, `pair_address(${pair_address})`);
+        web3_tools_1.web3_tools.isContractAddressStrict(pair_address, `${method} pair_address(${pair_address})`);
         let hasTraded = false;
         let openTrade = false;
         let openTradeAmount = 0;
@@ -223,18 +226,18 @@ class worker_trade_bot {
             this.log(`not yet within range for trading which starts on ${startOfTradeTime.format(time_helper_1.TIME_FORMATS.ISO)}`, method);
             return false;
         }
-        const hasNegativeOrZeroVolume = tools_1.tools.lesserThanOrEqualTo(ohlc.volume_usd, 0);
+        const hasNegativeOrZeroVolume = tools_1.tools.lesserThanOrEqualTo(ohlc_bar.volume_usd, 0);
         const isNotAggressiveMode = !(this.aggressive_mode);
         if (hasNegativeOrZeroVolume && isNotAggressiveMode) {
             this.log(`current bar has no trading volume and is not in aggressive mode, skipping`, method);
             return false;
         }
-        const openTrades = await this.getOpenTradesBetween(ohlc_bar.pair, currentTimeRange.startTime.unix(), currentTimeRange.endTime.unix());
+        const openTrades = await this.getOpenTradesBetween(pair_address, currentTimeRange.startTime.unix(), currentTimeRange.endTime.unix());
         if (openTrades.length > 0) {
             this.log(`${openTrades.length} open trades found within this hour, skipping`, method);
             return false;
         }
-        let buyVolumeRequired = this.computeGreenBarBuyVolume(ohlc);
+        let buyVolumeRequired = this.computeGreenBarBuyVolume(ohlc_bar);
         const minTradeBudget = await this.getMinTradeBudget();
         const maxTradeBudget = await this.getMaxTradeBudget();
         const isPositiveBuyVolume = tools_1.tools.greaterThan(buyVolumeRequired, 0);
@@ -353,6 +356,19 @@ class worker_trade_bot {
             throw new HotWalletInsufficientBalance(`not enough balance. max_trade_budget(${this.max_trade_budget}) current busd balance value:${currentBusdBalanceValue}`);
         }
     }
+    static checkTimeRange(ohlcBar) {
+        const method = "checkTimeRange";
+        ohlcBar.from_time = assert_1.assert.positiveInt(ohlcBar.from_time, `ohlcBar.from_time(${ohlcBar.from_time})`);
+        ohlcBar.to_time = assert_1.assert.positiveInt(ohlcBar.to_time, `ohlcBar.to_time(${ohlcBar.to_time})`);
+        if (tools_1.tools.greaterThan(ohlcBar.from_time, ohlcBar.to_time))
+            throw new Error(`to_time cannot be greater than from_time.`);
+        const currentTime = Date.now(); // get the current time in milliseconds
+        const barFromTime = ohlcBar.from_time * 1000; // convert the bar's 'from_time' to milliseconds
+        const barToTime = ohlcBar.to_time * 1000; // convert the bar's 'to_time' to milliseconds
+        if (currentTime < barFromTime || currentTime > barToTime) {
+            throw new OhlcNotSynced("Current time is not within the bar time range.");
+        }
+    }
 }
 exports.worker_trade_bot = worker_trade_bot;
 worker_trade_bot.lastLog = "";
@@ -383,6 +399,13 @@ class HotWalletInsufficientBalance extends Error {
         super(message);
         this.name = 'HotWalletInsufficientBalance';
         Object.setPrototypeOf(this, HotWalletInsufficientBalance.prototype);
+    }
+}
+class OhlcNotSynced extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'OhlcNotSynced';
+        Object.setPrototypeOf(this, OhlcNotSynced.prototype);
     }
 }
 if (process_1.argv.includes("run_worker_trade_bot")) {
