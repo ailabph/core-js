@@ -11,7 +11,9 @@ const assert_1 = require("./assert");
 const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
 const eth_config_1 = require("./eth_config");
 const eth_token_balance_tools_1 = require("./eth_token_balance_tools");
+const eth_worker_1 = require("./eth_worker");
 const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools");
+const web3_log_decoder_1 = require("./web3_log_decoder");
 //endregion TYPES
 class worker_token_balance {
     static log(msg, method, end = false, force_display = false) {
@@ -25,8 +27,37 @@ class worker_token_balance {
         const method = "run";
         await connection_1.connection.startTransaction();
         try {
-            const events = await this.getUnprocessedEvent();
+            let events = await this.getUnprocessedEvent();
+            if (events.count() === 0) {
+                this.log(`no more new unprocessed events, checking on events for retry`, method);
+                events = await this.getEventsForRetry();
+                const event = events.getItem();
+                if (event) {
+                    this.log(`checking logs of ${event.txn_hash}`, method, false, true);
+                    // check logs transfer count, if more less than 2, skip this purchase
+                    let transferLogCount = 0;
+                    const receipt = await eth_worker_1.eth_worker.getReceiptByTxnHashWeb3(event.txn_hash ?? "");
+                    for (const log of receipt.logs) {
+                        const transferLog = await web3_log_decoder_1.web3_log_decoder.getTransferLog(log);
+                        if (transferLog) {
+                            transferLogCount++;
+                        }
+                    }
+                    this.log(`${transferLogCount} transfer logs detected`, method, false, true);
+                    if (transferLogCount < 2) {
+                        this.log(`...less then 2 transfer logs detected, skipping this purchase`, method, false, true);
+                        event.time_balance_processed = 0;
+                        await event.save();
+                        this.log(`resetting events collection to process`, method, false, true);
+                        events = new eth_contract_events_1.eth_contract_events();
+                    }
+                    else {
+                        this.log(`...transfer log count valid, continuing process`, method, false, true);
+                    }
+                }
+            }
             for (const event of events._dataList) {
+                let retryLater = false;
                 const logIndex = assert_1.assert.positiveInt(event.logIndex, `${method} event.logIndex`);
                 const transactionHash = assert_1.assert.stringNotEmpty(event.txn_hash, `${method} event.txn_hash`);
                 const type = assert_1.assert.stringNotEmpty(event.type, `${method} event.type`);
@@ -45,7 +76,7 @@ class worker_token_balance {
                 }
                 const blockTime = assert_1.assert.positiveInt(event.block_time, `${method} event.block_time`);
                 const timeInfo = time_helper_1.time_helper.getAsFormat(blockTime, time_helper_1.TIME_FORMATS.ISO, "UTC");
-                this.log(`${timeInfo}|processing ${event.blockNumber} ${event.logIndex} hash ${event.txn_hash} log_method ${event.log_method}`, method, false, true);
+                this.log(`${timeInfo}|processing ${event.blockNumber} ${event.logIndex} hash ${event.txn_hash} block ${event.blockNumber} log ${event.logIndex} log_method ${event.log_method}`, method, false, true);
                 this.log(`...from:...${tools_1.tools.lastSubstring(fromAddress, 6)} to:...${tools_1.tools.lastSubstring(toAddress, 6)}`, method, false, true);
                 if (log_method.toLowerCase() !== "swap" && log_method.toLowerCase() !== "transfer") {
                     this.log(`...event not swap or transfer, skipping`, method, false, true);
@@ -56,25 +87,25 @@ class worker_token_balance {
                 let activation_status = "unknown";
                 let min_token_required = "0";
                 if (log_method.toLowerCase() === "transfer") {
-                    this.log(`...transfer event detected`, method);
-                    this.log(`...processing sender`, method);
+                    this.log(`...transfer event detected`, method, false, true);
+                    this.log(`...processing sender`, method, false, true);
                     if (fromContract.toLowerCase() !== eth_config_1.eth_config.getTokenContract().toLowerCase()) {
-                        this.log(`...from contract is ${eth_config_1.eth_config.getTokenSymbol()} token`, method);
+                        this.log(`...from contract is ${eth_config_1.eth_config.getTokenSymbol()} token`, method, false, true);
                     }
                     else {
                         const fromBalanceDetail = await eth_token_balance_tools_1.eth_token_balance_tools.addBalanceEntryForTransfer(fromAddress, eth_token_balance_tools_1.ENTRY_TYPE.CREDIT, fromAmountGross, event);
-                        this.log(`...current balance of sender ...${tools_1.tools.lastSubstring(fromBalanceDetail.address, 6)}(${fromBalanceDetail.username}) is ${fromBalanceDetail.token_amount}`, method);
+                        this.log(`...current balance of sender ...${tools_1.tools.lastSubstring(fromBalanceDetail.address, 6)}(${fromBalanceDetail.username}) is ${fromBalanceDetail.token_amount}`, method, false, true);
                         const activationInfo = await this.updateActivationInfo(fromBalanceDetail);
                         activation_status = fromBalanceDetail.activation_status;
                         min_token_required = activationInfo.current_minimum_token;
                     }
                     this.log(`...processing receiver`, method);
                     if (toContract.toLowerCase() !== eth_config_1.eth_config.getTokenContract().toLowerCase()) {
-                        this.log(`...to contract is ${eth_config_1.eth_config.getTokenSymbol()} token`, method);
+                        this.log(`...to contract is ${eth_config_1.eth_config.getTokenSymbol()} token`, method, false, true);
                     }
                     else {
                         const toBalanceDetail = await eth_token_balance_tools_1.eth_token_balance_tools.addBalanceEntryForTransfer(toAddress, eth_token_balance_tools_1.ENTRY_TYPE.DEBIT, toAmount, event);
-                        this.log(`...current balance of receiver ...${tools_1.tools.lastSubstring(toBalanceDetail.address, 6)}(${toBalanceDetail.username}) is ${toBalanceDetail.token_amount}`, method);
+                        this.log(`...current balance of receiver ...${tools_1.tools.lastSubstring(toBalanceDetail.address, 6)}(${toBalanceDetail.username}) is ${toBalanceDetail.token_amount}`, method, false, true);
                         const activationInfo = await this.updateActivationInfo(toBalanceDetail);
                         activation_status = toBalanceDetail.activation_status;
                         min_token_required = activationInfo.current_minimum_token;
@@ -87,13 +118,23 @@ class worker_token_balance {
                         activation_status = balanceDetail.activation_status;
                         min_token_required = activationInfo.current_minimum_token;
                     }
+                    else {
+                        retryLater = true;
+                    }
                 }
                 this.log(`...activation status ${activation_status} minimum token required ${min_token_required}`, method, false, true);
-                event.time_balance_processed = tools_1.tools.getCurrentTimeStamp();
+                if (retryLater) {
+                    this.log(`...detected to retry`, method, false, true);
+                    event.time_balance_processed = -1;
+                }
+                else {
+                    this.log('...successfully processed event', method, false, true);
+                    event.time_balance_processed = tools_1.tools.getCurrentTimeStamp();
+                }
                 await event.save();
             }
             await connection_1.connection.commit();
-            await tools_1.tools.sleep(50);
+            await tools_1.tools.sleep(250);
             setImmediate(() => {
                 worker_token_balance.run().finally();
             });
@@ -102,6 +143,9 @@ class worker_token_balance {
             await connection_1.connection.rollback();
             const errorMsg = e instanceof Error ? e.message : "unknown";
             this.log(`ERROR ${errorMsg}`, method, false, true);
+            if (e instanceof eth_token_balance_tools_1.NoTransferLogCounterPart) {
+                this.log(`probably race issue`, method, false, true);
+            }
             this.log(`...retrying in 3 seconds`, method, false, true);
             await tools_1.tools.sleep(3000);
             setImmediate(() => {
@@ -112,6 +156,11 @@ class worker_token_balance {
     static async getUnprocessedEvent() {
         const events = new eth_contract_events_1.eth_contract_events();
         await events.list(` WHERE time_balance_processed IS NULL `, {}, ` ORDER BY blockNumber ASC, logIndex ASC LIMIT 1 `);
+        return events;
+    }
+    static async getEventsForRetry() {
+        const events = new eth_contract_events_1.eth_contract_events();
+        await events.list(" WHERE time_balance_processed < :zero ", { zero: 0 }, " ORDER BY blockNumber ASC, logIndex ASC LIMIT 1 ");
         return events;
     }
     static async updateActivationInfo(balanceDetail) {
