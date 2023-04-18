@@ -8,6 +8,7 @@ import {tools} from "./tools";
 import {time_helper} from "./time_helper";
 import {web3_token} from "./web3_token";
 import {eth_config} from "./eth_config";
+import {web3_tools} from "./web3_tools";
 
 export class worker_request{
 
@@ -29,6 +30,10 @@ export class worker_request{
                 }
                 if (request.type === "wallet_busd_balance") {
                     request.data_result = await web3_token.getBalanceOf(eth_config.getBusdContract(),request.data_for);
+                }
+                if (request.type === "is_wallet_address") {
+                    const isWalletAddress = await web3_tools.isWalletAddress(request.data_for);
+                    request.data_result = isWalletAddress ? "y" : "n";
                 }
                 console.log(`--result:${request.data_result}`);
                 request.status = "d";

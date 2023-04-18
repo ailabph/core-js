@@ -8,6 +8,7 @@ const tools_1 = require("./tools");
 const time_helper_1 = require("./time_helper");
 const web3_token_1 = require("./web3_token");
 const eth_config_1 = require("./eth_config");
+const web3_tools_1 = require("./web3_tools");
 class worker_request {
     static async run() {
         let requests = new request_queue_1.request_queue();
@@ -27,6 +28,10 @@ class worker_request {
                 }
                 if (request.type === "wallet_busd_balance") {
                     request.data_result = await web3_token_1.web3_token.getBalanceOf(eth_config_1.eth_config.getBusdContract(), request.data_for);
+                }
+                if (request.type === "is_wallet_address") {
+                    const isWalletAddress = await web3_tools_1.web3_tools.isWalletAddress(request.data_for);
+                    request.data_result = isWalletAddress ? "y" : "n";
                 }
                 console.log(`--result:${request.data_result}`);
                 request.status = "d";
