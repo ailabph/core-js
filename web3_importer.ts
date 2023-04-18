@@ -28,7 +28,10 @@ export class web3_importer{
     public static async scrapeAll(asc:boolean = false):Promise<void>{
         const method = "scrapeAll";
         this.log(`opening browser`,method,false,true);
-        const browser = await puppeteer.launch();
+        process.env.PUPPETEER_CACHE_PATH = './puppeteer_cache';
+        const browser = await puppeteer.launch({
+            args:['--no-sandbox'],
+        });
         const page = await browser.newPage();
         this.log(`opening ${eth_config.getTokenSymbol()} on ${config.getCustomOption("BLOCKCHAIN_BROWSER")}`,method,false,true);
         const tokenPageUrl = `${config.getCustomOption("BLOCKCHAIN_BROWSER")}/token/${eth_config.getTokenContract()}`;
