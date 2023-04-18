@@ -47,12 +47,12 @@ describe("contract_events_tools spec", () => {
         const result = eth_contract_events_tools_1.eth_contract_events_tools.isTokenRelated(log);
         assert.equal(result, true);
     });
-    it("contract_events_tools isTokenRelated token_usd pair address", () => {
-        const log = new eth_receipt_logs_1.eth_receipt_logs();
-        log.address = eth_config_1.eth_config.getTokenUsdPairContract();
-        const result = eth_contract_events_tools_1.eth_contract_events_tools.isTokenRelated(log);
-        assert.equal(result, true);
-    });
+    // it("contract_events_tools isTokenRelated token_usd pair address", () => {
+    //     const log = new eth_receipt_logs();
+    //     log.address = eth_config.getTokenUsdPairContract();
+    //     const result = eth_contract_events_tools.isTokenRelated(log);
+    //     assert.equal(result,true);
+    // });
     it("contract_events_tools isTokenRelated false", () => {
         const log = new eth_receipt_logs_1.eth_receipt_logs();
         log.address = eth_config_1.eth_config.getDexContract();

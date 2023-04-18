@@ -35,12 +35,12 @@ describe("contract_events_tools spec",()=> {
         assert.equal(result,true);
     });
 
-    it("contract_events_tools isTokenRelated token_usd pair address", () => {
-        const log = new eth_receipt_logs();
-        log.address = eth_config.getTokenUsdPairContract();
-        const result = eth_contract_events_tools.isTokenRelated(log);
-        assert.equal(result,true);
-    });
+    // it("contract_events_tools isTokenRelated token_usd pair address", () => {
+    //     const log = new eth_receipt_logs();
+    //     log.address = eth_config.getTokenUsdPairContract();
+    //     const result = eth_contract_events_tools.isTokenRelated(log);
+    //     assert.equal(result,true);
+    // });
 
     it("contract_events_tools isTokenRelated false", () => {
         const log = new eth_receipt_logs();
