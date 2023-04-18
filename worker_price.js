@@ -49,7 +49,7 @@ class worker_price {
         return batch;
     }
     //endregion CONFIG
-    static async run() {
+    static async run(other_tokens = false) {
         const method = "run";
         await connection_1.connection.startTransaction();
         try {
@@ -92,11 +92,17 @@ class worker_price {
             const blockTo = this.lastProcessedBlockNumber + this.getBatch();
             this.log(`retrieving logs between ${blockFrom} to ${blockTo} with time_processed_price IS NULL`, method, false, false);
             const unProcessedLogs = new eth_receipt_logs_1.eth_receipt_logs();
-            let logsWhere = " WHERE blockNumber>=:from AND blockNumber<=:to AND time_processed_price IS NULL AND (has_bnb_usd=:y OR has_token_dex=:y OR has_token=:y) ";
             let logsParam = {};
+            let logsWhere = "";
+            if (other_tokens) {
+                logsWhere = " WHERE blockNumber>=:from AND blockNumber<=:to AND time_processed_price IS NULL AND has_bnb_usd IS NULL AND has_token_dex IS NULL AND has_token IS NULL ";
+            }
+            else {
+                logsWhere = " WHERE blockNumber>=:from AND blockNumber<=:to AND time_processed_price IS NULL AND (has_bnb_usd=:y OR has_token_dex=:y OR has_token=:y) ";
+                logsParam["y"] = "y";
+            }
             logsParam["from"] = blockFrom;
             logsParam["to"] = blockTo;
-            logsParam["y"] = "y";
             const logsOrder = ` ORDER BY blockNumber ASC, logIndex ASC `;
             await unProcessedLogs.list(logsWhere, logsParam, logsOrder);
             if (unProcessedLogs.count() === 0) {
@@ -218,6 +224,29 @@ class worker_price {
             await trade.save();
         }
     }
+    static async checkPricesOnTradeEventsOfBnb() {
+        const method = "checkPricesOnTradeEventsOfBnb";
+        const token_usd_trades = new eth_contract_events_1.eth_contract_events();
+        await token_usd_trades.list(" WHERE pair_contract=:token_usd AND tag=:trade ", { token_usd: eth_config_1.eth_config.getTokenBnbPairContract(), trade: "trade" });
+        this.log(`${token_usd_trades.count()} trades found`, method, false, true);
+        const pairInfo = await web3_pair_price_tools_1.web3_pair_price_tools.getPairInfo(eth_config_1.eth_config.getTokenBnbPairContract());
+        for (const trade of token_usd_trades._dataList) {
+            const timeFormat = time_helper_1.time_helper.getAsFormat(trade.block_time ?? 0, time_helper_1.TIME_FORMATS.READABLE);
+            const db_log = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getDbLog(trade.txn_hash ?? "", trade.logIndex ?? 0);
+            const Log = eth_worker_1.eth_worker.convertDbLogToWeb3Log(db_log);
+            const swapLog = await web3_log_decoder_1.web3_log_decoder.getSwapLog(Log);
+            if (!swapLog)
+                throw new Error(`unable to decode swap log`);
+            const summary = await worker_events_trade_1.worker_events_trade.getSwapSummary(db_log, eth_config_1.eth_config.getTokenContract(), swapLog, pairInfo);
+            this.log(`${timeFormat}|${trade.txn_hash?.slice(-5)}|${trade.logIndex}|${trade.type}|bnb_usd:${trade.bnb_usd}>${summary.bnb_usd}|usd:${trade.token_usd}>${summary.usd_price}|bnb:${trade.token_bnb}>${summary.bnb_price}`, method, false, true);
+            trade.bnb_usd = summary.bnb_usd;
+            trade.token_usd = summary.usd_price;
+            trade.token_usd_value = summary.usd_value;
+            trade.token_bnb = summary.bnb_price;
+            trade.token_bnb_value = summary.bnb_value;
+            await trade.save();
+        }
+    }
     //region GETTERS PAIR
     static async getPairInfo(pairContract) {
         const pair = new eth_price_track_header_1.eth_price_track_header();
@@ -319,10 +348,18 @@ worker_price.lastProcessedDbLogId = 0;
 worker_price.retryDelayMultiplier = 0;
 if (process_1.argv.includes("run_worker_price")) {
     console.log(`running worker to track and save token prices`);
-    worker_price.run().finally();
+    worker_price.run(false).finally();
+}
+if (process_1.argv.includes("run_worker_price_others")) {
+    console.log(`running worker to track and save prices of other tokens`);
+    worker_price.run(true).finally();
 }
 if (process_1.argv.includes("run_checkPricesOnTradeEventsOfBusd")) {
     console.log(`running checkPricesOnTradeEventsOfBusd`);
     worker_price.checkPricesOnTradeEventsOfBusd().finally();
+}
+if (process_1.argv.includes("run_checkPricesOnTradeEventsOfBnb")) {
+    console.log(`running checkPricesOnTradeEventsOfBnb`);
+    worker_price.checkPricesOnTradeEventsOfBnb().finally();
 }
 //# sourceMappingURL=worker_price.js.map
