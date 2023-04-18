@@ -113,8 +113,8 @@ export class eth_ohlc_tool {
     }
     public static isGreen(ohlc: OHLC_SIMPLE | OHLC_DETAILED): boolean {
         const method = "isGreen";
-        assert.isNumericString(ohlc.open,`${method} ohlc.open`);
-        assert.isNumericString(ohlc.close,`${method} ohlc.close`);
+        assert.isNumeric(ohlc.open,`${method} ohlc.open`);
+        assert.isNumeric(ohlc.close,`${method} ohlc.close`);
         return tools.greaterThanOrEqualTo(ohlc.close,ohlc.open,`${method} close ${ohlc.close} >= open ${ohlc.open}`);
     }
     public static isRed(ohlc: OHLC_SIMPLE | OHLC_DETAILED): boolean {
@@ -403,13 +403,11 @@ export class eth_ohlc_tool {
         return ohlc;
     }
 
-    public static convertTradesToOhlcList(timeFrame: INTERVAL, tradeEvents: eth_contract_events[]): OHLC_DETAILED_LIST[] {
+    public static convertTradesToOhlcList(timeFrame: INTERVAL, tradeEvents: eth_contract_events[],lastPrice:number=0,lastPriceUsd:number=0): OHLC_DETAILED_LIST[] {
         const fromTimeInfo = this.getFromTimeInfo(tradeEvents);
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
         const ohlc_collection: OHLC_DETAILED_LIST[] = [];
-        let lastPrice:number = 0;
-        let lastPriceUsd:number = 0;
         for (const interval of intervals) {
             const ohlc_item: OHLC_DETAILED_LIST = {
                 interval: timeFrame,
@@ -436,7 +434,7 @@ export class eth_ohlc_tool {
         return ohlc_collection;
     }
 
-    public static async getCandles(pair_contract:string, interval:INTERVAL, from:string|number, to:string|number):Promise<OHLC_DETAILED_LIST[]> {
+    public static async getCandles(pair_contract:string, interval:INTERVAL, from:string|number, to:string|number, lastPrice:number=0,lastPriceUsd:number=0):Promise<OHLC_DETAILED_LIST[]> {
         const method = "getCandles";
         // retrieve trade data from db between from and to
         from = time_helper.getTime(from,"UTC",`from ${from}`).unix();
@@ -444,9 +442,9 @@ export class eth_ohlc_tool {
         const trades = new eth_contract_events();
         await trades.list(" WHERE pair_contract=:pair AND block_time>=:from AND block_time<=:to AND (type=:buy OR type=:sell) ",
             {pair:pair_contract,from:from,to:to,buy:"buy",sell:"sell"});
-        if(trades.count() <= 0) throw new Error(`no trade data for ${pair_contract} from(${from}) to(${to})`);
+        // if(trades.count() <= 0) throw new Error(`no trade data for ${pair_contract} from(${from}) to(${to})`);
         // convert trade data to ohlc
-        return this.convertTradesToOhlcList(interval,trades._dataList as eth_contract_events[]);
+        return this.convertTradesToOhlcList(interval,trades._dataList as eth_contract_events[],lastPrice,lastPriceUsd);
     }
 
     //endregion OHLC

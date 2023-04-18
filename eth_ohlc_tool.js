@@ -56,8 +56,8 @@ class eth_ohlc_tool {
     }
     static isGreen(ohlc) {
         const method = "isGreen";
-        assert_1.assert.isNumericString(ohlc.open, `${method} ohlc.open`);
-        assert_1.assert.isNumericString(ohlc.close, `${method} ohlc.close`);
+        assert_1.assert.isNumeric(ohlc.open, `${method} ohlc.open`);
+        assert_1.assert.isNumeric(ohlc.close, `${method} ohlc.close`);
         return tools_1.tools.greaterThanOrEqualTo(ohlc.close, ohlc.open, `${method} close ${ohlc.close} >= open ${ohlc.open}`);
     }
     static isRed(ohlc) {
@@ -321,13 +321,11 @@ class eth_ohlc_tool {
         ohlc.color = this.isGreen(ohlc) ? BAR_COLOR.GREEN : BAR_COLOR.RED;
         return ohlc;
     }
-    static convertTradesToOhlcList(timeFrame, tradeEvents) {
+    static convertTradesToOhlcList(timeFrame, tradeEvents, lastPrice = 0, lastPriceUsd = 0) {
         const fromTimeInfo = this.getFromTimeInfo(tradeEvents);
         const toTimeInfo = this.getToTimeInfo(tradeEvents);
         const intervals = time_helper_1.time_helper.getTimeIntervals(timeFrame, fromTimeInfo.unix(), toTimeInfo.unix(), "UTC");
         const ohlc_collection = [];
-        let lastPrice = 0;
-        let lastPriceUsd = 0;
         for (const interval of intervals) {
             const ohlc_item = {
                 interval: timeFrame,
@@ -352,17 +350,16 @@ class eth_ohlc_tool {
         }
         return ohlc_collection;
     }
-    static async getCandles(pair_contract, interval, from, to) {
+    static async getCandles(pair_contract, interval, from, to, lastPrice = 0, lastPriceUsd = 0) {
         const method = "getCandles";
         // retrieve trade data from db between from and to
         from = time_helper_1.time_helper.getTime(from, "UTC", `from ${from}`).unix();
         to = time_helper_1.time_helper.getTime(to, "UTC", `to ${to}`).unix();
         const trades = new eth_contract_events_1.eth_contract_events();
         await trades.list(" WHERE pair_contract=:pair AND block_time>=:from AND block_time<=:to AND (type=:buy OR type=:sell) ", { pair: pair_contract, from: from, to: to, buy: "buy", sell: "sell" });
-        if (trades.count() <= 0)
-            throw new Error(`no trade data for ${pair_contract} from(${from}) to(${to})`);
+        // if(trades.count() <= 0) throw new Error(`no trade data for ${pair_contract} from(${from}) to(${to})`);
         // convert trade data to ohlc
-        return this.convertTradesToOhlcList(interval, trades._dataList);
+        return this.convertTradesToOhlcList(interval, trades._dataList, lastPrice, lastPriceUsd);
     }
 }
 exports.eth_ohlc_tool = eth_ohlc_tool;

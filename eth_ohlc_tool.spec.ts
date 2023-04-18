@@ -69,10 +69,10 @@ describe("ohlc_tool spec",()=> {
         let events:eth_contract_events[] = [];
         for(let usd_value=5;usd_value<50;usd_value += 5){
             const newEvent = new eth_contract_events();
-            newEvent.token_usd_value = usd_value+"";
+            newEvent.token_usd = usd_value+"";
             events.push(newEvent);
         }
-        const open = eth_ohlc_tool.getOpen(events);
+        const open = eth_ohlc_tool.getOpen(events,true);
         assert.equal(open,5);
     });
 
@@ -80,10 +80,10 @@ describe("ohlc_tool spec",()=> {
         let events:eth_contract_events[] = [];
         for(let usd_value=5;usd_value<=50;usd_value += 5){
             const newEvent = new eth_contract_events();
-            newEvent.token_usd_value = usd_value+"";
+            newEvent.token_usd = usd_value+"";
             events.push(newEvent);
         }
-        const close = eth_ohlc_tool.getClose(events);
+        const close = eth_ohlc_tool.getClose(events,true);
         assert.equal(close,50);
     });
 
@@ -91,15 +91,15 @@ describe("ohlc_tool spec",()=> {
         let events:eth_contract_events[] = [];
         for(let usd_value=5;usd_value<=50;usd_value += 5){
             const newEvent = new eth_contract_events();
-            newEvent.token_usd_value = usd_value+"";
+            newEvent.token_usd = usd_value+"";
             events.push(newEvent);
         }
         for(let usd_value=45;usd_value>0;usd_value -= 5){
             const newEvent = new eth_contract_events();
-            newEvent.token_usd_value = usd_value+"";
+            newEvent.token_usd = usd_value+"";
             events.push(newEvent);
         }
-        const high = eth_ohlc_tool.getHigh(events);
+        const high = eth_ohlc_tool.getHigh(events,true);
         assert.equal(high,50);
     });
 
@@ -107,10 +107,10 @@ describe("ohlc_tool spec",()=> {
         let events:eth_contract_events[] = [];
         for(let usd_value=45;usd_value>0;usd_value -= 5){
             const newEvent = new eth_contract_events();
-            newEvent.token_usd_value = usd_value+"";
+            newEvent.token_usd = usd_value+"";
             events.push(newEvent);
         }
-        const low = eth_ohlc_tool.getLow(events);
+        const low = eth_ohlc_tool.getLow(events,true);
         assert.equal(low,5);
     });
 
@@ -128,7 +128,7 @@ describe("ohlc_tool spec",()=> {
         newEvent.token_usd_value = "1234.56";
         newEvent.type = TRADE_TYPE.BUY;
         events.push(newEvent);
-        const totalSellVolume = eth_ohlc_tool.getSellVolume(events);
+        const totalSellVolume = eth_ohlc_tool.getSellVolume(events,true);
         assert.equal(totalSellVolume,totalSell);
     });
 
@@ -143,10 +143,10 @@ describe("ohlc_tool spec",()=> {
             totalBuy += usd_value;
         }
         const newEvent = new eth_contract_events();
-        newEvent.token_usd_value = "1234.56";
+        newEvent.token_usd = "1234.56";
         newEvent.type = TRADE_TYPE.SELL;
         events.push(newEvent);
-        const totalBuyVolume = eth_ohlc_tool.getBuyVolume(events);
+        const totalBuyVolume = eth_ohlc_tool.getBuyVolume(events,true);
         assert.equal(totalBuyVolume,totalBuy);
     });
 
@@ -160,7 +160,7 @@ describe("ohlc_tool spec",()=> {
             events.push(newEvent);
             totalVolume += usd_value;
         }
-        const result = eth_ohlc_tool.getTotalVolume(events);
+        const result = eth_ohlc_tool.getTotalVolume(events,true);
         assert.equal(result,totalVolume);
     });
     it("ohlc_tool getFromTimeInfo", () => {
@@ -196,7 +196,12 @@ describe("ohlc_tool spec",()=> {
         for(let c1=0;c1<dateTimes.length;c1++){
             const dateTime = time_helper.getTime(dateTimes[c1],"UTC");
             const newEvent = new eth_contract_events();
+            newEvent.token_usd = token_usd_value[c1].toFixed(6);
             newEvent.token_usd_value = token_usd_value[c1].toFixed(6);
+            newEvent.token_bnb = newEvent.token_usd;
+            newEvent.token_bnb_value = newEvent.token_usd_value;
+            newEvent.fromAmountGross = newEvent.token_usd;
+            newEvent.toAmountGross = newEvent.token_usd;
             newEvent.block_time = dateTime.unix();
             newEvent.type = trade_types[c1];
             events.push(newEvent);
@@ -234,6 +239,11 @@ describe("ohlc_tool spec",()=> {
             const timeInfo = time_helper.getTime(dateTimes[c1],"UTC");
             newEvent.block_time = timeInfo.unix();
             newEvent.token_usd_value = prices[c1].toFixed(6);
+            newEvent.token_usd = prices[c1].toFixed(6);
+            newEvent.token_bnb = prices[c1].toFixed(6);
+            newEvent.token_bnb_value = prices[c1].toFixed(6);
+            newEvent.fromAmountGross = prices[c1].toFixed(6);
+            newEvent.toAmountGross = prices[c1].toFixed(6);
             newEvent.type = trade_types[c1];
             events.push(newEvent);
         }
