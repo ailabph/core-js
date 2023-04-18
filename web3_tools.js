@@ -20,6 +20,11 @@ class web3_tools {
         const code = await web3_rpc_web3_1.web3_rpc_web3.getWeb3Client().eth.getCode(address);
         return code !== '0x' && code !== '0x0';
     }
+    static async isContractAddressStrict(address, context = "address") {
+        const isContract = await this.isContractAddress(address);
+        if (!isContract)
+            throw new Error(`${context} is not a contract`);
+    }
     static async isWalletAddress(address) {
         return web3_rpc_web3_1.web3_rpc_web3.getWeb3Client().utils.isAddress(address) && !(await this.isContractAddress(address));
     }
