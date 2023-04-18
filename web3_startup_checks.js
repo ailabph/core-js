@@ -122,21 +122,7 @@ class web3_startup_checks {
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getGasMultiplierForBnb(), "getGasMultiplierForBnb");
         assert_1.assert.naturalNumber(eth_config_1.eth_config.getConfirmationNeeded(), "getConfirmationNeeded");
         //region SPONSOR STRUCTURE
-        const auto_fix = true;
-        const allAccounts = new account_1.account();
-        await allAccounts.list(" WHERE 1 ");
-        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
-        let issuesFound = 0;
-        for (const acc of allAccounts._dataList) {
-            const errorInfo = await account_tools_1.account_tools.verifySponsorLineOfDownline(acc, auto_fix);
-            if (typeof errorInfo === "string") {
-                issuesFound++;
-                console.log(`...INVALID ${errorInfo}`);
-            }
-        }
-        console.log(`...sponsor structure issues found:${issuesFound}`);
-        if (issuesFound > 0)
-            throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools_1.tools.convertBoolToYesNo(auto_fix)}`);
+        await web3_startup_checks.structure_check();
         //endregion SPONSOR STRUCTURE
         //region HOT WALLET
         console.log(`checking hot wallet bnb balance`);
@@ -177,9 +163,29 @@ class web3_startup_checks {
         //endregion EMAIL
         console.log(`check complete`);
     }
+    static async structure_check() {
+        const auto_fix = true;
+        const allAccounts = new account_1.account();
+        await allAccounts.list(" WHERE 1 ");
+        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
+        let issuesFound = 0;
+        for (const acc of allAccounts._dataList) {
+            const errorInfo = await account_tools_1.account_tools.verifySponsorLineOfDownline(acc, auto_fix);
+            if (typeof errorInfo === "string") {
+                issuesFound++;
+                console.log(`...INVALID ${errorInfo}`);
+            }
+        }
+        console.log(`...sponsor structure issues found:${issuesFound}`);
+        if (issuesFound > 0)
+            throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools_1.tools.convertBoolToYesNo(auto_fix)}`);
+    }
 }
 exports.web3_startup_checks = web3_startup_checks;
 if (process_1.argv.includes("run_web3_startup_checks")) {
     web3_startup_checks.run().finally();
+}
+if (process_1.argv.includes("run_structure_check")) {
+    web3_startup_checks.structure_check().finally();
 }
 //# sourceMappingURL=web3_startup_checks.js.map

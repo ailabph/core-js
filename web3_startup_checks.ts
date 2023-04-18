@@ -119,20 +119,7 @@ export class web3_startup_checks{
         assert.naturalNumber(eth_config.getConfirmationNeeded(),"getConfirmationNeeded");
 
         //region SPONSOR STRUCTURE
-        const auto_fix = true;
-        const allAccounts = new account();
-        await allAccounts.list(" WHERE 1 ");
-        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
-        let issuesFound = 0;
-        for(const acc of allAccounts._dataList as account[]){
-            const errorInfo = await account_tools.verifySponsorLineOfDownline(acc,auto_fix);
-            if(typeof errorInfo === "string"){
-                issuesFound++;
-                console.log(`...INVALID ${errorInfo}`);
-            }
-        }
-        console.log(`...sponsor structure issues found:${issuesFound}`);
-        if(issuesFound > 0) throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools.convertBoolToYesNo(auto_fix)}`);
+        await web3_startup_checks.structure_check();
         //endregion SPONSOR STRUCTURE
 
         //region HOT WALLET
@@ -184,8 +171,27 @@ export class web3_startup_checks{
         console.log(`check complete`);
     }
 
+    public static async structure_check(){
+        const auto_fix = true;
+        const allAccounts = new account();
+        await allAccounts.list(" WHERE 1 ");
+        console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
+        let issuesFound = 0;
+        for(const acc of allAccounts._dataList as account[]){
+            const errorInfo = await account_tools.verifySponsorLineOfDownline(acc,auto_fix);
+            if(typeof errorInfo === "string"){
+                issuesFound++;
+                console.log(`...INVALID ${errorInfo}`);
+            }
+        }
+        console.log(`...sponsor structure issues found:${issuesFound}`);
+        if(issuesFound > 0) throw new Error(`...sponsor structure issues found:${issuesFound}. auto_fix:${tools.convertBoolToYesNo(auto_fix)}`);
+    }
 }
 
 if(argv.includes("run_web3_startup_checks")){
     web3_startup_checks.run().finally();
+}
+if(argv.includes("run_structure_check")){
+    web3_startup_checks.structure_check().finally();
 }
