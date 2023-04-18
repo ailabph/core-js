@@ -145,7 +145,7 @@ export class eth_token_balance_tools{
 
     public static async addBalanceEntryForTrade(event:eth_contract_events):Promise<eth_token_balance|false>{
         const method = "addBalanceEntryForTrade";
-        this.log(`adding balance entry for trade`,method);
+        this.log(`adding balance entry for trade`,method,false,true);
         assert.inTransaction();
         if(event.log_method?.toLowerCase() !== "swap") throw new Error(`${method} unable to add balance entry for trade, log method is not swap`);
         const transactionHash = assert.stringNotEmpty(event.txn_hash,`${method} event.txn_hash`);
@@ -176,9 +176,12 @@ export class eth_token_balance_tools{
         }
         const balanceDetails = new eth_token_balance();
         await balanceDetails.list(where,param," ORDER BY logIndex DESC LIMIT 1 ");
-        if(balanceDetails.count() === 0 && event.method?.toLowerCase() === "unknown"){
-            this.log(`...no transfer counterpart found for this trade and transaction method is unknown, skipping process...`,method);
-            return false;
+        if(balanceDetails.count() === 0){
+            if(event.method?.toLowerCase() === "unknown"){
+                this.log(`...no transfer counterpart found for this trade and transaction method is unknown, skipping process...`,method,false,true);
+                return false;
+            }
+            // throw new NoTransferLogCounterPart("swap log no transfer counterpart yet");
         }
         if(balanceDetails.count() !== 1) throw new Error(`${method} expected balance detail transfer count to be 1, found ${balanceDetails.count()}`);
 
@@ -222,7 +225,7 @@ export class eth_token_balance_tools{
         balanceHeader = this.updateLastValues(balanceHeader,transferDetail);
         await balanceHeader.save();
 
-        this.log(`...updated balance detail ${transferDetail.id} logIndex from ${originalLogIndex} to ${transferDetail.logIndex}, updated type to ${event.type}`,method);
+        this.log(`...updated balance detail ${transferDetail.id} logIndex from ${originalLogIndex} to ${transferDetail.logIndex}, updated type to ${event.type}`,method,false,true);
         return transferDetail;
     }
 
@@ -253,4 +256,11 @@ export class eth_token_balance_tools{
     }
     //endregion GETTERS
 
+}
+
+export class NoTransferLogCounterPart extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "NoTransferLogCounterPart";
+    }
 }

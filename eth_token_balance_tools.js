@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.eth_token_balance_tools = exports.ENTRY_TYPE = void 0;
+exports.NoTransferLogCounterPart = exports.eth_token_balance_tools = exports.ENTRY_TYPE = void 0;
 const eth_token_balance_header_1 = require("./build/eth_token_balance_header");
 const eth_config_1 = require("./eth_config");
 const web3_tools_1 = require("./web3_tools");
@@ -139,7 +139,7 @@ class eth_token_balance_tools {
     }
     static async addBalanceEntryForTrade(event) {
         const method = "addBalanceEntryForTrade";
-        this.log(`adding balance entry for trade`, method);
+        this.log(`adding balance entry for trade`, method, false, true);
         assert_1.assert.inTransaction();
         if (event.log_method?.toLowerCase() !== "swap")
             throw new Error(`${method} unable to add balance entry for trade, log method is not swap`);
@@ -169,9 +169,12 @@ class eth_token_balance_tools {
         }
         const balanceDetails = new eth_token_balance_1.eth_token_balance();
         await balanceDetails.list(where, param, " ORDER BY logIndex DESC LIMIT 1 ");
-        if (balanceDetails.count() === 0 && event.method?.toLowerCase() === "unknown") {
-            this.log(`...no transfer counterpart found for this trade and transaction method is unknown, skipping process...`, method);
-            return false;
+        if (balanceDetails.count() === 0) {
+            if (event.method?.toLowerCase() === "unknown") {
+                this.log(`...no transfer counterpart found for this trade and transaction method is unknown, skipping process...`, method, false, true);
+                return false;
+            }
+            // throw new NoTransferLogCounterPart("swap log no transfer counterpart yet");
         }
         if (balanceDetails.count() !== 1)
             throw new Error(`${method} expected balance detail transfer count to be 1, found ${balanceDetails.count()}`);
@@ -208,7 +211,7 @@ class eth_token_balance_tools {
         await transferDetail.save();
         balanceHeader = this.updateLastValues(balanceHeader, transferDetail);
         await balanceHeader.save();
-        this.log(`...updated balance detail ${transferDetail.id} logIndex from ${originalLogIndex} to ${transferDetail.logIndex}, updated type to ${event.type}`, method);
+        this.log(`...updated balance detail ${transferDetail.id} logIndex from ${originalLogIndex} to ${transferDetail.logIndex}, updated type to ${event.type}`, method, false, true);
         return transferDetail;
     }
     //region GETTERS
@@ -234,4 +237,11 @@ class eth_token_balance_tools {
     }
 }
 exports.eth_token_balance_tools = eth_token_balance_tools;
+class NoTransferLogCounterPart extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "NoTransferLogCounterPart";
+    }
+}
+exports.NoTransferLogCounterPart = NoTransferLogCounterPart;
 //# sourceMappingURL=eth_token_balance_tools.js.map
