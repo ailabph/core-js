@@ -14,6 +14,8 @@ import {web3_pair_price_tools} from "./web3_pair_price_tools";
 import {eth_price_track_details_tools} from "./eth_price_track_details_tools";
 import {eth_token_balance_header} from "./build/eth_token_balance_header";
 import {web3_log_decoder} from "./web3_log_decoder";
+import {meta_options} from "./build/meta_options";
+import {meta_options_tools} from "./meta_options_tools";
 
 //region TYPES
 type ACTIVATION_INFO = {
@@ -36,6 +38,7 @@ export class worker_token_balance{
     }
 
     public static async run(){
+        await meta_options_tools.updateOnlineStatus(`worker_token_balance`);
         const method = "run";
         await connection.startTransaction();
         try{

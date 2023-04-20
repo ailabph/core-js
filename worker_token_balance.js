@@ -14,6 +14,7 @@ const eth_token_balance_tools_1 = require("./eth_token_balance_tools");
 const eth_worker_1 = require("./eth_worker");
 const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools");
 const web3_log_decoder_1 = require("./web3_log_decoder");
+const meta_options_tools_1 = require("./meta_options_tools");
 //endregion TYPES
 class worker_token_balance {
     static log(msg, method, end = false, force_display = false) {
@@ -24,6 +25,7 @@ class worker_token_balance {
         }
     }
     static async run() {
+        await meta_options_tools_1.meta_options_tools.updateOnlineStatus(`worker_token_balance`);
         const method = "run";
         await connection_1.connection.startTransaction();
         try {
