@@ -15,6 +15,7 @@ const account_tools_1 = require("./account_tools");
 const eth_token_balance_tools_1 = require("./eth_token_balance_tools");
 const eth_worker_1 = require("./eth_worker");
 const user_tools_1 = require("./user_tools");
+const eth_token_balance_header_1 = require("./build/eth_token_balance_header");
 class worker_complan {
     static log(msg, method, end = false, force_display = false) {
         if (config_1.config.getConfig().verbose_log || force_display) {
@@ -233,6 +234,7 @@ class worker_complan {
                 else {
                     const uplineUser = await user_tools_1.user_tools.getUser(sponsor.user_id);
                     const username = uplineUser ? uplineUser.username : "";
+                    const sponsor_wallet_address = assert_1.assert.stringNotEmpty(sponsor.account_code, `sponsor(${sponsor.id}).account_code(${sponsor.account_code})`);
                     logs = this.addLog(`checking if upline is maintained`, method, logs);
                     const timeFormat = time_helper_1.time_helper.getAsFormat(buyTrade.blockTime, time_helper_1.TIME_FORMATS.ISO, "UTC");
                     const tokenBalanceAtPurchaseInfo = await eth_token_balance_tools_1.eth_token_balance_tools.getBalanceDetailAsOf(sponsor.account_code, buyTrade.blockTime);
@@ -249,7 +251,13 @@ class worker_complan {
                     const currentBalanceUsdValue = tools_1.tools.multiply(currentTokenBalance, currentTokenUsdPrice);
                     const currentTime = time_helper_1.time_helper.getTime().format(time_helper_1.TIME_FORMATS.ISO);
                     logs = this.addLog(`current token balance during purchase on ${currentTime} is ${currentTokenBalance} valued at ${currentBalanceUsdValue} bnb_usd ${currentBnbBusdPrice} token_bnb ${currentTokenBnbPrice} token_usd ${currentTokenUsdPrice}`, method, logs);
-                    if (tools_1.tools.greaterThanOrEqualTo(currentBalanceUsdValue, this.getMinimumUsdValue()) || username.toLowerCase() === "admin") {
+                    const token_balance_header = new eth_token_balance_header_1.eth_token_balance_header();
+                    token_balance_header.token_contract = eth_config_1.eth_config.getEthContract();
+                    token_balance_header.address = sponsor_wallet_address;
+                    await token_balance_header.fetch();
+                    logs = this.addLog(`activation_status(${token_balance_header.activation_status}) min_token_balance(${token_balance_header.minimum_balance})`, method, logs);
+                    // change this to get current balance then get minimum balance from token_balance detail
+                    if ((token_balance_header.recordExists() && token_balance_header.activation_status === "y") || username.toLowerCase() === "admin") {
                         const result = await this.addCommunityBonus(sponsor, buyer_account, buyTrade, logs);
                         logs = result.log;
                     }
