@@ -398,6 +398,139 @@ class worker_block {
             return worker_block.retrieveBlockInfo6(queue_id);
         }
     }
+    static async run7() {
+        // get latest block on db
+        // start = latest block - from_block_count
+        // to = latest block = heightDelay
+        // loop each block and check if exists on db and add to collection = missing_blocks
+        // loop each blocks and use single flight block
+        console.log(`retrieving latest block on db`);
+        const latestBlockDb = new eth_block_1.eth_block();
+        await latestBlockDb.list(" WHERE 1 ", {}, " ORDER BY blockNumber DESC LIMIT 1 ");
+        if (latestBlockDb.count() === 0)
+            throw new Error(`no blocks on database`);
+        const latest_block = latestBlockDb.getItem().blockNumber;
+        console.log(`...latest block is ${latest_block}`);
+        const start = latest_block - this.from_block_count;
+        const to = latest_block - this.heightDelay;
+        console.log(`...checking blocks from ${start} to ${to}`);
+        const missingBlocks = [];
+        for (let x = start; x < to; x++) {
+            console.log(`...checking block ${x} if exits on db`);
+            const checkBlock = new eth_block_1.eth_block();
+            checkBlock.blockNumber = x;
+            await checkBlock.fetch();
+            if (checkBlock.isNew()) {
+                console.log(`...... does not exist on db, adding to list`);
+                missingBlocks.push(x);
+            }
+            else {
+                console.log(`...... already on db`);
+            }
+        }
+        console.log(`...${missingBlocks.length} blocks missing, processing`);
+        for (const blockNumber of missingBlocks) {
+            console.log(`......processing block ${blockNumber}`);
+            let blockRes = false;
+            try {
+                blockRes = await worker_block.getBlockSingleFlight(blockNumber);
+                await tools_1.tools.sleep(100);
+            }
+            catch (e) {
+                console.log(`ERROR detected retrieving data on RPC, skipping`);
+                if (e instanceof Error) {
+                    console.log(e.message);
+                }
+                await tools_1.tools.sleep(3000);
+            }
+            if (!blockRes)
+                continue;
+            // add block
+            const newBlock = new eth_block_1.eth_block();
+            newBlock.blockNumber = blockRes.result.block.number ?? 0;
+            await newBlock.fetch();
+            if (newBlock.recordExists())
+                continue;
+            newBlock.blockHash = blockRes.result.block.hash;
+            newBlock.time_added = blockRes.result.block.timestamp;
+            await newBlock.save();
+            let totalTxns = 0;
+            // add transaction
+            for (const transaction of blockRes.result.block.transactions) {
+                const newTxn = new eth_transaction_1.eth_transaction();
+                // newTxn.hash = transaction.hash;
+                // await newTxn.fetch();
+                // if(newTxn.recordExists()) throw new Error(`${blockToProcess} ${transaction.hash} already on db`);
+                newTxn.hash = transaction.hash;
+                newTxn.blockHash = transaction.blockHash;
+                newTxn.blockNumber = transaction.blockNumber;
+                newTxn.blockTime = blockRes.result.block.timestamp;
+                newTxn.fromAddress = transaction.from;
+                newTxn.gas = transaction.gas + "";
+                newTxn.gasPrice = transaction.gasPrice + "";
+                newTxn.input = transaction.input;
+                newTxn.nonce = transaction.nonce;
+                newTxn.toAddress = transaction.to;
+                newTxn.value = transaction.value + "";
+                newTxn.type = transaction.type;
+                newTxn.chainId = transaction.chainId + "";
+                newTxn.v = transaction.v + "";
+                newTxn.r = transaction.r;
+                newTxn.s = transaction.s;
+                await newTxn.save();
+                totalTxns++;
+            }
+            let totalLogs = 0;
+            // add receipt
+            if (blockRes.result.receipts) {
+                for (const receipt of blockRes.result.receipts) {
+                    const newReceipt = new eth_receipt_1.eth_receipt();
+                    // newReceipt.transactionHash = receipt.transactionHash;
+                    // await newReceipt.fetch();
+                    // if(newReceipt.recordExists()) throw new Error(`${blockToProcess} ${receipt.transactionHash} receipt already on db`);
+                    newReceipt.blockHash = receipt.blockHash;
+                    newReceipt.blockNumber = receipt.blockNumber;
+                    newReceipt.contractAddress = receipt.contractAddress;
+                    newReceipt.cumulativeGasUsed = receipt.cumulativeGasUsed + "";
+                    newReceipt.effectiveGasPrice = receipt.effectiveGasPrice + "";
+                    newReceipt.fromAddress = receipt.from;
+                    newReceipt.gasUsed = receipt.gasUsed + "";
+                    newReceipt.logsBloom = receipt.logsBloom;
+                    newReceipt.status = receipt.status + "";
+                    newReceipt.toAddress = receipt.to;
+                    newReceipt.transactionHash = receipt.transactionHash;
+                    newReceipt.type = receipt.type;
+                    await newReceipt.save();
+                    // add logs
+                    for (const log of receipt.logs) {
+                        const newLog = new eth_receipt_logs_1.eth_receipt_logs();
+                        // newLog.transactionHash = log.transactionHash;
+                        // newLog.logIndex = log.logIndex;
+                        // await newLog.fetch();
+                        // if(newLog.recordExists()) throw new Error(`block ${blockToProcess} logIndex ${log.logIndex} log already in db`);
+                        newLog.receipt_id = newReceipt.id;
+                        newLog.txn_hash = log.transactionHash;
+                        newLog.address = log.address;
+                        newLog.topics = JSON.stringify(log.topics);
+                        newLog.data = log.data;
+                        newLog.blockNumber = log.blockNumber;
+                        newLog.timestamp = blockRes.result.block.timestamp + "";
+                        newLog.transactionHash = log.transactionHash;
+                        newLog.transactionIndex = log.transactionIndex;
+                        newLog.blockHash = log.blockHash;
+                        newLog.logIndex = log.logIndex;
+                        newLog.removed = log.removed ? 1 : 0;
+                        newLog.blockTime = blockRes.result.block.timestamp;
+                        await newLog.save();
+                        totalLogs++;
+                    }
+                }
+            }
+            console.log(`.........${totalTxns} transacitons saved. ${totalLogs} logs saved.`);
+        }
+        await tools_1.tools.sleep(3000);
+        setImmediate(() => { worker_block.run7(); });
+    }
 }
 exports.worker_block = worker_block;
 //endregion CONFIG
@@ -419,6 +552,9 @@ worker_block.latestBlock6 = 0;
 worker_block.batchLimit6 = 1000;
 worker_block.workerLimit6 = 200;
 worker_block.blockNumberTimestamp6 = {};
+// run7 - fill up blocks that are missing from eth_worker_logs
+worker_block.from_block_count = 1000;
+worker_block.heightDelay = 10;
 if (process_1.argv.includes("run_worker_block")) {
     console.log(`running worker to process blocks`);
     worker_block.run().finally();
@@ -442,5 +578,9 @@ if (process_1.argv.includes("run_worker_block_run5")) {
 if (process_1.argv.includes("run_worker_block_run6")) {
     console.log(`running worker to process blocks`);
     worker_block.run6().finally();
+}
+if (process_1.argv.includes("run_worker_block_run7")) {
+    console.log(`running worker to process blocks`);
+    worker_block.run7().finally();
 }
 //# sourceMappingURL=worker_block.js.map
