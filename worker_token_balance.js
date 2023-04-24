@@ -38,23 +38,24 @@ class worker_token_balance {
                     this.log(`checking logs of ${event.txn_hash}`, method, false, true);
                     // check logs transfer count, if more less than 2, skip this purchase
                     let transferLogCount = 0;
+                    let transferFromTokenFound = false;
                     const receipt = await eth_worker_1.eth_worker.getReceiptByTxnHashWeb3(event.txn_hash ?? "");
                     for (const log of receipt.logs) {
                         const transferLog = await web3_log_decoder_1.web3_log_decoder.getTransferLog(log);
-                        if (transferLog) {
-                            transferLogCount++;
+                        if (transferLog && transferLog.ContractInfo.address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase()) {
+                            transferFromTokenFound = true;
                         }
                     }
                     this.log(`${transferLogCount} transfer logs detected`, method, false, true);
-                    if (transferLogCount < 2) {
-                        this.log(`...less then 2 transfer logs detected, skipping this purchase`, method, false, true);
+                    if (transferFromTokenFound) {
+                        this.log(`...transfer log count valid, continuing process`, method, false, true);
+                    }
+                    else {
+                        this.log(`...no transfer from token found, skipping this purchase`, method, false, true);
                         event.time_balance_processed = 0;
                         await event.save();
                         this.log(`resetting events collection to process`, method, false, true);
                         events = new eth_contract_events_1.eth_contract_events();
-                    }
-                    else {
-                        this.log(`...transfer log count valid, continuing process`, method, false, true);
                     }
                 }
             }
