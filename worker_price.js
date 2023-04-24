@@ -41,7 +41,7 @@ class worker_price {
         return delay;
     }
     static getBatch() {
-        let batch = 500;
+        let batch = 10;
         const batchOverride = config_1.config.getCustomOption("worker_price_batch", false);
         if (typeof batchOverride === "number") {
             batch = assert_1.assert.positiveInt(batchOverride, "getBatch|batchOverride");
@@ -54,7 +54,7 @@ class worker_price {
         await connection_1.connection.startTransaction();
         try {
             let someLogsAlreadyProcessed = true;
-            this.log(`processing logs for its price information`, method, false);
+            this.log(`processing logs for its price information | batches of ${this.getBatch()}`, method, false, true);
             let latestBlockOnDb = 0;
             const checkLastBlockOnLogs = new eth_receipt_logs_1.eth_receipt_logs();
             await checkLastBlockOnLogs.list(" WHERE 1 ", {}, " ORDER BY blockNumber DESC LIMIT 1 ");
@@ -73,6 +73,9 @@ class worker_price {
             //         this.log(`...found blockNumber ${check.blockNumber} logIndex ${check.logIndex} dbId ${check.id}`,method,false,true);
             //     }
             // }
+            if (other_tokens && !(this.lastProcessedBlockNumber > 0)) {
+                this.lastProcessedBlockNumber = latestBlockOnDb - 30000;
+            }
             if (!(this.lastProcessedBlockNumber > 0)) {
                 this.log(`retrieving first blockNumber in logs (heavy query)`, method, false, true);
                 let check = new eth_receipt_logs_1.eth_receipt_logs();
@@ -90,7 +93,7 @@ class worker_price {
                 throw new Error(`unable to run worker_price without lastProcessedBlockNumber(${this.lastProcessedBlockNumber})`);
             const blockFrom = this.lastProcessedBlockNumber;
             const blockTo = this.lastProcessedBlockNumber + this.getBatch();
-            this.log(`retrieving logs between ${blockFrom} to ${blockTo} with time_processed_price IS NULL`, method, false, false);
+            this.log(`retrieving logs between ${blockFrom} to ${blockTo} with time_processed_price IS NULL`, method, false, true);
             const unProcessedLogs = new eth_receipt_logs_1.eth_receipt_logs();
             let logsParam = {};
             let logsWhere = "";
@@ -123,16 +126,24 @@ class worker_price {
                     this.log(`...skipping price already processed in log`, method);
                 }
                 const web3Log = eth_worker_1.eth_worker.convertDbLogToWeb3Log(log);
-                const sync = await web3_log_decoder_1.web3_log_decoder.getSyncLog(web3Log);
+                let sync = false;
+                try {
+                    this.log(`checking sync log...`, method, false);
+                    sync = await web3_log_decoder_1.web3_log_decoder.getSyncLog(web3Log);
+                }
+                catch (e) {
+                    this.log(`error decoding sync log, skipping...`, method, false);
+                }
                 if (sync) {
-                    this.log(`sync found, retrieving pair info`, method);
+                    this.log(`sync found, retrieving pair info`, method, false);
                     const pairHeader = await eth_price_track_header_tools_1.eth_price_track_header_tools.getViaIdOrContract(sync.ContractInfo.address, false);
                     if (!pairHeader) {
-                        this.log(`pair contract info cannot be retrieved, skipping...`, method, false, true);
+                        this.log(`pair contract info cannot be retrieved, skipping...`, method, false);
                     }
                     else {
+                        this.log(`pairHeader(${pairHeader.id}) found`, method, false);
                         const pairInfo = web3_pair_price_tools_1.web3_pair_price_tools.convertDbPairHeaderToPairInfo(pairHeader);
-                        this.log(`creating new price detail`, method);
+                        this.log(`creating new price detail`, method, false);
                         const newDetail = new eth_price_track_details_1.eth_price_track_details();
                         newDetail.header_id = tools_1.tools.parseInt({ val: pairHeader.id, name: "pairHeader.id", strict: true });
                         newDetail.reserve0 = sync.reserve0.toString();
@@ -160,8 +171,37 @@ class worker_price {
                             throw new Error(`price <= 0, double check if not error ${log.transactionHash} ${log.logIndex}`);
                         }
                         await newDetail.save();
+                        let tradeType = "unk";
+                        // check type of trade by attempting to retrieve the swap log after the sync, which is usually +1 log after sync
+                        const checkSwap = new eth_receipt_logs_1.eth_receipt_logs();
+                        checkSwap.blockNumber = newDetail.blockNumber;
+                        checkSwap.logIndex = newDetail.logIndex + 1;
+                        await checkSwap.fetch();
+                        if (checkSwap.recordExists()) {
+                            this.log(`checking swap log for trade type`, method, false, true);
+                            const logWeb3 = eth_worker_1.eth_worker.convertDbLogToWeb3Log(checkSwap);
+                            let swapLog = false;
+                            try {
+                                swapLog = await web3_log_decoder_1.web3_log_decoder.getSwapLog(logWeb3);
+                            }
+                            catch (e) {
+                                this.log(`unable to decode swap log`, method, false, true);
+                            }
+                            if (swapLog) {
+                                if (tools_1.tools.greaterThan(swapLog.amount0In.toString(), 0)
+                                    && tools_1.tools.greaterThan(swapLog.amount1Out.toString(), 0)) {
+                                    tradeType = "sel";
+                                }
+                                else if (tools_1.tools.greaterThan(swapLog.amount1In.toString(), 0)
+                                    && tools_1.tools.greaterThan(swapLog.amount0Out.toString(), 0)) {
+                                    tradeType = "buy";
+                                }
+                            }
+                        }
+                        newDetail.trade_type = tradeType;
+                        await newDetail.save();
                         const dateTime = tools_1.tools.getTime(newDetail.blockTime).format();
-                        this.log(`${dateTime} |${currentCount}/${logCount}|${eth_price_track_header_tools_1.eth_price_track_header_tools.getPairSymbol(pairHeader)} price ${newDetail.price} bnb ${newDetail.price_bnb} usd ${newDetail.price_usd} at block ${log.blockNumber} log ${log.logIndex}`, method, false, true);
+                        this.log(`${dateTime}|${tradeType}|${currentCount}/${logCount}|${eth_price_track_header_tools_1.eth_price_track_header_tools.getPairSymbol(pairHeader)} price ${newDetail.price} bnb ${newDetail.price_bnb} usd ${newDetail.price_usd} at block ${log.blockNumber} log ${log.logIndex}`, method, false, true);
                     }
                 }
                 else {
@@ -182,7 +222,7 @@ class worker_price {
             await tools_1.tools.sleep(10);
             this.retryDelayMultiplier = 0;
             setImmediate(() => {
-                worker_price.run().finally();
+                worker_price.run(other_tokens).finally();
             });
         }
         catch (e) {
@@ -197,7 +237,7 @@ class worker_price {
             let secondDelay = this.getStartingDelayInSeconds() * this.retryDelayMultiplier;
             this.log(`...retrying after ${secondDelay} seconds`, method, true, true);
             setTimeout(() => {
-                worker_price.run();
+                worker_price.run(other_tokens);
             }, secondDelay * 1000);
         }
     }
