@@ -51,7 +51,7 @@ export class worker_price {
         return delay;
     }
     private static getBatch():number{
-        let batch = 10;
+        let batch = 1;
         const batchOverride = config.getCustomOption("worker_price_batch",false);
         if(typeof batchOverride === "number"){
             batch = assert.positiveInt(batchOverride,"getBatch|batchOverride");
@@ -62,7 +62,9 @@ export class worker_price {
 
     public static async run(other_tokens:boolean = false){
         const method = "run";
-        await connection.startTransaction();
+        if(!other_tokens){
+            await connection.startTransaction();
+        }
         try{
             let someLogsAlreadyProcessed = true;
             this.log(`processing logs for its price information | batches of ${this.getBatch()}`,method,false,true);
@@ -128,110 +130,134 @@ export class worker_price {
             const logCount = unProcessedLogs.count();
             let currentCount = 0;
             for(const log of unProcessedLogs._dataList as eth_receipt_logs[]){
-                currentCount++;
-                this.log(`${currentCount}/${logCount}|processing log address ${log.address}`,method);
-                this.currentTransactionHash = assert.stringNotEmpty(log.transactionHash,`${method} log.transactionHash to this.lastTransactionHash`);
-                this.currentLogIndex = assert.naturalNumber(log.logIndex,`${method}|log.logIndex to this.lastLogIndex`);
-                this.currentDbLogId = assert.positiveInt(log.id,`${method}|log.id to this.lastDbLogId`);
-                this.currentBlockNumber = assert.positiveInt(log.blockNumber,`${method}|log.blockNumber to this.lastBlockNumber`);
-
-                if(typeof log.time_processed_price === "number" && log.time_processed_price > 0){
-                    this.log(`...skipping price already processed in log`,method);
-                }
-
-                const web3Log = eth_worker.convertDbLogToWeb3Log(log);
-
-                let sync:SyncLog|false = false;
                 try{
+                    currentCount++;
+                    this.log(`${currentCount}/${logCount}|processing log address ${log.address}`,method);
+                    this.currentTransactionHash = assert.stringNotEmpty(log.transactionHash,`${method} log.transactionHash to this.lastTransactionHash`);
+                    this.currentLogIndex = assert.naturalNumber(log.logIndex,`${method}|log.logIndex to this.lastLogIndex`);
+                    this.currentDbLogId = assert.positiveInt(log.id,`${method}|log.id to this.lastDbLogId`);
+                    this.currentBlockNumber = assert.positiveInt(log.blockNumber,`${method}|log.blockNumber to this.lastBlockNumber`);
+
+                    if(typeof log.time_processed_price === "number" && log.time_processed_price > 0){
+                        this.log(`...skipping price already processed in log`,method);
+                    }
+
+                    const web3Log = eth_worker.convertDbLogToWeb3Log(log);
+
                     this.log(`checking sync log...`,method,false);
-                    sync = await web3_log_decoder.getSyncLog(web3Log);
-                }catch (e){
-                    this.log(`error decoding sync log, skipping...`,method,false);
-                }
+                    let sync:SyncLog|false = await web3_log_decoder.getSyncLog(web3Log);
 
-                if(sync){
-                    this.log(`sync found, retrieving pair info`,method,false);
+                    if(sync){
+                        this.log(`sync found, retrieving pair info`,method,false);
 
-                    const pairHeader = await eth_price_track_header_tools.getViaIdOrContract(sync.ContractInfo.address,false);
-                    if(!pairHeader){
-                        this.log(`pair contract info cannot be retrieved, skipping...`,method,false);
+                        const pairHeader = await eth_price_track_header_tools.getViaIdOrContract(sync.ContractInfo.address,false);
+                        if(!pairHeader){
+                            this.log(`pair contract info cannot be retrieved, skipping...`,method,false);
+                        }
+                        else{
+                            this.log(`pairHeader(${pairHeader.id}) found`,method,false);
+                            const pairInfo = web3_pair_price_tools.convertDbPairHeaderToPairInfo(pairHeader);
+                            this.log(`creating new price detail`,method,false);
+                            const newDetail = new eth_price_track_details();
+                            newDetail.header_id = tools.parseInt({val:pairHeader.id,name:"pairHeader.id",strict:true});
+                            newDetail.reserve0 = sync.reserve0.toString();
+                            newDetail.reserve1 = sync.reserve1.toString();
+                            newDetail.transactionHash = assert.isString({val:log.transactionHash,prop_name:"log.transactionHash",strict:true});
+                            newDetail.logIndex = tools.parseInt({val:log.logIndex,name:"log.logIndex",strict:true});
+                            newDetail.blockNumber = tools.parseInt({val:log.blockNumber,name:"log.blockNumber",strict:true});
+                            newDetail.blockTime = tools.parseInt({val:log.blockTime,name:"log.blockTime",strict:true});
+                            const base_prices_info = await web3_pair_price_tools.processBasePriceOfPairFromLog(pairHeader.pair_contract,newDetail.transactionHash,newDetail.logIndex,someLogsAlreadyProcessed);
+                            if(!base_prices_info) throw new Error(`unable to compute prices`);
+                            newDetail.price = "0";
+                            if(await web3_pair_price_tools.pairIsUsd(pairInfo)){
+                                newDetail.price = base_prices_info.usd_price;
+                            }
+                            else if(await web3_pair_price_tools.pairIsBnb(pairInfo)){
+                                newDetail.price = base_prices_info.bnb_price;
+                            }
+                            newDetail.price_bnb = base_prices_info.bnb_price;
+                            newDetail.price_usd = base_prices_info.usd_price;
+
+                            assert.isNumericString(newDetail.price,`${method} newDetail.price`);
+                            assert.isNumericString(newDetail.price_bnb,`${method} newDetail.price_bnb`);
+                            assert.isNumericString(newDetail.price_usd,`${method} newDetail.price_usd`);
+                            if(tools.toBn(newDetail.price).comparedTo(tools.toBn("0")) < 0){
+                                throw new Error(`price <= 0, double check if not error ${log.transactionHash} ${log.logIndex}`);
+                            }
+                            await newDetail.save();
+
+                            let tradeType = "unk";
+                            // check type of trade by attempting to retrieve the swap log after the sync, which is usually +1 log after sync
+                            const checkSwap = new eth_receipt_logs();
+                            checkSwap.blockNumber = newDetail.blockNumber;
+                            checkSwap.logIndex = newDetail.logIndex + 1;
+                            await checkSwap.fetch();
+                            if(checkSwap.recordExists()){
+                                this.log(`checking swap log for trade type`,method,false,true);
+                                const logWeb3 = eth_worker.convertDbLogToWeb3Log(checkSwap);
+                                let swapLog:SwapLog|false = await web3_log_decoder.getSwapLog(logWeb3);
+                                if(swapLog){
+                                    let amount0 = 0n;
+                                    let amount1 = 0n;
+                                    if(
+                                        tools.greaterThan(swapLog.amount0In.toString(),0)
+                                        && tools.greaterThan(swapLog.amount1Out.toString(),0)
+                                    ){
+                                        tradeType = "sell";
+                                        amount0 = swapLog.amount0In;
+                                        amount1 = swapLog.amount1Out;
+                                    }
+                                    else if(
+                                        tools.greaterThan(swapLog.amount1In.toString(),0)
+                                        && tools.greaterThan(swapLog.amount0Out.toString(),0)
+                                    ){
+                                        tradeType = "buy";
+                                        amount0 = swapLog.amount0Out;
+                                        amount1 = swapLog.amount1In;
+                                    }
+                                    const pairInfo = await web3_pair_price_tools.getPairInfo(swapLog.ContractInfo.address);
+                                    if(pairInfo){
+                                        newDetail.amount0_amount = eth_worker.convertValueToAmount(amount0.toString(),pairInfo.token0_decimal);
+                                        newDetail.amount1_amount = eth_worker.convertValueToAmount(amount1.toString(),pairInfo.token1_decimal);
+                                        newDetail.amount0_symbol = pairInfo.token0_symbol;
+                                        newDetail.amount1_symbol = pairInfo.token1_symbol;
+                                        if(pairInfo.token1_contract.toLowerCase() === eth_config.getEthContract().toLowerCase()){
+                                            newDetail.bnb_amount = eth_worker.convertValueToETH(amount1.toString());
+                                            newDetail.usd_value = tools.multiply(newDetail.amount0_amount,newDetail.price_usd);
+                                        }
+                                        if(pairInfo.token1_contract.toLowerCase() === eth_config.getBusdContract().toLowerCase()){
+                                            newDetail.usd_amount = eth_worker.convertValueToETH(amount1.toString());
+                                            newDetail.usd_value = newDetail.usd_amount;
+                                        }
+                                    }
+                                }
+                            }
+                            newDetail.trade_type = tradeType;
+                            await newDetail.save();
+                            const dateTime = tools.getTime(newDetail.blockTime).format();
+                            this.log(`${dateTime}|${tradeType}|${currentCount}/${logCount}|${eth_price_track_header_tools.getPairSymbol(pairHeader)} price ${newDetail.price} bnb ${newDetail.price_bnb} usd ${newDetail.price_usd} at block ${log.blockNumber} log ${log.logIndex}`,method,false,true);
+                        }
                     }
                     else{
-                        this.log(`pairHeader(${pairHeader.id}) found`,method,false);
-                        const pairInfo = web3_pair_price_tools.convertDbPairHeaderToPairInfo(pairHeader);
-                        this.log(`creating new price detail`,method,false);
-                        const newDetail = new eth_price_track_details();
-                        newDetail.header_id = tools.parseInt({val:pairHeader.id,name:"pairHeader.id",strict:true});
-                        newDetail.reserve0 = sync.reserve0.toString();
-                        newDetail.reserve1 = sync.reserve1.toString();
-                        newDetail.transactionHash = assert.isString({val:log.transactionHash,prop_name:"log.transactionHash",strict:true});
-                        newDetail.logIndex = tools.parseInt({val:log.logIndex,name:"log.logIndex",strict:true});
-                        newDetail.blockNumber = tools.parseInt({val:log.blockNumber,name:"log.blockNumber",strict:true});
-                        newDetail.blockTime = tools.parseInt({val:log.blockTime,name:"log.blockTime",strict:true});
-                        const base_prices_info = await web3_pair_price_tools.processBasePriceOfPairFromLog(pairHeader.pair_contract,newDetail.transactionHash,newDetail.logIndex,someLogsAlreadyProcessed);
-                        if(!base_prices_info) throw new Error(`unable to compute prices`);
-                        newDetail.price = "0";
-                        if(await web3_pair_price_tools.pairIsUsd(pairInfo)){
-                            newDetail.price = base_prices_info.usd_price;
-                        }
-                        else if(await web3_pair_price_tools.pairIsBnb(pairInfo)){
-                            newDetail.price = base_prices_info.bnb_price;
-                        }
-                        newDetail.price_bnb = base_prices_info.bnb_price;
-                        newDetail.price_usd = base_prices_info.usd_price;
-
-                        assert.isNumericString(newDetail.price,`${method} newDetail.price`);
-                        assert.isNumericString(newDetail.price_bnb,`${method} newDetail.price_bnb`);
-                        assert.isNumericString(newDetail.price_usd,`${method} newDetail.price_usd`);
-                        if(tools.toBn(newDetail.price).comparedTo(tools.toBn("0")) < 0){
-                            throw new Error(`price <= 0, double check if not error ${log.transactionHash} ${log.logIndex}`);
-                        }
-                        await newDetail.save();
-
-                        let tradeType = "unk";
-                        // check type of trade by attempting to retrieve the swap log after the sync, which is usually +1 log after sync
-                        const checkSwap = new eth_receipt_logs();
-                        checkSwap.blockNumber = newDetail.blockNumber;
-                        checkSwap.logIndex = newDetail.logIndex + 1;
-                        await checkSwap.fetch();
-                        if(checkSwap.recordExists()){
-                            this.log(`checking swap log for trade type`,method,false,true);
-                            const logWeb3 = eth_worker.convertDbLogToWeb3Log(checkSwap);
-                            let swapLog:SwapLog|false = false;
-                            try{
-                                swapLog = await web3_log_decoder.getSwapLog(logWeb3);
-                            }catch (e){
-                                this.log(`unable to decode swap log`,method,false,true);
-                            }
-                            if(swapLog){
-                                if(
-                                    tools.greaterThan(swapLog.amount0In.toString(),0)
-                                    && tools.greaterThan(swapLog.amount1Out.toString(),0)
-                                ){
-                                    tradeType = "sel";
-                                }
-                                else if(
-                                    tools.greaterThan(swapLog.amount1In.toString(),0)
-                                    && tools.greaterThan(swapLog.amount0Out.toString(),0)
-                                ){
-                                    tradeType = "buy";
-                                }
-                            }
-                        }
-                        newDetail.trade_type = tradeType;
-                        await newDetail.save();
-                        const dateTime = tools.getTime(newDetail.blockTime).format();
-                        this.log(`${dateTime}|${tradeType}|${currentCount}/${logCount}|${eth_price_track_header_tools.getPairSymbol(pairHeader)} price ${newDetail.price} bnb ${newDetail.price_bnb} usd ${newDetail.price_usd} at block ${log.blockNumber} log ${log.logIndex}`,method,false,true);
+                        this.log(`...log is not sync, skipping`,method);
+                    }
+                    log.time_processed_price = tools.getCurrentTimeStamp();
+                    await log.save();
+                    this.log(``,method,true);
+                }catch (e){
+                    if(other_tokens){
+                        this.log(`error processing, skipping sync log`,method,false,true);
+                        continue;
+                    }
+                    else{
+                        throw e;
                     }
                 }
-                else{
-                    this.log(`...log is not sync, skipping`,method);
-                }
-                log.time_processed_price = tools.getCurrentTimeStamp();
-                await log.save();
-                this.log(``,method,true);
             }
-            await connection.commit();
+            if(!other_tokens){
+                await connection.commit();
+            }
+
             this.lastProcessedTransactionHash = this.currentTransactionHash;
             this.lastProcessedBlockNumber = this.currentBlockNumber;
             this.lastProcessedLogIndex = this.currentLogIndex;
@@ -244,7 +270,9 @@ export class worker_price {
                 worker_price.run(other_tokens).finally();
             });
         }catch (e) {
-            await connection.rollback();
+            if(!other_tokens){
+                await connection.rollback();
+            }
             this.log(`ERROR on TransactionHash ${this.currentTransactionHash} logIndex ${this.currentLogIndex} logDb_id ${this.currentDbLogId}`,method,false,true);
             this.resetPointers();
             if(e instanceof Error)this.log(e.message,method,false,true); else console.log(e);
