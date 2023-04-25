@@ -14,6 +14,8 @@ import {meta_options_tools} from "./meta_options_tools";
 import {eth_token_balance} from "./build/eth_token_balance";
 import readline from "readline";
 import {eth_token_balance_header} from "./build/eth_token_balance_header";
+import {user} from "./build/user";
+import {web3_rpc_web3} from "./web3_rpc_web3";
 
 export class worker_request{
 
@@ -44,6 +46,10 @@ export class worker_request{
                 if(request.type === "manual_activation"){
                     const isActivated = await worker_request.manualActivation(request.data_for);
                     request.data_result = isActivated ? "y" : "n";
+                }
+                if(request.type === "get_trade_wallet"){
+                   const walletAddress = await worker_request.getTradeWallet(request.data_for);
+                   request.data_result = walletAddress ? walletAddress : "n";
                 }
                 console.log(`--result:${request.data_result}`);
                 request.status = "d";
@@ -100,6 +106,40 @@ export class worker_request{
             console.log(`token balance not found`);
             return false;
         }
+    }
+
+    public static async getTradeWallet(username:string):Promise<string|false>{
+        console.log(`retrieving trade wallet for user ${username}`);
+        assert.stringNotEmpty(username,`username(${username})`);
+        if(tools.isEmpty(username) || tools.isNullish(username)){
+            console.log(`...username is not valid`);
+            return false;
+        }
+        let tradeWalletAddress = "";
+        const userCheck = new user();
+        userCheck.username = username;
+        await userCheck.fetch();
+        if(userCheck.isNew()){
+            console.log(`...user does not exist on db`);
+            return false;
+        }
+        if(tools.isEmpty(userCheck.trading_wallet) || tools.isNullish(userCheck.trading_wallet_key)){
+            console.log(`...user has not trading wallet yet, creating one`);
+            const web3 = web3_rpc_web3.getWeb3Client();
+            const account = web3.eth.accounts.create();
+            console.log(`...wallet address created: ${account.address}`);
+            console.log(`...private key: ${account.privateKey.slice(-6)}`);
+            userCheck.trading_wallet = account.address;
+            userCheck.trading_wallet_key = account.privateKey;
+            await userCheck.save();
+            console.log(`...saved on user db`);
+            tradeWalletAddress = account.address;
+        }
+        else{
+            tradeWalletAddress = assert.stringNotEmpty(userCheck.trading_wallet);
+        }
+        console.log(`...trade wallet address: ${tradeWalletAddress}`);
+        return assert.stringNotEmpty(tradeWalletAddress);
     }
 
     private static token_balance_retry_limit = 20;

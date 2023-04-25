@@ -17,6 +17,8 @@ const meta_options_tools_1 = require("./meta_options_tools");
 const eth_token_balance_1 = require("./build/eth_token_balance");
 const readline_1 = __importDefault(require("readline"));
 const eth_token_balance_header_1 = require("./build/eth_token_balance_header");
+const user_1 = require("./build/user");
+const web3_rpc_web3_1 = require("./web3_rpc_web3");
 class worker_request {
     static async run() {
         await meta_options_tools_1.meta_options_tools.updateOnlineStatus(`worker_request`);
@@ -45,6 +47,10 @@ class worker_request {
                 if (request.type === "manual_activation") {
                     const isActivated = await worker_request.manualActivation(request.data_for);
                     request.data_result = isActivated ? "y" : "n";
+                }
+                if (request.type === "get_trade_wallet") {
+                    const walletAddress = await worker_request.getTradeWallet(request.data_for);
+                    request.data_result = walletAddress ? walletAddress : "n";
                 }
                 console.log(`--result:${request.data_result}`);
                 request.status = "d";
@@ -100,6 +106,39 @@ class worker_request {
             console.log(`token balance not found`);
             return false;
         }
+    }
+    static async getTradeWallet(username) {
+        console.log(`retrieving trade wallet for user ${username}`);
+        assert_1.assert.stringNotEmpty(username, `username(${username})`);
+        if (tools_1.tools.isEmpty(username) || tools_1.tools.isNullish(username)) {
+            console.log(`...username is not valid`);
+            return false;
+        }
+        let tradeWalletAddress = "";
+        const userCheck = new user_1.user();
+        userCheck.username = username;
+        await userCheck.fetch();
+        if (userCheck.isNew()) {
+            console.log(`...user does not exist on db`);
+            return false;
+        }
+        if (tools_1.tools.isEmpty(userCheck.trading_wallet) || tools_1.tools.isNullish(userCheck.trading_wallet_key)) {
+            console.log(`...user has not trading wallet yet, creating one`);
+            const web3 = web3_rpc_web3_1.web3_rpc_web3.getWeb3Client();
+            const account = web3.eth.accounts.create();
+            console.log(`...wallet address created: ${account.address}`);
+            console.log(`...private key: ${account.privateKey.slice(-6)}`);
+            userCheck.trading_wallet = account.address;
+            userCheck.trading_wallet_key = account.privateKey;
+            await userCheck.save();
+            console.log(`...saved on user db`);
+            tradeWalletAddress = account.address;
+        }
+        else {
+            tradeWalletAddress = assert_1.assert.stringNotEmpty(userCheck.trading_wallet);
+        }
+        console.log(`...trade wallet address: ${tradeWalletAddress}`);
+        return assert_1.assert.stringNotEmpty(tradeWalletAddress);
     }
     static async retrieveTokenBalanceRecord(transaction_hash, from_address, retryCount = 0) {
         console.log(`retrieving token balance of hash ${transaction_hash} from address ${from_address} retryCount ${retryCount}`);
