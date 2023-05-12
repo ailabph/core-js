@@ -51,7 +51,7 @@ export class worker_price {
         return delay;
     }
     private static getBatch():number{
-        let batch = 1;
+        let batch = 500;
         const batchOverride = config.getCustomOption("worker_price_batch",false);
         if(typeof batchOverride === "number"){
             batch = assert.positiveInt(batchOverride,"getBatch|batchOverride");
@@ -88,7 +88,7 @@ export class worker_price {
             //     }
             // }
             if(other_tokens && !(this.lastProcessedBlockNumber > 0)){
-                this.lastProcessedBlockNumber = latestBlockOnDb - 30000;
+                this.lastProcessedBlockNumber = latestBlockOnDb - 15000;
             }
             if(!(this.lastProcessedBlockNumber > 0)){
                 this.log(`retrieving first blockNumber in logs (heavy query)`,method,false,true);
