@@ -45,7 +45,7 @@ class worker_trade_days {
                 continue;
             // record.date_period = d.toString();
             record.total_trades = (0, lodash_1.random)(1, 10000);
-            record.est_profit_percentage = (0, lodash_1.random)(0.0001001, 0.005001, true);
+            record.est_profit_percentage = (0, lodash_1.random)(0.00001001, 0.0005001, true);
             record.est_bnb_earned = "0";
             record.from_time = d.setHours(0, 0, 0, 0) / 1000;
             record.to_time = d.setHours(23, 59, 59, 999) / 1000;
