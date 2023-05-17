@@ -25,15 +25,15 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const binanceApi = new binance_api(apiKey, apiSecret);
 
 // Create a market router and set the base path as '/market'
-const market = express.Router();
-app.use('/market', market);
+// const market = express.Router();
+// app.use('/market', market);
 
 // @ts-ignore
-market.get('/top-pairs', async (req, res) => {
+app.get('/top-pairs', async (req, res) => {
     const numPairs = req.query.numPairs || 10;
     try {
         const topPairs = await binanceApi.getTopPairs(numPairs);
-        res.status(200).json(topPairs);
+        res.status(200).json({success:"ok", result:topPairs});
     } catch (error) {
         // @ts-ignore
         res.status(500).json({ error: error.message });
@@ -41,11 +41,11 @@ market.get('/top-pairs', async (req, res) => {
 });
 
 // @ts-ignore
-market.get('/klines-data', async (req, res) => {
+app.get('/klines-data', async (req, res) => {
     const { symbol, interval, numMonths } = req.query;
     try {
         const klinesData = await binanceApi.getKlinesData(symbol, interval, numMonths);
-        res.status(200).json(klinesData);
+        res.status(200).json({success:"ok", result:klinesData});
     } catch (error) {
         // @ts-ignore
         res.status(500).json({ error: error.message });
@@ -53,11 +53,11 @@ market.get('/klines-data', async (req, res) => {
 });
 
 // @ts-ignore
-market.get('/technical-analysis-summary', async (req, res) => {
+app.get('/technical-analysis-summary', async (req, res) => {
     const pair = req.query.pair;
     try {
         const summary = await binanceApi.getTechnicalAnalysisSummary(pair);
-        res.status(200).json({ summary });
+        res.status(200).json({success:"ok", result:summary});
     } catch (error) {
         // @ts-ignore
         res.status(500).json({ error: error.message });
