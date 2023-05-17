@@ -7,7 +7,6 @@ exports.binance_api = void 0;
 const binance_api_node_1 = __importDefault(require("binance-api-node"));
 const openai_1 = require("openai");
 const config_1 = require("./config");
-const process_1 = require("process");
 // @ts-ignore
 class binance_api {
     static getOpenAiApiKey() {
@@ -81,7 +80,7 @@ class binance_api {
         const response = await this.openai.createCompletion({
             model: this.openaiModelId,
             prompt: prompt,
-            max_tokens: 400,
+            max_tokens: 600,
             n: 1,
             stop: null,
             temperature: 0.5,
@@ -92,16 +91,19 @@ class binance_api {
     }
 }
 exports.binance_api = binance_api;
-(async () => {
-    const b = new binance_api("2JHwfSknxdh6148rv9iWY4851fOOPgX7ngdgMqXhQATPN0cHgjcq9N7M2PK2yB0Y", "0MkIrNKf0ERp6Qf9Uqu9LaTFov4JhIZp2h4m8PC1RG2HlX61IMTJEb1eUfyvkQjc");
-    const result = await b.getTopPairs(10);
-    console.log(result);
-    console.log(result.length);
-    if (process_1.argv.includes("analyze_top")) {
-        const d = await b.getTechnicalAnalysisSummary(result[0].symbol);
-        console.log(d);
-    }
-    // const e = await b.getAssetInfo("FLOKI");
-    // console.log(e);
-})();
+//
+// (async()=>{
+//     const b = new binance_api(
+//         "2JHwfSknxdh6148rv9iWY4851fOOPgX7ngdgMqXhQATPN0cHgjcq9N7M2PK2yB0Y",
+//         "0MkIrNKf0ERp6Qf9Uqu9LaTFov4JhIZp2h4m8PC1RG2HlX61IMTJEb1eUfyvkQjc");
+//     const result = await b.getTopPairs(10);
+//     console.log(result);
+//     console.log(result.length);
+//
+//     if(argv.includes("analyze_top")){
+//         const d = await b.getTechnicalAnalysisSummary(result[0].symbol);
+//         console.log(d);
+//     }
+//
+// })();
 //# sourceMappingURL=binance_api.js.map
