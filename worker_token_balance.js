@@ -298,7 +298,7 @@ class worker_token_balance {
                 }
             }
             // exclude old yacht club members from purchase check
-            if (!foundYachtActivation && owner.time_created >= time_helper_1.time_helper.getTime("2023-01-01", "Asia/Manila").startOf("D").unix()) {
+            if (!foundYachtActivation && owner.time_created >= time_helper_1.time_helper.getTime("2023-05-12", "Asia/Manila").startOf("D").unix()) {
                 this.log(`...this user has not purchased enough token to activate the yacht club`, method, false, true);
                 this.log(`...disabling yacht club status`, method, false, true);
                 balanceHeader.activation_status_yacht = "n";
