@@ -83,7 +83,7 @@ class eth_token_balance_tools {
     static async getBalanceHeaderOf(address) {
         const method = "getBalanceHeaderOf";
         this.log(`retrieving balance header of ${address}`, method);
-        assert_1.assert.inTransaction();
+        // assert.inTransaction();
         address = assert_1.assert.stringNotEmpty(address, `${method} address`);
         const query = new eth_token_balance_header_1.eth_token_balance_header();
         query.address = address;
