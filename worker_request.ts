@@ -16,6 +16,8 @@ import readline from "readline";
 import {eth_token_balance_header} from "./build/eth_token_balance_header";
 import {user} from "./build/user";
 import {web3_rpc_web3} from "./web3_rpc_web3";
+import {user_tools} from "./user_tools";
+import {eth_token_balance_tools} from "./eth_token_balance_tools";
 
 export class worker_request{
 
@@ -51,6 +53,15 @@ export class worker_request{
                    const walletAddress = await worker_request.getTradeWallet(request.data_for);
                    request.data_result = walletAddress ? walletAddress : "n";
                 }
+                // implement manual_activation_yacht
+                if(request.type === "manual_activation_yacht"){
+                    request.data_result = await worker_request.manualActivationYacht(request.data_for,request.data_input);
+                }
+                // implement manual_activation_bot
+                if(request.type === "manual_activation_bot"){
+                    request.data_result = await worker_request.manualActivationTradeBot(request.data_for,request.data_input);
+                }
+
                 console.log(`--result:${request.data_result}`);
                 request.status = "d";
                 request.time_processed = time_helper.getCurrentTimeStamp();
@@ -68,44 +79,6 @@ export class worker_request{
         setImmediate(()=>{
             worker_request.run().finally();
         });
-    }
-
-    public static async manualActivation(target_wallet:string|null):Promise<boolean>{
-        // check if token_balance worker is online
-        const worker_token_balance_online_status = await meta_options_tools.isOnline(`worker_token_balance`);
-        if(!worker_token_balance_online_status) throw new Error(`worker_token_balance is not online`);
-
-        const wallet_address = assert.stringNotEmpty(target_wallet,`target_wallet`);
-        console.log(`sending 1 token to ${wallet_address}...`);
-        await web3_tools.isWalletAddress(wallet_address);
-        const receiptToken = await web3_token.transfer(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),wallet_address,"1");
-        if(!receiptToken) throw new Error(`failed to send 1 token to ${wallet_address}`);
-        console.log(`... hash ${receiptToken.transactionHash}`);
-
-        const token_balance = await worker_request.retrieveTokenBalanceRecord(receiptToken.transactionHash,wallet_address);
-        if(token_balance){
-            console.log(`token balance found id ${token_balance.id}`);
-            console.log(`manually activating address`);
-            token_balance.activation_amount = await eth_worker.getTokenBalance(wallet_address);
-            token_balance.activation_status = "y";
-            token_balance.activation_data = "manual activation";
-            await token_balance.save();
-
-            const token_balance_header = new eth_token_balance_header();
-            token_balance_header.address = wallet_address;
-            await token_balance_header.fetch();
-            token_balance_header.activation_status = "y";
-            token_balance_header.minimum_balance = token_balance.activation_amount;
-            token_balance_header.activation_count++;
-            token_balance_header.last_activated_transaction = token_balance.transactionHash;
-            await token_balance_header.save();
-            console.log(`successfully activated account`);
-            return true;
-        }
-        else{
-            console.log(`token balance not found`);
-            return false;
-        }
     }
 
     public static async getTradeWallet(username:string):Promise<string|false>{
@@ -163,6 +136,174 @@ export class worker_request{
         await tools.sleep(worker_request.retry_seconds * 1000);
         return worker_request.retrieveTokenBalanceRecord(transaction_hash,from_address,retryCount);
     }
+
+    //region MANUAL ACTIVATION
+    public static async manualActivation(target_wallet:string|null):Promise<boolean>{
+        // check if token_balance worker is online
+        const worker_token_balance_online_status = await meta_options_tools.isOnline(`worker_token_balance`);
+        if(!worker_token_balance_online_status) throw new Error(`worker_token_balance is not online`);
+
+        const wallet_address = assert.stringNotEmpty(target_wallet,`target_wallet`);
+        console.log(`sending 1 token to ${wallet_address}...`);
+        await web3_tools.isWalletAddress(wallet_address);
+        const receiptToken = await web3_token.transfer(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),wallet_address,"1");
+        if(!receiptToken) throw new Error(`failed to send 1 token to ${wallet_address}`);
+        console.log(`... hash ${receiptToken.transactionHash}`);
+
+        const token_balance = await worker_request.retrieveTokenBalanceRecord(receiptToken.transactionHash,wallet_address);
+        if(token_balance){
+            console.log(`token balance found id ${token_balance.id}`);
+            console.log(`manually activating address`);
+            token_balance.activation_amount = await eth_worker.getTokenBalance(wallet_address);
+            token_balance.activation_status = "y";
+            token_balance.activation_data = "manual activation";
+            await token_balance.save();
+
+            const token_balance_header = new eth_token_balance_header();
+            token_balance_header.address = wallet_address;
+            await token_balance_header.fetch();
+            token_balance_header.activation_status = "y";
+            token_balance_header.minimum_balance = token_balance.activation_amount;
+            token_balance_header.activation_count++;
+            token_balance_header.last_activated_transaction = token_balance.transactionHash;
+            await token_balance_header.save();
+            console.log(`successfully activated account`);
+            return true;
+        }
+        else{
+            console.log(`token balance not found`);
+            return false;
+        }
+    }
+    public static async manualActivationYacht(target_wallet:string|null,data_input:string|null){
+        console.log(`begin process of manual activation of yacht club`);
+        if(typeof target_wallet !== "string") throw new Error(`target_wallet is not string`);
+        console.log(`manually activating yacht club of wallet ${target_wallet}`);
+
+        const owner = await user_tools.getUserByWallet(target_wallet);
+        if(!owner) throw new Error(`unable to retrieve user info of wallet ${target_wallet}`);
+        const header = await eth_token_balance_tools.getBalanceHeaderOf(target_wallet);
+
+        console.log(`...processing target wallet ${target_wallet} owned by (${owner.username}) ${owner.firstname} ${owner.lastname}`);
+        console.log(`...yacht_club:${header.activation_status_yacht} yacht_amount:${header.activation_status_yacht_amount}`);
+
+        // usergroup check
+        if(owner.usergroup !== "yacht_club"){
+            console.log(`...current usergroup ${owner.usergroup}, changing to yacht_club`);
+            owner.usergroup = "yacht_club";
+            await owner.save();
+        }
+
+        if(header.activation_status_yacht === "y"){
+            return "y";
+        }
+
+        const data_input_obj = tools.parseJson(data_input,true,`data_input`);
+        const yacht_club_activation_amount = tools.getPropertyValue(data_input_obj,'yacht_club_activation_amount','data_input_obj');
+        if(typeof yacht_club_activation_amount !== "string") throw new Error(`yacht_club_activation_amount is not string`);
+        assert.isNumericString(yacht_club_activation_amount,`yacht_club_activation_amount`);
+
+        header.activation_status_yacht_amount = yacht_club_activation_amount;
+        header.activation_status_yacht = "y";
+        await header.save();
+
+        const receiptToken = await web3_token.transfer(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),target_wallet,"1");
+        if(receiptToken){
+            console.log(`successfully sent 1 token, tagging transaction`);
+            // address, transactionHash
+            const detail = new eth_token_balance();
+            detail.address = target_wallet;
+            detail.transactionHash = receiptToken.transactionHash;
+            await detail.fetch();
+            const limit = 10;
+            const waitTime = 5000;
+            for(let i=0;i<limit;i++){
+                const detail = new eth_token_balance();
+                detail.address = target_wallet;
+                detail.transactionHash = receiptToken.transactionHash;
+                await detail.fetch();
+                if(detail.recordExists()){
+                    console.log(`token_balance detail found, tagging it for activation_yacht_tag`);
+                    detail.activation_yacht_tag = "y";
+                    await detail.save();
+                    break;
+                }
+                else{
+                    if(i < limit){
+                        console.log(`transaction does not exist on token_balance db, retrying (attempt count:${i}/${limit})...`);
+                        await tools.sleep(waitTime);
+                    }
+                    else{
+                        console.log(`transaction does not exist on token_balance db, attempt limit reached, exiting`);
+                    }
+                }
+            }
+        }
+        return "y";
+    }
+    public static async manualActivationTradeBot(target_wallet:string|null,data_input:string|null){
+        console.log(`begin process of manual activation of trade bot`);
+        if(typeof target_wallet !== "string") throw new Error(`target_wallet is not string`);
+        console.log(`manually activating yacht club of wallet ${target_wallet}`);
+
+        const owner = await user_tools.getUserByWallet(target_wallet);
+        if(!owner) throw new Error(`unable to retrieve user info of wallet ${target_wallet}`);
+        const header = await eth_token_balance_tools.getBalanceHeaderOf(target_wallet);
+
+        console.log(`...processing target wallet ${target_wallet} owned by (${owner.username}) ${owner.firstname} ${owner.lastname}`);
+        console.log(`...yacht_club:${header.activation_status_yacht} yacht_amount:${header.activation_status_yacht_amount}`);
+
+        // usergroup check
+        if(owner.usergroup !== "yacht_club"){
+            console.log(`...current usergroup ${owner.usergroup}, changing to yacht_club`);
+            owner.usergroup = "yacht_club";
+            await owner.save();
+        }
+
+        if(header.activation_status_trade === "y"){
+            return "y";
+        }
+        const data_input_obj = tools.parseJson(data_input,true,`data_input`);
+        const trade_activation_amount = tools.getPropertyValue(data_input_obj,'trade_activation_amount','data_input_obj');
+        if(typeof trade_activation_amount !== "string") throw new Error(`trade_activation_amount is not string`);
+        assert.isNumericString(trade_activation_amount,`trade_activation_amount`);
+
+        header.activation_status_trade_amount = trade_activation_amount;
+        header.activation_status_trade = "y";
+        await header.save();
+
+        const receiptToken = await web3_token.transfer(eth_config.getHotWalletAddress(),eth_config.getHotWalletKey(),target_wallet,"1");
+        if(receiptToken){
+            console.log(`successfully sent 1 token, tagging transaction`);
+            // address, transactionHash
+            const limit = 10;
+            const waitTime = 5000;
+            for(let i=0;i<limit;i++){
+                const detail = new eth_token_balance();
+                detail.address = target_wallet;
+                detail.transactionHash = receiptToken.transactionHash;
+                await detail.fetch();
+                if(detail.recordExists()){
+                    console.log(`token_balance detail found, tagging it for activation_yacht_tag`);
+                    detail.activation_trade_tag = "y";
+                    await detail.save();
+                    break;
+                }
+                else{
+                    if(i < limit){
+                        console.log(`transaction does not exist on token_balance db, retrying (attempt count:${i}/${limit})...`);
+                        await tools.sleep(waitTime);
+                    }
+                    else{
+                        console.log(`transaction does not exist on token_balance db, attempt limit reached, exiting`);
+                    }
+                }
+            }
+        }
+
+        return "y";
+    }
+    //endregion MANUAL ACTIVATION
 }
 
 if(argv.includes("run_worker_request")){
