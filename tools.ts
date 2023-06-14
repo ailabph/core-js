@@ -332,6 +332,23 @@ export class tools{
         }
         return obj[propName];
     }
+    public static parseJson(raw:unknown,strict:boolean,prop_name:string=""):any{
+        if(typeof raw !== "string"){
+            if(strict) throw new Error(`${prop_name} unable to parse json, passed argument not string`);
+            return false;
+        }
+        if(tools.isNullish(raw)){
+            if(strict) throw new Error(`${prop_name} unable to parse json, passed argument is null`);
+            return false;
+        }
+        try{
+            return JSON.parse(raw);
+        }catch (e){
+            if(!(e instanceof Error)) throw e;
+            if(strict) throw new Error(`${prop_name} error parsing json, error_message:${e.message}`);
+            return false;
+        }
+    }
     //endregion END GETTER
 
     //region FILE
