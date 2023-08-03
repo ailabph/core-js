@@ -28,6 +28,11 @@ class web3_tools {
     static async isWalletAddress(address) {
         return web3_rpc_web3_1.web3_rpc_web3.getWeb3Client().utils.isAddress(address) && !(await this.isContractAddress(address));
     }
+    static async assertWalletAddress(address, context = "address") {
+        const isWallet = await this.isWalletAddress(address);
+        if (!isWallet)
+            throw new Error(`${context} is not a wallet`);
+    }
 }
 exports.web3_tools = web3_tools;
 //# sourceMappingURL=web3_tools.js.map
