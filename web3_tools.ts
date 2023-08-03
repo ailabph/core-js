@@ -26,5 +26,9 @@ export class web3_tools{
     public static async isWalletAddress(address:string):Promise<boolean>{
         return web3_rpc_web3.getWeb3Client().utils.isAddress(address) && !(await this.isContractAddress(address));
     }
+    public static async assertWalletAddress(address:string,context:string="address"){
+        const isWallet = await this.isWalletAddress(address);
+        if(!isWallet) throw new Error(`${context} is not a wallet`);
+    }
 
 }
