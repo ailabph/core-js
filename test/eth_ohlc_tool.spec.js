@@ -24,12 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const eth_ohlc_tool_1 = require("./eth_ohlc_tool");
-const eth_ohlc_tool_2 = require("./eth_ohlc_tool");
-const tools_1 = require("./tools");
-const eth_contract_events_1 = require("./build/eth_contract_events");
-const eth_worker_trade_1 = require("./eth_worker_trade");
-const time_helper_1 = require("./time_helper");
+const eth_ohlc_tool_1 = require("../eth_ohlc_tool");
+const eth_ohlc_tool_2 = require("../eth_ohlc_tool");
+const tools_1 = require("../tools");
+const eth_contract_events_1 = require("../build/eth_contract_events");
+const eth_worker_trade_1 = require("../eth_worker_trade");
+const time_helper_1 = require("../time_helper");
 let timeStamp = tools_1.tools.getCurrentTimeStamp();
 describe("ohlc_tool spec", () => {
     it("ohlc_tool isGreen open:0 close:0", () => {

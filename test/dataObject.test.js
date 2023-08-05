@@ -1,27 +1,20 @@
-import {describe, expect, test} from '@jest/globals';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const globals_1 = require("@jest/globals");
 // @ts-ignore
-import {meta_options} from "./meta_options";
-import {tools} from "./tools";
+const meta_options_1 = require("../meta_options");
 jest.useFakeTimers();
-
 // test("no tests",()=>{});
-
 // beforeAll(() => {
 // });
-
-afterAll(() => {});
-
-afterEach(() => {});
-
-
-
+afterAll(() => { });
+afterEach(() => { });
 // test("dummy test",()=>{
 //     expect(true).toBe(true);
 // });
-
-test("test insert",async ()=>{
-    let m = new meta_options();
-    expect(m._isNew).toBe(true);
+(0, globals_1.test)("test insert", async () => {
+    let m = new meta_options_1.meta_options();
+    (0, globals_1.expect)(m._isNew).toBe(true);
     // m.type = "test";
     // m.tag = "tag_"+tools.getCurrentTimeStamp();
     // m.value = "value_"+tools.getCurrentTimeStamp();
@@ -36,3 +29,4 @@ test("test insert",async ()=>{
     // expect(check._isNew).toBe(false);
     // expect(check.tag).toBe("new_tag_123");
 });
+//# sourceMappingURL=dataObject.test.js.map

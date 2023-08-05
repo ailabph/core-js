@@ -1,10 +1,10 @@
 import * as assert from "assert";
-import { BAR_COLOR } from "./eth_ohlc_tool";
-import { eth_ohlc_tool } from "./eth_ohlc_tool";
-import { tools } from "./tools";
-import {eth_contract_events} from "./build/eth_contract_events";
-import {TRADE_TYPE} from "./eth_worker_trade";
-import {INTERVAL, time_helper} from "./time_helper";
+import { BAR_COLOR } from "../eth_ohlc_tool";
+import { eth_ohlc_tool } from "../eth_ohlc_tool";
+import { tools } from "../tools";
+import {eth_contract_events} from "../build/eth_contract_events";
+import {TRADE_TYPE} from "../eth_worker_trade";
+import {INTERVAL, time_helper} from "../time_helper";
 import {Dayjs} from "dayjs";
 
 let timeStamp = tools.getCurrentTimeStamp();
