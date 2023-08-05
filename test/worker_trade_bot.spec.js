@@ -24,15 +24,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const config_1 = require("./config");
-const connection_1 = require("./connection");
-const eth_trade_1 = require("./build/eth_trade");
-const worker_trade_bot_1 = require("./worker_trade_bot");
+const config_1 = require("../config");
+const connection_1 = require("../connection");
+const eth_trade_1 = require("../build/eth_trade");
+const worker_trade_bot_1 = require("../worker_trade_bot");
 const chai_1 = require("chai");
-const eth_trade_tools_1 = require("./eth_trade_tools");
-const eth_ohlc_tool_1 = require("./eth_ohlc_tool");
+const eth_trade_tools_1 = require("../eth_trade_tools");
+const eth_ohlc_tool_1 = require("../eth_ohlc_tool");
 describe("worker_trade_bot spec", () => {
-    before(async () => {
+    beforeAll(async () => {
         config_1.config.resetCache();
         connection_1.connection.reset();
         config_1.config.ENV_OVERRIDE = config_1.config.ENV["test"];

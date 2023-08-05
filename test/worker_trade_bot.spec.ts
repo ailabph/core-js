@@ -1,14 +1,14 @@
 import * as assert from "assert";
-import {config} from "./config";
-import {connection} from "./connection";
-import {eth_trade} from "./build/eth_trade";
-import {worker_trade_bot} from "./worker_trade_bot";
+import {config} from "../config";
+import {connection} from "../connection";
+import {eth_trade} from "../build/eth_trade";
+import {worker_trade_bot} from "../worker_trade_bot";
 import {expect} from "chai";
-import {TRADE_STATUS} from "./eth_trade_tools";
-import {BAR_COLOR, eth_ohlc_tool, OHLC_DETAILED} from "./eth_ohlc_tool";
+import {TRADE_STATUS} from "../eth_trade_tools";
+import {BAR_COLOR, eth_ohlc_tool, OHLC_DETAILED} from "../eth_ohlc_tool";
 
 describe("worker_trade_bot spec",()=> {
-    before(async ()=>{
+    beforeAll(async ()=>{
         config.resetCache();
         connection.reset();
         config.ENV_OVERRIDE = config.ENV["test"];
