@@ -19,6 +19,7 @@ export class worker_trade_cycle{
     private static readonly SUBSCRIPTION_TYPE:string = "binance_chain_front_runner";
     private static readonly BINANCE_START_FROM:number = 1682035200; //  Friday, April 21, 2023 12:00:00 AM UTC
     private static readonly BINANCE_START_TO:number = 1685577599; // Wednesday, May 31, 2023 11:59:59 PM UTC
+    private static readonly RESTART_DELAY:number = 1000*60*10; // 10 minutes
 
     private static lastMsg:string = "";
     private static log(msg:string, method:string){
@@ -30,13 +31,18 @@ export class worker_trade_cycle{
     }
     
     // NEW IMPLEMENTATION
-    private static async checkDelayMode():Promise<void>{
-        await tools.sleep(250);
+    private static async checkSlowMode():Promise<void>{
+        await tools.sleep(500);
     }
     public static async run(){
         const method = "run";
         const ranges = worker_trade_cycle.generateRanges();
         await worker_trade_cycle.syncRangesCycleRecord(ranges);
+        await worker_trade_cycle.updateCycleStatus();
+
+        const minutes = worker_trade_cycle.RESTART_DELAY / 1000 / 60;
+        this.log(`restarting in ${minutes} minutes`,method);
+        setTimeout(worker_trade_cycle.run,worker_trade_cycle.RESTART_DELAY);
     }
     private static getFirstMonthRange():INTERVAL_DATA{
         return time_range.createCustomRange(worker_trade_cycle.BINANCE_START_FROM,worker_trade_cycle.BINANCE_START_TO,"UTC");
@@ -65,15 +71,13 @@ export class worker_trade_cycle{
         const method = "syncRangesCycleRecord";
         let rangeIndex = 0;
         for(const range of ranges){
-            await this.checkDelayMode();
+            await this.checkSlowMode();
             this.log(`${++rangeIndex}| checking ${range.from_dateTime_MySql} - ${range.to_dateTime_MySql} record exits`,method);
             const cycle = new trade_cycle();
             cycle.subscription_type = worker_trade_cycle.SUBSCRIPTION_TYPE;
             cycle.from_time = range.from;
             await cycle.fetch();
-            if(cycle.to_time !== range.to){
-                throw new Error(`cycle.to_time ${cycle.to_time} !== range.to ${range.to}`);
-            }
+
             if(cycle.isNew()){
                 this.log(`${rangeIndex}|-- does not exist, adding record`,method);
                 cycle.subscription_type = worker_trade_cycle.SUBSCRIPTION_TYPE;
@@ -89,6 +93,10 @@ export class worker_trade_cycle{
             }
             else{
                 this.log(`${rangeIndex}|-- exists`,method);
+            }
+
+            if(cycle.to_time !== range.to){
+                throw new Error(`cycle.to_time ${cycle.to_time} !== range.to ${range.to}`);
             }
         }
     }
@@ -134,6 +142,85 @@ export class worker_trade_cycle{
 
         // Return the description
         return `${typeTitleCase} ${fromMonth} ${fromDay}, ${fromYear} to ${toMonth} ${toDay}, ${toYear}`;
+    }
+    private static async updateCycleStatus():Promise<void>{
+        const method = "updateCycleStatus";
+        this.log(`updating trade cycle status`,method);
+        const allCycles = new trade_cycle();
+        await allCycles.list(" WHERE 1 ",{}," ORDER BY from_time ASC ");
+        this.log(`...found ${allCycles.count()} cycles`,method);
+
+        let cycleIndex = 0, totalCycle = allCycles.count();
+        for(const cycle of allCycles._dataList as trade_cycle[]){
+            await this.checkSlowMode();
+            cycleIndex++;
+            this.log(`${cycleIndex}/${totalCycle}| updating cycle ${cycle.subscription_type} ${cycle.period_tag}`,method);
+
+            // check if cycle.total_days is nullish or not a number, throw error
+            if(!cycle.total_days || isNaN(cycle.total_days)){
+                throw new Error(`cycle.total_days is nullish or not a number`);
+            }
+
+            this.log(`${cycleIndex}/${totalCycle}|-- retrieving trade_days of this cycle`,method);
+            const trade_days_records = new trade_days();
+            await trade_days_records.list(
+                " WHERE trade_type=:type AND from_time>=:from AND to_time<=:time AND status=:completed ",
+                {type:cycle.subscription_type,from:cycle.from_time,time:cycle.to_time,completed:"completed"},
+                " ORDER BY from_time ASC ");
+            this.log(`${cycleIndex}/${totalCycle}|-- found ${trade_days_records.count()} completed trade_days out of cycle total days ${cycle.total_days}`,method);
+            if(trade_days_records.count() >= cycle.total_days){
+
+                // sum all est_profit_percentage
+                let total_est_profit_percentage = 0;
+
+                // trade_days_collection = array of date_period, est_profit_percentage, status
+                const trade_days_collection = [];
+
+                for(const trade_day of trade_days_records._dataList as trade_days[]){
+                    trade_days_collection.push({
+                        date_period:trade_day.date_period,
+                        est_profit_percentage:trade_day.est_profit_percentage,
+                        status:trade_day.status
+                    });
+                }
+                console.table(trade_days_collection);
+                for(const trade_day of trade_days_records._dataList as trade_days[]){
+
+                    let parsed_est_profit_percentage:number = 0;
+                    // check if it is string and numeric, attempt to parse number
+                    if(typeof trade_day.est_profit_percentage === "string"){
+                        // check if string is numeric
+                        if(isNaN(parseFloat(trade_day.est_profit_percentage))){
+                            throw new Error(`trade_day.est_profit_percentage is not a number`);
+                        }
+                        parsed_est_profit_percentage = parseFloat(trade_day.est_profit_percentage);
+                    }
+                    else if(typeof trade_day.est_profit_percentage === "number"){
+                        parsed_est_profit_percentage = trade_day.est_profit_percentage;
+                    }
+                    else{
+                        throw new Error(`trade_day.est_profit_percentage is not a string or number`);
+                    }
+
+                    total_est_profit_percentage += parsed_est_profit_percentage;
+                }
+
+                // format_total_est_profit_percentage = formatted percentage, example 0.01 = 1%
+                const format_total_est_profit_percentage = total_est_profit_percentage * 100;
+
+                this.log(`${cycleIndex}/${totalCycle}|-- total profit_percentage is ${format_total_est_profit_percentage}% , updating cycle status to completed`,method);
+                cycle.status = "completed";
+                cycle.total_est_profit_percentage = format_total_est_profit_percentage;
+                await cycle.save();
+                this.log(`${cycleIndex}/${totalCycle}|-- updated cycle status to completed`,method);
+            }
+            else{
+                this.log(`${cycleIndex}/${totalCycle}|-- not all trade_days are completed, updating cycle status to open`,method);
+                cycle.status = "open";
+                await cycle.save();
+                this.log(`${cycleIndex}/${totalCycle}|-- updated cycle status to open`,method);
+            }
+        }
     }
 
 
