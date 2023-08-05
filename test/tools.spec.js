@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
 // import * as assert from "assert";
 const chai_2 = require("chai");
-const tools_1 = require("./tools");
+const tools_1 = require("../tools");
 const u = require("underscore");
 describe("tools spec", () => {
     it("isset return true", () => {

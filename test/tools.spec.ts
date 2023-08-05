@@ -1,7 +1,7 @@
 import {expect} from "chai";
 // import * as assert from "assert";
 import { assert } from 'chai';
-import {tools} from "./tools";
+import {tools} from "../tools";
 const u = require("underscore");
 
 describe("tools spec",()=>{
