@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const connection_1 = require("./connection");
+const connection_1 = require("../connection");
 describe("eth_worker_trader_strategy spec trade logic", () => {
     beforeEach(async () => {
         await connection_1.connection.startTransaction();

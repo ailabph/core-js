@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as assert2 from "assert";
-import { connection} from "./connection";
-import {eth_contract_events} from "./build/eth_contract_events";
-import {eth_trade} from "./build/eth_trade";
-import {TRADE_BUY_SELL_STATUS} from "./eth_worker_trade_strategy";
+import { connection} from "../connection";
+import {eth_contract_events} from "../build/eth_contract_events";
+import {eth_trade} from "../build/eth_trade";
+import {TRADE_BUY_SELL_STATUS} from "../eth_worker_trade_strategy";
 
 describe("eth_worker_trader_strategy spec trade logic",()=>{
     beforeEach(async()=>{
