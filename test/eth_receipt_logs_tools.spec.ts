@@ -1,24 +1,19 @@
 import * as assert from "assert";
-import {ContractInfo} from "./eth_types";
-import {config} from "./config";
-import {connection} from "./connection";
-import {eth_config} from "./eth_config";
-import {tools} from "./tools";
-import {eth_worker} from "./eth_worker";
-import {eth_ohlc_tool} from "./eth_ohlc_tool";
-import {eth_receipt_logs_tools} from "./eth_receipt_logs_tools";
-import {web3_log_decoder,SwapLog} from "./web3_log_decoder";
-import {eth_contract_events} from "./build/eth_contract_events";
-import {TRADE_TYPE} from "./eth_worker_trade";
-import {INTERVAL, time_helper} from "./time_helper";
-import {Dayjs} from "dayjs";
-import {eth_receipt_logs} from "./build/eth_receipt_logs";
-import {eth_contract_events_tools} from "./eth_contract_events_tools";
-import {eth_price_track_header} from "./build/eth_price_track_header";
+import {ContractInfo} from "../eth_types";
+import {config} from "../config";
+import {connection} from "../connection";
+import {eth_config} from "../eth_config";
+import {tools} from "../tools";
+import {eth_receipt_logs_tools} from "../eth_receipt_logs_tools";
+import {web3_log_decoder,SwapLog} from "../web3_log_decoder";
+import {TRADE_TYPE} from "../eth_worker_trade";
+import { time_helper } from "../time_helper";
+import {eth_receipt_logs} from "../build/eth_receipt_logs";
+import {eth_price_track_header} from "../build/eth_price_track_header";
 
 describe("receipt_logs_tools spec",()=> {
 
-    before(async ()=>{
+    beforeAll(async ()=>{
         config.resetCache();
         connection.reset();
         config.ENV_OVERRIDE = config.ENV["test"];

@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import * as assert2 from "assert";
-import {connection} from "./connection";
-import {eth_worker} from "./eth_worker";
-import {eth_contract_events} from "./build/eth_contract_events";
+import {connection} from "../connection";
+import {eth_worker} from "../eth_worker";
 
 describe("eth_worker spec",()=> {
     beforeEach(async () => {

@@ -24,8 +24,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert2 = __importStar(require("assert"));
-const connection_1 = require("./connection");
-const eth_worker_1 = require("./eth_worker");
+const connection_1 = require("../connection");
+const eth_worker_1 = require("../eth_worker");
 describe("eth_worker spec", () => {
     beforeEach(async () => {
         await connection_1.connection.startTransaction();
