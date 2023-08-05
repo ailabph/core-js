@@ -41,7 +41,7 @@ export class worker_trade_cycle{
         await worker_trade_cycle.updateCycleStatus();
 
         const minutes = worker_trade_cycle.RESTART_DELAY / 1000 / 60;
-        this.log(`restarting in ${minutes} minutes`,method);
+        worker_trade_cycle.log(`restarting in ${minutes} minutes`,method); 
         setTimeout(worker_trade_cycle.run,worker_trade_cycle.RESTART_DELAY);
     }
     private static getFirstMonthRange():INTERVAL_DATA{
