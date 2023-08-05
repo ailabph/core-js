@@ -1,11 +1,11 @@
 import * as assert from "assert";
-import {config} from "./config";
-import {connection} from "./connection";
+import {config} from "../config";
+import {connection} from "../connection";
 import {expect} from "chai";
-import {worker_events_trade_tools} from "./worker_events_trade_tools";
+import {worker_events_trade_tools} from "../worker_events_trade_tools";
 
 describe("worker_events_trade_tools spec",()=> {
-    before(async () => {
+    beforeAll(async () => {
         config.resetCache();
         connection.reset();
         config.ENV_OVERRIDE = config.ENV["test"];

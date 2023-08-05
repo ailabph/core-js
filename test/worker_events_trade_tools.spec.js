@@ -24,12 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const config_1 = require("./config");
-const connection_1 = require("./connection");
+const config_1 = require("../config");
+const connection_1 = require("../connection");
 const chai_1 = require("chai");
-const worker_events_trade_tools_1 = require("./worker_events_trade_tools");
+const worker_events_trade_tools_1 = require("../worker_events_trade_tools");
 describe("worker_events_trade_tools spec", () => {
-    before(async () => {
+    beforeAll(async () => {
         config_1.config.resetCache();
         connection_1.connection.reset();
         config_1.config.ENV_OVERRIDE = config_1.config.ENV["test"];
