@@ -1,6 +1,6 @@
 
-import {build} from "./build";
-import {connection} from "./connection";
+import {build} from "../build";
+import {connection} from "../connection";
 
 describe("build spec",()=>{
 

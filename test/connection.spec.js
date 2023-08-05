@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
-const tools_1 = require("./tools");
-const connection_1 = require("./connection");
-const meta_options_1 = require("./build/meta_options");
+const tools_1 = require("../tools");
+const connection_1 = require("../connection");
+const meta_options_1 = require("../build/meta_options");
 let timeStamp = tools_1.tools.getCurrentTimeStamp();
 describe("connection spec", () => {
     afterEach(async () => {

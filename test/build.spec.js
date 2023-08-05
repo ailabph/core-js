@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const build_1 = require("./build");
-const connection_1 = require("./connection");
+const build_1 = require("../build");
+const connection_1 = require("../connection");
 describe("build spec", () => {
     beforeEach(async () => {
         await connection_1.connection.startTransaction();

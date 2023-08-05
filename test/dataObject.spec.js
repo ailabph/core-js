@@ -24,13 +24,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
-const meta_options_1 = require("./build/meta_options");
+const meta_options_1 = require("../build/meta_options");
 const assert = __importStar(require("assert"));
-const connection_1 = require("./connection");
-const tools_1 = require("./tools");
+const connection_1 = require("../connection");
+const tools_1 = require("../tools");
 let timeStamp = tools_1.tools.getCurrentTimeStamp();
 describe("dataObject spec orm", () => {
-    before(async () => {
+    beforeAll(async () => {
         await connection_1.connection.execute({ sql: "TRUNCATE TABLE meta_options" });
     });
     beforeEach(async () => {

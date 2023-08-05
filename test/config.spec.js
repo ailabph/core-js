@@ -27,7 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const config_1 = require("./config");
+const config_1 = require("../config");
 const ts_sinon_1 = __importDefault(require("ts-sinon"));
 const chai_1 = require("chai");
 describe("config spec", () => {

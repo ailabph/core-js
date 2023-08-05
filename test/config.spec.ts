@@ -1,8 +1,8 @@
 import * as assert from "assert";
-import { config } from "./config";
+import { config } from "../config";
 import sinon from "ts-sinon";
 import {expect} from "chai";
-import {tools} from "./tools";
+import {tools} from "../tools";
 
 describe("config spec",()=>{
     afterEach(()=>{
