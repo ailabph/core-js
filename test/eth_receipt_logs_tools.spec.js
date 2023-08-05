@@ -24,17 +24,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const config_1 = require("./config");
-const connection_1 = require("./connection");
-const eth_config_1 = require("./eth_config");
-const tools_1 = require("./tools");
-const eth_receipt_logs_tools_1 = require("./eth_receipt_logs_tools");
-const eth_worker_trade_1 = require("./eth_worker_trade");
-const time_helper_1 = require("./time_helper");
-const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
-const eth_price_track_header_1 = require("./build/eth_price_track_header");
+const config_1 = require("../config");
+const connection_1 = require("../connection");
+const eth_config_1 = require("../eth_config");
+const tools_1 = require("../tools");
+const eth_receipt_logs_tools_1 = require("../eth_receipt_logs_tools");
+const eth_worker_trade_1 = require("../eth_worker_trade");
+const time_helper_1 = require("../time_helper");
+const eth_receipt_logs_1 = require("../build/eth_receipt_logs");
+const eth_price_track_header_1 = require("../build/eth_price_track_header");
 describe("receipt_logs_tools spec", () => {
-    before(async () => {
+    beforeAll(async () => {
         config_1.config.resetCache();
         connection_1.connection.reset();
         config_1.config.ENV_OVERRIDE = config_1.config.ENV["test"];

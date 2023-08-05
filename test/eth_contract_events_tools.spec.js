@@ -24,10 +24,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const connection_1 = require("./connection");
-const eth_config_1 = require("./eth_config");
-const eth_receipt_logs_1 = require("./build/eth_receipt_logs");
-const eth_contract_events_tools_1 = require("./eth_contract_events_tools");
+const connection_1 = require("../connection");
+const eth_config_1 = require("../eth_config");
+const eth_receipt_logs_1 = require("../build/eth_receipt_logs");
+const eth_contract_events_tools_1 = require("../eth_contract_events_tools");
 describe("contract_events_tools spec", () => {
     beforeEach(async () => {
         await connection_1.connection.startTransaction();
@@ -47,22 +47,11 @@ describe("contract_events_tools spec", () => {
         const result = eth_contract_events_tools_1.eth_contract_events_tools.isTokenRelated(log);
         assert.equal(result, true);
     });
-    // it("contract_events_tools isTokenRelated token_usd pair address", () => {
-    //     const log = new eth_receipt_logs();
-    //     log.address = eth_config.getTokenUsdPairContract();
-    //     const result = eth_contract_events_tools.isTokenRelated(log);
-    //     assert.equal(result,true);
-    // });
     it("contract_events_tools isTokenRelated false", () => {
         const log = new eth_receipt_logs_1.eth_receipt_logs();
         log.address = eth_config_1.eth_config.getDexContract();
         const result = eth_contract_events_tools_1.eth_contract_events_tools.isTokenRelated(log);
         assert.equal(result, false);
     });
-    // get unprocessed receipt_logs no last_id
-    // get unprocessed receipt_logs with last_id
-    // is Trade
-    // is Buy
-    // is Sell
 });
 //# sourceMappingURL=eth_contract_events_tools.spec.js.map
