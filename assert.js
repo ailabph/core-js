@@ -76,7 +76,10 @@ class assert {
         return assert.isString({ val: val, prop_name: prop_name, strict: true });
     }
     static positiveInt(val, prop_name = "") {
-        return tools_1.tools.parseInt({ val: val, name: prop_name, strict: true });
+        const parsed_val = tools_1.tools.parseInt({ val: val, name: prop_name, strict: true });
+        if (parsed_val < 1)
+            throw new Error(`${prop_name} must be greater than zero`);
+        return parsed_val;
     }
     static positiveNumber(val, prop_name = "") {
         if (typeof val !== "number") {

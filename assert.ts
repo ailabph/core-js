@@ -61,7 +61,9 @@ export class assert{
     }
 
     public static positiveInt(val:any,prop_name:string=""):number{
-        return tools.parseInt({val:val,name:prop_name,strict:true});
+        const parsed_val = tools.parseInt({val:val,name:prop_name,strict:true});
+        if(parsed_val < 1) throw new Error(`${prop_name} must be greater than zero`);
+        return parsed_val;
     }
 
     public static positiveNumber(val:any,prop_name:string=""):number{
