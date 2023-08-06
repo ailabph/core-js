@@ -30,9 +30,10 @@ class worker_trade_days {
         await this.generateDailyProfits();
         // run this every 5 minutes
         this.log(`waiting for 5 minutes before running again`, "run2");
-        setInterval(async () => {
+        await tools_1.tools.sleep(1000 * 60 * 5);
+        setImmediate(async () => {
             await this.run2();
-        }, 1000 * 60 * 5);
+        });
     }
     static async getTradeCycleList() {
         const method = "getTradeCycleList";

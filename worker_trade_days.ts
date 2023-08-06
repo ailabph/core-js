@@ -37,9 +37,10 @@ export class worker_trade_days{
 
         // run this every 5 minutes
         this.log(`waiting for 5 minutes before running again`,"run2")
-        setInterval(async ()=>{
+        await tools.sleep(1000*60*5);
+        setImmediate(async ()=>{
             await this.run2();
-        }, 1000*60*5);
+        });
     }
     private static async getTradeCycleList():Promise<trade_cycle[]>{
         const method = "getTradeCycleList";
