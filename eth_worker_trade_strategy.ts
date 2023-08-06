@@ -140,7 +140,7 @@ export class eth_worker_trade_strategy{
             if(enable_transaction) await connection.rollback();
             console.log(e);
         }
-        if(recursive) await run();
+        if(recursive) await eth_worker_trade_strategy.run();
         else await this.log("strategy worker done");
     }
 

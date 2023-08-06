@@ -133,7 +133,7 @@ class eth_worker_trade_strategy {
             console.log(e);
         }
         if (recursive)
-            await run();
+            await eth_worker_trade_strategy.run();
         else
             await this.log("strategy worker done");
     }
