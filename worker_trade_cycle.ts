@@ -16,7 +16,7 @@ export type trade_cycle_to_process = {
 
 export class worker_trade_cycle{
 
-    private static readonly SUBSCRIPTION_TYPE:string = "binance_chain_front_runner";
+    public static readonly SUBSCRIPTION_TYPE:string = "binance_chain_front_runner";
     private static readonly BINANCE_START_FROM:number = 1682035200; //  Friday, April 21, 2023 12:00:00 AM UTC
     private static readonly BINANCE_START_TO:number = 1685577599; // Wednesday, May 31, 2023 11:59:59 PM UTC
     private static readonly RESTART_DELAY:number = 1000*60*10; // 10 minutes
@@ -41,7 +41,7 @@ export class worker_trade_cycle{
         await worker_trade_cycle.updateCycleStatus();
 
         const minutes = worker_trade_cycle.RESTART_DELAY / 1000 / 60;
-        worker_trade_cycle.log(`restarting in ${minutes} minutes`,method); 
+        worker_trade_cycle.log(`restarting in ${minutes} minutes`,method);
         setTimeout(worker_trade_cycle.run,worker_trade_cycle.RESTART_DELAY);
     }
     private static getFirstMonthRange():INTERVAL_DATA{
