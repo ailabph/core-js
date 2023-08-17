@@ -170,10 +170,15 @@ class web3_startup_checks {
         console.log(`${allAccounts.count()} accounts found, checking sponsor structure integrity...`);
         let issuesFound = 0;
         for (const acc of allAccounts._dataList) {
-            const errorInfo = await account_tools_1.account_tools.verifySponsorLineOfDownline(acc, auto_fix);
-            if (typeof errorInfo === "string") {
-                issuesFound++;
-                console.log(`...INVALID ${errorInfo}`);
+            if (typeof acc.user_id === "number" && acc.user_id > 0) {
+                const errorInfo = await account_tools_1.account_tools.verifySponsorLineOfDownline(acc, auto_fix);
+                if (typeof errorInfo === "string") {
+                    issuesFound++;
+                    console.log(`...INVALID ${errorInfo}`);
+                }
+            }
+            else {
+                console.log(`...Skipping, account ${acc.id} has invalid user_id ${acc.user_id}`);
             }
         }
         console.log(`...sponsor structure issues found:${issuesFound}`);
