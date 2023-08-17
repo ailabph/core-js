@@ -151,7 +151,7 @@ export class account_tools{
         this.log(`...sponsor_level ${downline.sponsor_level}`,method,false,showLogs);
         this.log(`...sponsor_id ${downline.sponsor_id}`,method,false,showLogs);
         this.log(`...sponsor_account ${downline.sponsor_account_id}`,method,false,showLogs);
-        const downline_user = await user_tools.getUser(downline.user_id);
+        const downline_user = await user_tools.getUser(downline.user_id,`downline.id:${downline.id} downline.user_id:${downline.user_id}`);
         if(typeof downline_user !== "boolean"){
             this.log(`...owner user_id ${downline.user_id} username ${downline_user.username} name ${downline_user.firstname} ${downline_user.lastname}`,method,false,showLogs);
         }
