@@ -19,6 +19,7 @@ const eth_price_track_details_tools_1 = require("./eth_price_track_details_tools
 const web3_abi_decoder_1 = require("./web3_abi_decoder");
 const connection_1 = require("./connection");
 const worker_events_trade_tools_1 = require("./worker_events_trade_tools");
+const generic_data_1 = require("./build/generic_data");
 //endregion TYPES
 class worker_events_trade {
     static log(msg, method, end = false, force_display = false) {
@@ -43,7 +44,7 @@ class worker_events_trade {
         return delay;
     }
     static getBatch() {
-        let batch = 500;
+        let batch = 10;
         const batchOverride = config_1.config.getCustomOption("worker_events_trade_batch", false);
         if (typeof batchOverride === "number") {
             batch = assert_1.assert.positiveInt(batchOverride, "getBatch|batchOverride");
@@ -167,12 +168,47 @@ class worker_events_trade {
             else
                 console.log(e);
             this.retryDelayMultiplier++;
-            const retryInSeconds = this.getStartingDelayInSeconds() * this.retryDelayMultiplier;
-            this.log(`retrying in ${retryInSeconds} seconds...`, method, true, true);
-            setTimeout(() => {
-                this.resetPointers();
-                worker_events_trade.run();
-            }, retryInSeconds * 1000);
+            if (this.retryDelayMultiplier < 5) {
+                const retryInSeconds = this.getStartingDelayInSeconds() * this.retryDelayMultiplier;
+                this.log(`retrying in ${retryInSeconds} seconds...`, method, true, true);
+                setTimeout(() => {
+                    this.resetPointers();
+                    worker_events_trade.run();
+                }, retryInSeconds * 1000);
+            }
+            else {
+                this.log(`max retry reached, setting this log for retry later`, method, false, true);
+                // retrieve the log record
+                const log = new eth_receipt_logs_1.eth_receipt_logs();
+                log.transactionHash = this.currentTransactionHash;
+                log.logIndex = this.currentLogIndex;
+                await log.fetch();
+                if (log.isNew())
+                    throw new Error(`log not found on db with hash ${this.currentTransactionHash} logIndex ${this.currentLogIndex}`);
+                if (typeof log.time_processed_events === "number" && log.time_processed_events > 0) {
+                    throw new Error(`log already processed with hash ${this.currentTransactionHash} logIndex ${this.currentLogIndex}`);
+                }
+                // set time_processed_events to current time
+                log.time_processed_events = tools_1.tools.getCurrentTimeStamp();
+                await log.save();
+                this.log(`-- saved eth_receive_log(${log.id})`, method, false, true);
+                // create a new record on generic_data
+                const retry = new generic_data_1.generic_data();
+                retry.tag = "retry_worker_events_trade_" + log.id;
+                retry.value = log.transactionHash;
+                retry.time_updated = tools_1.tools.getCurrentTimeStamp();
+                await retry.save();
+                this.log(`-- saved retry record in generic_data(${retry.id})`, method, true, true);
+                this.lastProcessedTransactionHash = this.currentTransactionHash;
+                this.lastProcessedBlockNumber = this.currentBlockNumber;
+                this.lastProcessedLogIndex = this.currentLogIndex;
+                this.lastProcessedDbLogId = this.currentDbLogId;
+                this.retryDelayMultiplier = 0;
+                await tools_1.tools.sleep(50);
+                setImmediate(() => {
+                    worker_events_trade.run().finally();
+                });
+            }
         }
     }
     static async getSwapSummary(db_log, target_token, swapLog, pairInfo) {
