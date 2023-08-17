@@ -14,8 +14,8 @@ class user_tools {
         }
     }
     //region GETTERS
-    static async getUser(id_or_username) {
-        const method = "getUser";
+    static async getUser(id_or_username, context = "") {
+        const method = "getUser ";
         if (id_or_username === null) {
             this.log(`unable to retrieve user, null passed`, method);
             return false;
@@ -23,11 +23,11 @@ class user_tools {
         const queryUser = new user_1.user();
         if (typeof id_or_username === "number") {
             this.log(`...retrieving by user id ${id_or_username}`, method);
-            queryUser.id = assert_1.assert.positiveInt(id_or_username, `${method} id_or_username`);
+            queryUser.id = assert_1.assert.positiveInt(id_or_username, `${method} id_or_username ${context}`);
         }
         else {
             this.log(`...retrieving by username ${id_or_username}`, method);
-            queryUser.username = assert_1.assert.stringNotEmpty(id_or_username, `${method} id_or_username`);
+            queryUser.username = assert_1.assert.stringNotEmpty(id_or_username, `${method} id_or_username ${context}`);
         }
         await queryUser.fetch();
         if (queryUser.isNew()) {

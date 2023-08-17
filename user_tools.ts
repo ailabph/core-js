@@ -14,8 +14,8 @@ export class user_tools{
     }
 
     //region GETTERS
-    public static async getUser(id_or_username:null|string|number):Promise<user|false>{
-        const method = "getUser";
+    public static async getUser(id_or_username:null|string|number,context:string=""):Promise<user|false>{
+        const method = "getUser ";
         if(id_or_username === null){
             this.log(`unable to retrieve user, null passed`,method);
             return false;
@@ -24,11 +24,11 @@ export class user_tools{
 
         if(typeof id_or_username === "number"){
             this.log(`...retrieving by user id ${id_or_username}`,method);
-            queryUser.id = assert.positiveInt(id_or_username,`${method} id_or_username`);
+            queryUser.id = assert.positiveInt(id_or_username,`${method} id_or_username ${context}`);
         }
         else{
             this.log(`...retrieving by username ${id_or_username}`,method);
-            queryUser.username = assert.stringNotEmpty(id_or_username,`${method} id_or_username`);
+            queryUser.username = assert.stringNotEmpty(id_or_username,`${method} id_or_username ${context}`);
         }
         await queryUser.fetch();
 
