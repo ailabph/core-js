@@ -5,6 +5,7 @@ import {assert} from "./assert";
 import {user_tools} from "./user_tools";
 import {user} from "./build/user";
 import exp from "constants";
+import {time_helper} from "./time_helper";
 
 export class account_tools{
 
@@ -105,6 +106,20 @@ export class account_tools{
         const dna_parts = sponsor_dna.split("_");
         const last_account_dna = dna_parts[dna_parts.length-1];
         return assert.positiveInt(last_account_dna,`getLastAccountIdInSponsorDna last_account_dna`);
+    }
+
+    public static async getAccountsByUserId(user_id:unknown):Promise<account[]>{
+        if(typeof user_id !== "number") throw new Error(`user_id is not a number`);
+        if(!(user_id > 0)) throw new Error(`invalid user_id(${user_id}), must be > 0`);
+        const a = new account();
+        await a.list(" WHERE user_id=:id ",{id:user_id});
+        return a._dataList as account[];
+    }
+    public static async getAccountsBySponsorId(sponsor_id:unknown, context:string = ''):Promise<account[]>{
+        if(typeof sponsor_id !== "number") throw new Error(`${context}|unable to retrieve accounts by sponsor_id, sponsor_id is not a number`);
+        const accounts = new account();
+        await accounts.list(" WHERE sponsor_id=:id ",{id:sponsor_id});
+        return accounts._dataList as account[];
     }
     //endregion GETTERS
 
@@ -248,4 +263,49 @@ export class account_tools{
 
     //endregion CHECKER
 
+    //region PROCESS
+    public static async createAccountFromUser(u:user){
+        const method = "create account from user";
+
+        // user must have wallet address
+        if(!user_tools.hasWalletAddress(u)) throw new Error(`unable to ${method}, user(${u.username}) has no wallet address`);
+
+        // user must have no account
+        const checkAccounts = await account_tools.getAccountsByUserId(u.id);
+        if(checkAccounts.length > 0) throw new Error(`unable to ${method}, user(${u.username}) has an account`);
+
+        // user must have a referred_by_code
+        if(typeof u.referred_by_code !== "string") throw new Error(`unable to ${method}, user(${u.username}) has no referred_by_code`);
+        if(u.referred_by_code === "") throw new Error(`unable to ${method}, user(${u.username}).referred_by_code is empty`);
+        if(u.referred_by_code.toLowerCase() === "null") throw new Error(`unable to ${method}, user(${u.username}).referred_by_code is null`);
+
+        // retrieve referral user
+        const sponsor_user = await user_tools.getUserByCodeStrict(u.referred_by_code,`${method}|user(${u.username}).referred_by_code(${u.referred_by_code})`);
+        // retrieve account
+        const sponsor_accounts = await this.getAccountsByUserId(sponsor_user.id);
+        if(sponsor_accounts.length === 0) throw new Error(`unable to ${method}, sponsor(${sponsor_user.username}) of user(${u.username}) has no account`);
+        const sponsor_account = sponsor_accounts[0];
+        // check account and user wallet match
+        if(sponsor_user.walletAddress?.toLowerCase() !== sponsor_account.account_code?.toLowerCase()) throw new Error(`unable to ${method}, user(${sponsor_user.username}) wallet does not match account(${sponsor_user.id})`);
+        const sponsor_dna = assert.stringNotEmpty(sponsor_account.sponsor_dna,`unable to ${method}, sponsor_account(${sponsor_account.id}).sponsor_dna is empty`)
+
+        const newAccount = new account();
+        newAccount.user_id = assert.positiveInt(u.id,`unable to ${method}, user(${u.username}) has no id`);
+        newAccount.account_code = u.walletAddress;
+        newAccount.account_type = "wallet";
+        newAccount.rank = "basic";
+        newAccount.is_top = "n";
+        newAccount.time_created = time_helper.getCurrentTimeStamp();
+        newAccount.sponsor_account_id = sponsor_account.account_code;
+        newAccount.sponsor_id = assert.positiveInt(sponsor_account.id,`${method}|sponsor_account(${sponsor_account.account_code}).id`);
+        newAccount.placement_id = 0;
+        newAccount.sponsor_level = assert.positiveInt(sponsor_account.sponsor_level,`${method}|sponsor_account(${sponsor_account.id}).sponsor_level(${sponsor_account.sponsor_level})`) + 1;
+        newAccount.sponsor_dna = "to_build";
+        newAccount.status = "o";
+        newAccount.eth_total_community_bonus = "0.00";
+        await newAccount.save();
+        newAccount.sponsor_dna = sponsor_dna + "_" + newAccount.id;
+        await newAccount.save();
+    }
+    //endregion PROCESS
 }
