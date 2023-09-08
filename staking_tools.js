@@ -31,6 +31,13 @@ class staking_tools {
             throw new Error(`${method}|no staking record with hash ${stakingRecord.hash}`);
         return stakingRecord;
     }
+    static async getStakingByUserId(user_id, context = "") {
+        if (typeof user_id !== "number")
+            throw new Error(`${context}|invalid user_id`);
+        const stakings = new staking_1.staking();
+        await stakings.list(" WHERE user_id=:id ", { id: user_id });
+        return stakings._dataList;
+    }
 }
 exports.staking_tools = staking_tools;
 //# sourceMappingURL=staking_tools.js.map

@@ -1,5 +1,6 @@
 import {staking} from "./build/staking";
 import {assert} from "./assert";
+import {user} from "./build/user";
 
 export class staking_tools{
     public static async getStakingByAddress(address:unknown):Promise<staking>{
@@ -25,5 +26,12 @@ export class staking_tools{
         await stakingRecord.fetch();
         if(stakingRecord.isNew()) throw new Error(`${method}|no staking record with hash ${stakingRecord.hash}`);
         return stakingRecord;
+    }
+
+    public static async getStakingByUserId(user_id:unknown,context:string=""):Promise<staking[]>{
+        if(typeof user_id !== "number") throw new Error(`${context}|invalid user_id`);
+        const stakings = new staking();
+        await stakings.list(" WHERE user_id=:id ",{id:user_id});
+        return stakings._dataList as staking[];
     }
 }
