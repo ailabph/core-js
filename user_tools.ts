@@ -2,6 +2,7 @@ import {config} from "./config";
 import {tools} from "./tools";
 import {assert} from "./assert";
 import {user} from "./build/user";
+import {account} from "./build/account";
 
 
 export class user_tools{
@@ -73,6 +74,24 @@ export class user_tools{
             return queryUser;
         }
     }
+
+    public static async getUsersByWalletAddress(address:unknown):Promise<user[]>{
+        if(typeof address !== "string") throw new Error(`invalid wallet address, must be a string`);
+        if(address === "") throw new Error(`invalid wallet address, must not be empty`);
+        if(address.toLowerCase() === "null") throw new Error(`invalid wallet address, is null`);
+        const users = new user();
+        await users.list(" WHERE walletAddress=:walletAddress ",{walletAddress:address});
+        return users._dataList as user[];
+    }
     //endregion GETTERS
+
+    //region CHECKS
+    public static hasWalletAddress(u:user):boolean{
+        if(typeof u.walletAddress !== "string") return false;
+        if(u.walletAddress === "") return false;
+        if(u.walletAddress.toLowerCase() === "null") return false;
+        return true;
+    }
+    //endregion CHECKS
 
 }

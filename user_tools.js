@@ -76,6 +76,28 @@ class user_tools {
             return queryUser;
         }
     }
+    static async getUsersByWalletAddress(address) {
+        if (typeof address !== "string")
+            throw new Error(`invalid wallet address, must be a string`);
+        if (address === "")
+            throw new Error(`invalid wallet address, must not be empty`);
+        if (address.toLowerCase() === "null")
+            throw new Error(`invalid wallet address, is null`);
+        const users = new user_1.user();
+        await users.list(" WHERE walletAddress=:walletAddress ", { walletAddress: address });
+        return users._dataList;
+    }
+    //endregion GETTERS
+    //region CHECKS
+    static hasWalletAddress(u) {
+        if (typeof u.walletAddress !== "string")
+            return false;
+        if (u.walletAddress === "")
+            return false;
+        if (u.walletAddress.toLowerCase() === "null")
+            return false;
+        return true;
+    }
 }
 exports.user_tools = user_tools;
 //# sourceMappingURL=user_tools.js.map
