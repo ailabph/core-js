@@ -18,6 +18,7 @@ import {config} from "./config";
 import {worker_email} from "./worker_email";
 import {staking} from "./build/staking";
 import {user_tools} from "./user_tools";
+import {staking_tools} from "./staking_tools";
 
 export class web3_startup_checks{
 
@@ -339,6 +340,11 @@ export class web3_startup_checks{
                 await this.check_upline_sponsor_relationship(a);
                 await this.check_downline_sponsor_relationship(a);
             }
+
+            console.log(`checking staking records...`);
+            for(const u of users._dataList as user[]){
+                await this.check_staking_relationship(u);
+            }
         }catch (e){
             throw e;
         }
@@ -415,6 +421,24 @@ export class web3_startup_checks{
         const downlines = await account_tools.getAccountsBySponsorId(upline.id);
         for(const downline of downlines){
             this.check_upline_downline_relationship(upline,downline);
+        }
+    }
+
+    public async check_staking_relationship(u:user){
+        let logs:string[] = [];
+        try{
+            const stakings = await staking_tools.getStakingByUserId(u.id);
+
+            for(const s of stakings){
+                if(s.status === "pending_deposit") continue;
+                if(s.status === "matured") continue;
+                // check user_wallet_address
+                if(u.walletAddress?.toLowerCase() !== s.user_wallet_address?.toLowerCase())
+                    throw new Error(`user(${u.username}) does not match staking(${s.id}).user_wallet_address`);
+            }
+        }catch (e) {
+            for(const l of logs) console.log(l);
+            throw e;
         }
     }
     //endregion CHECKS
