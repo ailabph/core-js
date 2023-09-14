@@ -15,5 +15,5 @@ changelog
 
 To run tests, follow these steps:
 
-1) Navigate to the test folder
-2) Run 'npm test'
+1) Make sure you are in the project root directory.
+2) Run 'npm test' in your terminal.
