@@ -10,3 +10,10 @@ test setup
 
 changelog
 - v1.0.1 - full implementation of core from composer ailabph/ailab-core
+
+## Running Tests
+
+To run tests, follow these steps:
+
+1) Navigate to the test folder
+2) Run 'npm test'
