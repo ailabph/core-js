@@ -41,6 +41,7 @@ describe("receipt_logs_tools spec",()=> {
         assert.equal(result.length,1);
     });
     it("receipt_logs_tools getUnprocessedReceiptLogsForEvents cache id", async () => {
+        await connection.startTransaction();
         const logs1 = getMockReceiptLogs();
         logs1.time_processed_price = time_helper.getCurrentTimeStamp();
         await logs1.save();
@@ -56,6 +57,7 @@ describe("receipt_logs_tools spec",()=> {
         result = await eth_receipt_logs_tools.getUnprocessedLogsForEvents();
         assert.equal(result.length,2);
         assert.equal(result[0].id,logs2.id,"second log");
+        await connection.rollback();
     });
     it("receipt_logs_tools getUnprocessedReceiptLogsForEvents all processed", async () => {
         const logs1 = getMockReceiptLogs();
