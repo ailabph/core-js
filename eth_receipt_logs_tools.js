@@ -425,12 +425,19 @@ class eth_receipt_logs_tools {
     //region CHECKER
     static isContractEventLog(log) {
         const address = assert_1.assert.stringNotEmpty(log.address, `isContractEventLog|log.address`);
-        return address.toLowerCase() === eth_config_1.eth_config.getTokenContract().toLowerCase();
+        const token_contract = eth_config_1.eth_config.getTokenContract();
+        assert_1.assert.stringNotEmpty(token_contract, `eth_config.getTokenContract()`);
+        return address.toLowerCase() === token_contract.toLowerCase();
     }
-    static isPairEventLog(log) {
+    static isPairEventLog(log, has_usd_pair = false) {
         const contract_address = assert_1.assert.stringNotEmpty(log.address, `isPairEventLog log.address`);
-        return contract_address.toLowerCase() === eth_config_1.eth_config.getTokenBnbPairContract().toLowerCase()
-            || contract_address.toLowerCase() === eth_config_1.eth_config.getTokenUsdPairContract().toLowerCase();
+        if (has_usd_pair) {
+            return contract_address.toLowerCase() === eth_config_1.eth_config.getTokenBnbPairContract().toLowerCase()
+                || contract_address.toLowerCase() === eth_config_1.eth_config.getTokenUsdPairContract().toLowerCase();
+        }
+        else {
+            return contract_address.toLowerCase() === eth_config_1.eth_config.getTokenBnbPairContract().toLowerCase();
+        }
     }
     //endregion CHECKER
     //region LOG TRADE INFO

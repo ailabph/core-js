@@ -468,12 +468,20 @@ export class eth_receipt_logs_tools{
     //region CHECKER
     public static isContractEventLog(log:eth_receipt_logs):boolean{
         const address = assert.stringNotEmpty(log.address,`isContractEventLog|log.address`);
-        return address.toLowerCase() === eth_config.getTokenContract().toLowerCase();
+        const token_contract:string = eth_config.getTokenContract();
+        assert.stringNotEmpty(token_contract,`eth_config.getTokenContract()`);
+        return address.toLowerCase() === token_contract.toLowerCase();
     }
-    public static isPairEventLog(log:eth_receipt_logs):boolean{
+    public static isPairEventLog(log:eth_receipt_logs,has_usd_pair:boolean=false):boolean{
         const contract_address = assert.stringNotEmpty(log.address,`isPairEventLog log.address`);
-        return  contract_address.toLowerCase() === eth_config.getTokenBnbPairContract().toLowerCase()
+        if(has_usd_pair){
+            return  contract_address.toLowerCase() === eth_config.getTokenBnbPairContract().toLowerCase()
                 || contract_address.toLowerCase() === eth_config.getTokenUsdPairContract().toLowerCase();
+        }
+        else{
+            return  contract_address.toLowerCase() === eth_config.getTokenBnbPairContract().toLowerCase();
+        }
+
     }
     //endregion CHECKER
 
