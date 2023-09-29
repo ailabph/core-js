@@ -13,6 +13,10 @@ describe("eth_worker_trader_strategy spec trade logic",()=>{
         await connection.rollback();
     });
 
+    it("placeholder test",()=>{
+        assert2.equal(true,true);
+    });
+
 
     // async function buy(bnb_amount:number|string,bnb_usd:number|string,bnb_token:number|string):Promise<eth_contract_events>{
     //     bnb_amount = tools.numericToString({val:bnb_amount});
