@@ -236,6 +236,14 @@ class tools {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
+    static isValidContactNumber(contact) {
+        if (typeof contact !== 'string' && typeof contact !== 'number') {
+            return false;
+        }
+        const contactStr = String(contact);
+        const contactRegex = /^\+?[1-9]\d{1,14}(\(\d{1,4}\))?\d{6,10}$|^0\d{9,10}$|^\d{4}-\d{3}-\d{4}$/;
+        return contactRegex.test(contactStr) ? contactStr : false;
+    }
     //endregion CHECK
     //region GETTER
     static parseInt({ val, name = "", strict = true }) {
@@ -550,6 +558,73 @@ class tools {
     //region FORMAT
     static percentageFormat(percentage, decimal = 2) {
         return tools.multiply(percentage, 100, decimal);
+    }
+    static stringModifier(template, keys) {
+        let result = template;
+        for (let key in keys) {
+            let value = keys[key];
+            if (typeof value === 'number' || !isNaN(Number(value))) {
+                value = Number(value).toFixed(6);
+            }
+            let regex = new RegExp('{{' + key + '}}', 'g');
+            result = result.replace(regex, value.toString());
+        }
+        if (result.includes('{{')) {
+            throw new Error('All placeholders have not been replaced');
+        }
+        return result;
+    }
+    //endregion FORMAT
+    static copy_values(copy_from, copy_to, prop_list, context = "") {
+        prop_list.forEach(prop => {
+            if (!copy_from.hasOwnProperty(prop))
+                throw new Error(`${context}|copy_from does not contain property ${prop}`);
+            if (!copy_to.hasOwnProperty(prop))
+                throw new Error(`${context}|copy_to does not contain property ${prop}`);
+            if (copy_from.hasOwnProperty(prop) && copy_to.hasOwnProperty(prop)) {
+                // @ts-ignore
+                copy_to[prop] = copy_from[prop];
+            }
+        });
+    }
+    static compare_objects(obj1, obj2, props, context = "") {
+        for (let prop of props) {
+            if (typeof obj1[prop] !== typeof obj2[prop]) {
+                throw new Error(`${context}|Type mismatch found in property ${prop}`);
+            }
+            if (obj1[prop] !== obj2[prop]) {
+                throw new Error(`${context}|Value mismatch found in property ${prop}`);
+            }
+        }
+    }
+    static check_properties_not_empty(obj, props) {
+        props.forEach(prop => {
+            if (!obj.hasOwnProperty(prop)) {
+                throw new Error(`Property ${prop} does not exist`);
+            }
+            const value = obj[prop];
+            if (typeof value === 'string') {
+                if (value === '' || value.toLowerCase() === 'null') {
+                    throw new Error(`Property ${prop} must have a value`);
+                }
+                if (prop.includes('date')) {
+                    if (isNaN(Date.parse(value))) {
+                        throw new Error(`Property ${prop} must be a valid date string`);
+                    }
+                }
+                if (prop.includes('time') || prop.includes('bonus') || prop.includes('perc')) {
+                    if (isNaN(Number(value)) || Number(value) <= 0) {
+                        throw new Error(`Property ${prop} must be a numeric string and greater than 0`);
+                    }
+                }
+            }
+            else if (typeof value === 'number') {
+                if (value <= 0) {
+                    throw new Error(`Property ${prop} must be greater than 0`);
+                }
+            }
+        });
+        return true;
     }
 }
 exports.tools = tools;
