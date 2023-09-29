@@ -137,4 +137,10 @@ export class assert{
         }
         return email;
     }
+
+    public static validContactNumber(contact:unknown,context:string=''):string{
+        const contact_check = tools.isValidContactNumber(contact);
+        if(contact_check === false) throw new Error(`${context}|${contact} invalid contact format`);
+        return contact_check;
+    }
 }

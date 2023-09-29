@@ -152,6 +152,12 @@ class assert {
         }
         return email;
     }
+    static validContactNumber(contact, context = '') {
+        const contact_check = tools_1.tools.isValidContactNumber(contact);
+        if (contact_check === false)
+            throw new Error(`${context}|${contact} invalid contact format`);
+        return contact_check;
+    }
 }
 exports.assert = assert;
 //# sourceMappingURL=assert.js.map
