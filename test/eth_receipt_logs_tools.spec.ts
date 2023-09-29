@@ -84,6 +84,8 @@ describe("receipt_logs_tools spec",()=> {
     it("receipt_logs_tools isPairEventLog true token_bnb",()=>{
         const mockLog = getMockReceiptLogs();
         mockLog.address = eth_config.getTokenBnbPairContract();
+        console.log(mockLog);
+        console.log(`address of mockLog is ${mockLog.address}`);
         const result = eth_receipt_logs_tools.isPairEventLog(mockLog);
         assert.equal(result,true);
     });
