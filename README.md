@@ -17,3 +17,8 @@ To run tests, follow these steps:
 
 1) Make sure you are in the project root directory.
 2) Run 'npm test' in your terminal.
+
+To run a specific test, use:
+```
+npm test -- -t "string pattern of the test"
+```
