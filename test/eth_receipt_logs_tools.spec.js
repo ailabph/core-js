@@ -51,7 +51,7 @@ describe("receipt_logs_tools spec", () => {
         const result = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getUnprocessedLogsForEvents();
         assert.equal(result.length, 0);
     });
-    it("receipt_logs_tools getUnprocessedReceiptLogsForEvents price processed", async () => {
+    it.only("receipt_logs_tools getUnprocessedReceiptLogsForEvents price processed", async () => {
         const logs1 = getMockReceiptLogs();
         logs1.time_processed_price = time_helper_1.time_helper.getCurrentTimeStamp();
         await logs1.save();
