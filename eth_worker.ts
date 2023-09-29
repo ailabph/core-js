@@ -100,7 +100,7 @@ export class eth_worker{
             BigNumber.config({DECIMAL_PLACES: Number(_decimals)});
             BigNumber.config({EXPONENTIAL_AT: 1e+9});
             toReturn = new BigNumber(Number(_value));
-            if (_decimals > 0) {
+            if (tools.greaterThan(_decimals,0)) {
                 let valueBN = new BigNumber(_value);
                 let tenBN = new BigNumber(10);
                 let decimalsBN = new BigNumber(_decimals);

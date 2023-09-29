@@ -77,7 +77,7 @@ class eth_worker {
             bignumber_js_1.default.config({ DECIMAL_PLACES: Number(_decimals) });
             bignumber_js_1.default.config({ EXPONENTIAL_AT: 1e+9 });
             toReturn = new bignumber_js_1.default(Number(_value));
-            if (_decimals > 0) {
+            if (tools_1.tools.greaterThan(_decimals, 0)) {
                 let valueBN = new bignumber_js_1.default(_value);
                 let tenBN = new bignumber_js_1.default(10);
                 let decimalsBN = new bignumber_js_1.default(_decimals);
