@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const globals_1 = require("@jest/globals");
 // @ts-ignore
-const meta_options_1 = require("../meta_options");
+const meta_options_1 = require("../build/meta_options");
 jest.useFakeTimers();
 // test("no tests",()=>{});
 // beforeAll(() => {

@@ -1,6 +1,6 @@
 import {describe, expect, test} from '@jest/globals';
 // @ts-ignore
-import {meta_options} from "../meta_options";
+import {meta_options} from "../build/meta_options";
 import {tools} from "../tools";
 jest.useFakeTimers();
 
