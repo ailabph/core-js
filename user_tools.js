@@ -98,6 +98,9 @@ class user_tools {
             return false;
         return true;
     }
+    static isPhUser(u) {
+        return u.country_id === 173;
+    }
 }
 exports.user_tools = user_tools;
 //# sourceMappingURL=user_tools.js.map

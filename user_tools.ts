@@ -92,6 +92,9 @@ export class user_tools{
         if(u.walletAddress.toLowerCase() === "null") return false;
         return true;
     }
+    public static isPhUser(u:user):boolean{
+        return u.country_id === 173;
+    }
     //endregion CHECKS
 
 }
