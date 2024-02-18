@@ -15,9 +15,9 @@ class eth_contract_events_tools {
         }
     }
     //region UTILITIES
-    static isTokenRelated(db_log) {
+    static isTokenRelated(db_log, has_usd_pair = false) {
         return eth_receipt_logs_tools_1.eth_receipt_logs_tools.isContractEventLog(db_log)
-            || eth_receipt_logs_tools_1.eth_receipt_logs_tools.isPairEventLog(db_log);
+            || eth_receipt_logs_tools_1.eth_receipt_logs_tools.isPairEventLog(db_log, has_usd_pair);
     }
     //endregion UTILITIES
     //region CHECKER
@@ -76,6 +76,32 @@ class eth_contract_events_tools {
             throw new eth_contract_events_tools_error(`${method}|unable to save to trade event, already added to event hash ${newEvent.txn_hash} logIndex ${newEvent.logIndex} `);
         await newEvent.save();
         return newEvent;
+    }
+    //endregion CHECKER
+    //region GETTER
+    static async get_event_by_hash(txn_hash, type = "") {
+        if (typeof txn_hash !== "string")
+            throw new Error(`invalid txn_hash, must be a string`);
+        if (tools_1.tools.isNullish(txn_hash))
+            throw new Error(`invalid txn_hash, must not be null`);
+        if (tools_1.tools.isEmpty(txn_hash))
+            throw new Error(`invalid txn_hash, must not be empty`);
+        const q = new eth_contract_events_1.eth_contract_events();
+        q.txn_hash = txn_hash;
+        if (type !== "")
+            q.type = type;
+        await q.fetch();
+        if (q.isNew())
+            throw new Error(`unable to retrieve event with hash ${txn_hash}`);
+        return q;
+    }
+    static async get_buy_event_by_hash(txn_hash) {
+        try {
+            return await this.get_event_by_hash(txn_hash, "buy");
+        }
+        catch (e) {
+            throw new Error(`unable to retrieve buy event with hash ${txn_hash}`);
+        }
     }
 }
 exports.eth_contract_events_tools = eth_contract_events_tools;
