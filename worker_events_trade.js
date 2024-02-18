@@ -20,6 +20,7 @@ const web3_abi_decoder_1 = require("./web3_abi_decoder");
 const connection_1 = require("./connection");
 const worker_events_trade_tools_1 = require("./worker_events_trade_tools");
 const generic_data_1 = require("./build/generic_data");
+const eth_transaction_tools_1 = require("./eth_transaction_tools");
 //endregion TYPES
 class worker_events_trade {
     static log(msg, method, end = false, force_display = false) {
@@ -222,6 +223,8 @@ class worker_events_trade {
         const tokenInfo = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getContractInfoFromPair(pairInfo, target_token);
         const otherTokenInfo = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getOppositeContractPairOf(pairInfo, target_token);
         const type = await eth_receipt_logs_tools_1.eth_receipt_logs_tools.getTradeTypeOfSwap(swapLog, target_token);
+        assert_1.assert.stringNotEmpty(db_log.transactionHash, `${method} db_log.transactionHash`);
+        const txn_source = await eth_transaction_tools_1.eth_transaction_tools.get(db_log.transactionHash ?? "");
         const swapSummary = {
             bnb_usd: "0",
             bnb_price: "0", bnb_value: "0", usd_price: "0", usd_value: "0",
@@ -229,7 +232,8 @@ class worker_events_trade {
             to: eth_receipt_logs_tools_1.eth_receipt_logs_tools.getDefaultSwapTradeInfo(),
             type: type,
             tax_amount: "0",
-            tax_percentage: 0
+            tax_percentage: 0,
+            txn_caller: txn_source.fromAddress ?? ''
         };
         if (type === eth_worker_trade_1.TRADE_TYPE.BUY) {
             swapSummary.from = otherTokenInfo;
@@ -284,6 +288,21 @@ class worker_events_trade {
         }
         return swapSummary;
     }
+    static async setTxnCallerJob() {
+        const method = "setTxnCallerJob";
+        this.log(`setting txn_caller in eth_contract_events that are null...`, method, false, true);
+        const events = new eth_contract_events_1.eth_contract_events();
+        await events.list(" WERE  txn_caller=:empty OR txn_caller IS NULL ", { empty: "" });
+        this.log(`found ${events.count()} events to process`, method, false, true);
+        let count = 0, total = events.count();
+        for (const event of events._dataList) {
+            count++;
+            const txn_source = await eth_transaction_tools_1.eth_transaction_tools.get(event.txn_hash ?? "");
+            event.txn_caller = txn_source.fromAddress ?? '';
+            await event.save();
+            this.log(`${count}/${total}|${event.txn_hash} updated`, method, false, true);
+        }
+    }
 }
 exports.worker_events_trade = worker_events_trade;
 //region SETTINGS
@@ -304,5 +323,9 @@ class worker_events_trade_error extends Error {
 if (process_1.argv.includes("run_worker_events_trade")) {
     console.log(`running worker to track trade events`);
     worker_events_trade.run().finally();
+}
+if (process_1.argv.includes("run_setTxnCallerJob")) {
+    console.log(`running function setTxnCallerJob`);
+    worker_events_trade.setTxnCallerJob().finally();
 }
 //# sourceMappingURL=worker_events_trade.js.map
